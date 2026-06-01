@@ -227,4 +227,5 @@ export const sasDiagnostic = {
   getSubscriptions,
   updateDiagnosticUri,
   ignoreAll,
+  updateDiagnostics,
 };

@@ -62,7 +62,7 @@ export class SASAuthProvider implements AuthenticationProvider, Disposable {
     }
   }
 
-  async getSessions(): Promise<readonly AuthenticationSession[]> {
+  async getSessions(): Promise<AuthenticationSession[]> {
     const sessions = await this._getSessions();
     if (sessions.length === 0) {
       commands.executeCommand("setContext", "SAS.authorized", false);
@@ -78,7 +78,7 @@ export class SASAuthProvider implements AuthenticationProvider, Disposable {
       }
       commands.executeCommand("setContext", "SAS.authorized", true);
     }
-    return sessions;
+    return [...sessions];
   }
 
   private async _getSessions(): Promise<readonly AuthenticationSession[]> {

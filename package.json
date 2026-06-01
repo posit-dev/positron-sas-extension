@@ -1,7 +1,7 @@
 {
-  "name": "sas-lsp",
-  "displayName": "SAS",
-  "description": "Official SAS Language Extension for VS Code",
+  "name": "positron-sas",
+  "displayName": "Positron SAS",
+  "description ": "SAS Language Pack for Positron",
   "version": "1.19.1",
   "categories": [
     "Programming Languages",
@@ -9,16 +9,17 @@
     "Machine Learning",
     "Notebooks"
   ],
-  "publisher": "SAS",
+  "publisher": "posit",
   "license": "Apache-2.0",
   "icon": "icons/sas.png",
   "engines": {
-    "vscode": "^1.89.0"
+    "vscode": "^1.95.0"
   },
   "activationEvents": [
     "onWebviewPanel:SASResultPanel",
     "onLanguage:sas",
-    "onNotebook:sas-notebook"
+    "onNotebook:sas-notebook",
+    "onStartupFinished"
   ],
   "main": "./client/dist/node/extension",
   "browser": "./client/dist/browser/extension",
@@ -1411,27 +1412,27 @@
         {
           "id": "contentdataprovider",
           "name": "%views.SAS.explorer%",
-          "when": "SAS.authorized && SAS.connectionType == rest"
+          "when": "SAS.authorized && SAS.connectionType == rest && !positron.context"
         },
         {
           "id": "serverdataprovider",
           "name": "%views.SAS.serverExplorer%",
-          "when": "(SAS.authorized || SAS.serverDisplayed) && SAS.serverEnabled"
+          "when": "(SAS.authorized || SAS.serverDisplayed) && SAS.serverEnabled && !positron.context"
         },
         {
           "id": "librarydataprovider",
           "name": "%views.SAS.libraries%",
-          "when": "((SAS.authorized || SAS.librariesDisplayed) && SAS.librariesEnabled) || SAS.connection.direct"
+          "when": "(((SAS.authorized || SAS.librariesDisplayed) && SAS.librariesEnabled) || SAS.connection.direct) && !positron.context"
         },
         {
           "id": "sas-content-get-started",
           "name": "%views.SAS.signIn%",
-          "when": "(!(SAS.authorized || SAS.librariesDisplayed || SAS.serverDisplayed) && SAS.canSignIn) && !SAS.connection.direct"
+          "when": "(!(SAS.authorized || SAS.librariesDisplayed || SAS.serverDisplayed) && SAS.canSignIn) && !SAS.connection.direct && !positron.context"
         },
         {
           "id": "sas-content-invalid-connection",
           "name": "%views.SAS.signIn%",
-          "when": "!SAS.authorized && !SAS.canSignIn"
+          "when": "!SAS.authorized && !SAS.canSignIn && !positron.context"
         }
       ]
     },
@@ -1478,13 +1479,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sassoftware/vscode-sas-extension"
+    "url": "https://github.com/posit-dev/vscode-sas-extension"
   },
   "bugs": {
-    "url": "https://github.com/sassoftware/vscode-sas-extension/issues"
+    "url": "https://github.com/posit-dev/vscode-sas-extension/issues"
   },
   "homepage": "https://www.sas.com",
-  "qna": "https://marketplace.visualstudio.com/items?itemName=SAS.sas-lsp&ssr=false#qna",
   "scripts": {
     "vscode:prepublish": "npm run lint && npm run compile && npm run compile-browser",
     "lint": "node node_modules/eslint/bin/eslint.js \"./client/src/**/*.ts\" \"./client/src/**/*.tsx\" \"./server/src/**/*.ts\"",
@@ -1497,6 +1497,7 @@
     "pretest": "npm run compile && tsc -p ./client",
     "test-client": "node ./client/out/test/runTest.js",
     "test-server": "cross-env TS_NODE_PROJECT=./server/tsconfig.json mocha -r ts-node/register ./server/test/**/*.test.ts",
+    "test-positron": "cross-env TS_NODE_PROJECT=./client/tsconfig.json NODE_OPTIONS=--no-experimental-strip-types mocha -r ts-node/register -r ./client/test/positron/vscode-setup.js ./client/test/positron/**/*.test.ts",
     "test": "npm run test-server && npm run test-client",
     "pseudoLocalize": "npx @vscode/l10n-dev export -o ./l10n ./client/src && npx @vscode/l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",

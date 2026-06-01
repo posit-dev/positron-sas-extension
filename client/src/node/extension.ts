@@ -58,12 +58,17 @@ import { exportNotebook, saveOutput } from "../components/notebook/exporters";
 import { ConnectionType } from "../components/profile";
 import { SasTaskProvider } from "../components/tasks/SasTaskProvider";
 import { SAS_TASK_TYPE } from "../components/tasks/SasTasks";
+// Import Positron integration
+import {
+  isPositron,
+  initializePositronIntegration,
+} from "../positron";
 
 let client: LanguageClient;
 
 export let extensionContext: ExtensionContext | undefined;
 
-export function activate(context: ExtensionContext) {
+export async function activate(context: ExtensionContext) {
   // The server is implemented in node
   extensionContext = context;
   const serverModule = context.asAbsolutePath(
@@ -105,7 +110,8 @@ export function activate(context: ExtensionContext) {
 
   setContext(context);
 
-  const libraryNavigator = new LibraryNavigator(context);
+  // In Positron, don't create the tree view since libraries appear in Connections pane
+  const libraryNavigator = new LibraryNavigator(context, !isPositron());
 
   // Below we have two content navigators. We'll have one to navigate
   // SAS Content and another to navigate SAS Server. Both of these will
@@ -219,6 +225,12 @@ export function activate(context: ExtensionContext) {
   triggerProfileUpdate();
   updateViewSettings();
 
+  // Initialize Positron integration if running in Positron
+  if (isPositron()) {
+    console.log("Running in Positron - initializing Positron integration");
+    await initializePositronIntegration(context);
+  }
+
   return {
     getRestAPIs,
   };
@@ -282,9 +294,19 @@ function triggerProfileUpdate(): void {
   }
 }
 
-export function deactivate(): Thenable<void> | undefined {
-  if (!client) {
-    return undefined;
+export async function deactivate(): Promise<void> {
+  console.log("Extension deactivating...");
+
+  // Clean up Positron integration if running in Positron
+  if (isPositron()) {
+    const { cleanupPositronIntegration } = await import("../positron");
+    await cleanupPositronIntegration();
   }
-  return client.stop();
+
+  // Stop language server client
+  if (client) {
+    await client.stop();
+  }
+
+  console.log("Extension deactivated");
 }

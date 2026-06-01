@@ -416,7 +416,7 @@ export class NotebookToFlowConverter {
     const newItem = await this.contentModel.createUniqueFileOfPrefix(
       parentItem,
       outputName,
-      flowDataUint8Array,
+      flowDataUint8Array.buffer,
     );
     if (!newItem) {
       throw new Error(

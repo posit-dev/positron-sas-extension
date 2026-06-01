@@ -30,3 +30,29 @@ pull_request_template.md
 l10n/bundle.l10n.json
 *.vsix
 *.node
+
+# Development documentation (not needed in package)
+BUILD_OPTIMIZATION.md
+BUILD_VSIX.md
+CLAUDE.md
+CURRENT_STATUS.md
+JUPYTER_KERNEL_OPTIONS.md
+POSITRON.md
+POSITRON_BUILD_FIX.md
+POSITRON_CONSOLE_OUTPUT_ISSUE.md
+POSITRON_DATA_VIEWER.md
+POSITRON_DOCS_INDEX.md
+POSITRON_IMPLEMENTATION.md
+POSITRON_INTEGRATION_STATUS.md
+POSITRON_QUICKSTART.md
+POSITRON_RUNTIME_FIX.md
+SUPERVISOR_APPROACH.md
+SUPERVISOR_FINDINGS.md
+TESTING_SUPERVISOR.md
+problem.md
+
+# Positron development docs in source
+client/src/positron/**/*.md
+
+# Build artifacts
+make
