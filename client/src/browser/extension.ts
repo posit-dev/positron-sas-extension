@@ -19,6 +19,9 @@ export function activate(context: ExtensionContext): void {
   client = createWorkerLanguageClient(context, clientOptions);
 
   client.start();
+
+  // Note: Positron integration is not supported in browser mode
+  // It only works in the desktop (Node.js) version
 }
 
 function createWorkerLanguageClient(

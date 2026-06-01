@@ -20,7 +20,7 @@ const plugins = [
 const commonBuildOptions = {
   bundle: true,
   outdir: ".",
-  external: ["vscode"],
+  external: ["vscode", "@posit-dev/positron"],
   loader: {
     ".properties": "text",
     ".node": "copy",

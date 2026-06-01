@@ -502,7 +502,7 @@ class ContentDataProvider
         !success && failedUploads.push(fileName);
       } else {
         const file = await workspace.fs.readFile(uri);
-        const newUri = await this.createFile(target, fileName, file);
+        const newUri = await this.createFile(target, fileName, file.buffer);
         !newUri && failedUploads.push(fileName);
       }
     }
@@ -634,7 +634,7 @@ class ContentDataProvider
       } else {
         await workspace.fs.writeFile(
           Uri.joinPath(folderUri, selection.name),
-          await this.model.downloadFile(selection),
+          new Uint8Array(await this.model.downloadFile(selection)),
         );
       }
     }
@@ -746,7 +746,7 @@ class ContentDataProvider
           const fileCreated = await this.createFile(
             folder,
             name,
-            await promisify(readFile)(fileOrFolder),
+            (await promisify(readFile)(fileOrFolder)).buffer,
           );
           if (!fileCreated) {
             success = false;
@@ -790,7 +790,7 @@ class ContentDataProvider
         const fileCreated = await this.createFile(
           target,
           name,
-          await promisify(readFile)(itemUri.fsPath),
+          (await promisify(readFile)(itemUri.fsPath)).buffer,
         );
 
         if (!fileCreated) {

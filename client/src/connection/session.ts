@@ -21,14 +21,30 @@ export abstract class Session {
   }
 
   protected _onExecutionLogFn: OnLogFn | undefined;
+  public get onExecutionLogFn(): OnLogFn | undefined {
+    return this._onExecutionLogFn;
+  }
   public set onExecutionLogFn(value: OnLogFn) {
     this._onExecutionLogFn = value;
   }
 
   async setup(silent?: boolean): Promise<void> {
     // If we already have a connection promise we're awaiting, lets use that.
-    // Otherwise, establish a new connection
-    this._connectionPromise ||= this.establishConnection();
+    // Otherwise, establish a new connection.
+    // Wrap with a timeout so a hung token exchange doesn't block forever.
+    this._connectionPromise ||= Promise.race([
+      this.establishConnection(),
+      new Promise<void>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(l10n.t("Connection timed out"))),
+          120_000,
+        ),
+      ),
+    ]).catch((err) => {
+      // Clear the cached promise so the next setup() retries fresh.
+      this._connectionPromise = undefined;
+      throw err;
+    });
     if (silent) {
       const resolvedData = await this._connectionPromise;
       this._connectionPromise = undefined;

@@ -40,8 +40,8 @@ class LibraryDataProvider
     SubscriptionProvider
 {
   private _onDidChangeTreeData = new EventEmitter<LibraryItem | undefined>();
-  private _treeView: TreeView<LibraryItem>;
-  private _dropEditProvider: Disposable;
+  private _treeView: TreeView<LibraryItem> | undefined;
+  private _dropEditProvider: Disposable | undefined;
 
   public dropMimeTypes: string[] = [];
   public dragMimeTypes: string[] = [libraryItemMimeType, tableTextMimeType];
@@ -50,23 +50,27 @@ class LibraryDataProvider
     return this._onDidChangeTreeData.event;
   }
 
-  get treeView(): TreeView<LibraryItem> {
+  get treeView(): TreeView<LibraryItem> | undefined {
     return this._treeView;
   }
 
   constructor(
     private readonly model: LibraryModel,
     private readonly extensionUri: Uri,
+    private readonly createTreeView: boolean = true,
   ) {
-    this._treeView = window.createTreeView("librarydataprovider", {
-      treeDataProvider: this,
-      dragAndDropController: this,
-      canSelectMany: true,
-    });
-    this._dropEditProvider = languages.registerDocumentDropEditProvider(
-      this.selector(),
-      this,
-    );
+    // Only create tree view in VS Code, not in Positron
+    if (createTreeView) {
+      this._treeView = window.createTreeView("librarydataprovider", {
+        treeDataProvider: this,
+        dragAndDropController: this,
+        canSelectMany: true,
+      });
+      this._dropEditProvider = languages.registerDocumentDropEditProvider(
+        this.selector(),
+        this,
+      );
+    }
     registerAPI("getColumns", model.fetchColumns.bind(model));
     registerAPI("getTables", model.getTables.bind(model));
     registerAPI("getLibraries", model.getLibraries.bind(model));
@@ -74,7 +78,14 @@ class LibraryDataProvider
   }
 
   public getSubscriptions(): Disposable[] {
-    return [this._treeView, this._dropEditProvider];
+    const subscriptions: Disposable[] = [];
+    if (this._treeView) {
+      subscriptions.push(this._treeView);
+    }
+    if (this._dropEditProvider) {
+      subscriptions.push(this._dropEditProvider);
+    }
+    return subscriptions;
   }
 
   public handleDrag(

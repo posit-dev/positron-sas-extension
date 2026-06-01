@@ -46,6 +46,7 @@ const browserClientConfig = {
   },
   externals: {
     vscode: "commonjs vscode", // ignored because it doesn't exist
+    "@posit-dev/positron": "commonjs @posit-dev/positron", // only available in Positron
   },
   performance: {
     hints: false,
@@ -120,6 +121,7 @@ const browserServerConfig = {
   },
   externals: {
     vscode: "commonjs vscode", // ignored because it doesn't exist
+    "@posit-dev/positron": "commonjs @posit-dev/positron", // only available in Positron
     fsevents: "commonjs2 fsevents",
   },
   performance: {
