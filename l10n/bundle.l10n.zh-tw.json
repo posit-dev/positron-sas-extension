@@ -206,5 +206,11 @@
   "You can also specify connection profile using the settings.json file.": "您也可以使用 settings.json 檔案來指定連線設定檔。",
   "You must save your file before you can rename it.": "您必須先儲存檔案，才能重新命名。",
   "output": "輸出",
-  "{basename}_Copy{number}{ext}": "{basename}_Copy{number}{ext}"
+  "{basename}_Copy{number}{ext}": "{basename}_Copy{number}{ext}",
+  "Connection timed out": "連線逾時",
+  "Not pinned": "未釘選",
+  "Pin": "釘選",
+  "Pinned to the left": "釘選到左側",
+  "Pinned to the right": "釘選到右側",
+  "R Program": "R 程式"
 }

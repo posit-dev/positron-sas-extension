@@ -206,5 +206,11 @@
   "You can also specify connection profile using the settings.json file.": "settings.json ファイルを使用して接続プロファイルを指定することもできます。",
   "You must save your file before you can rename it.": "ファイル名を変更する前に、ファイルを保存する必要があります。",
   "output": "出力",
-  "{basename}_Copy{number}{ext}": "{basename}_Copy{number}{ext}"
+  "{basename}_Copy{number}{ext}": "{basename}_Copy{number}{ext}",
+  "Connection timed out": "接続がタイムアウトしました",
+  "Not pinned": "固定なし",
+  "Pin": "固定",
+  "Pinned to the left": "左に固定",
+  "Pinned to the right": "右に固定",
+  "R Program": "Rプログラム"
 }

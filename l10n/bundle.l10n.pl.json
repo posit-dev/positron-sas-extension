@@ -206,5 +206,11 @@
   "You can also specify connection profile using the settings.json file.": "Można także określić profil połączenia za pomocą pliku settings.json",
   "You must save your file before you can rename it.": "Przed zmianą nazwy pliku należy go zapisać.",
   "output": "wyniki",
-  "{basename}_Copy{number}{ext}": "{basename}_kopia{number}{ext}"
+  "{basename}_Copy{number}{ext}": "{basename}_kopia{number}{ext}",
+  "Connection timed out": "Upłynął limit czasu połączenia",
+  "Not pinned": "Nie przypięty",
+  "Pin": "Przypnij",
+  "Pinned to the left": "Przypięty po lewej",
+  "Pinned to the right": "Przypięty po prawej",
+  "R Program": "Program R"
 }

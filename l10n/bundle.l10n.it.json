@@ -206,5 +206,11 @@
   "You can also specify connection profile using the settings.json file.": "È possibile specificare il profilo di connessione anche utilizzando il file settings.json.",
   "You must save your file before you can rename it.": "Occorre salvare il file prima di poterlo rinominare.",
   "output": "output",
-  "{basename}_Copy{number}{ext}": "{basename}_Copia{number}{ext}"
+  "{basename}_Copy{number}{ext}": "{basename}_Copia{number}{ext}",
+  "Connection timed out": "Connessione scaduta",
+  "Not pinned": "Non fissato",
+  "Pin": "Fissa",
+  "Pinned to the left": "Fissato a sinistra",
+  "Pinned to the right": "Fissato a destra",
+  "R Program": "Programma R"
 }
