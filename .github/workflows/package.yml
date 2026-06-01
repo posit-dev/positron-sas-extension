@@ -39,3 +39,7 @@ jobs:
           git tag -f v${{ steps.package-json.outputs.version }}
           git push -f origin v${{ steps.package-json.outputs.version }}
         if: steps.package-json.outputs.has-updated == 'true'
+      - run: gh release create v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --generate-notes
+        if: steps.package-json.outputs.has-updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
