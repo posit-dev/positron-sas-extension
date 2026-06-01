@@ -27,7 +27,7 @@ export async function refreshToken(
       accessToken: tokens.access_token,
     }),
   );
-  await rootApi.headersForRoot().catch((err) => {
+  await rootApi.headersForRoot({ timeout: 15000 }).catch((err) => {
     if (err.response?.status === 401) {
       // token expired, try refresh token
       return axios
@@ -39,6 +39,7 @@ export async function refreshToken(
             grant_type: "refresh_token",
             refresh_token: tokens?.refresh_token,
           }).toString(),
+          { timeout: 15000 },
         )
         .then(
           (res) => {
@@ -119,6 +120,7 @@ export async function getTokens(
         code: authCode,
         code_verifier: codeVerifier,
       }).toString(),
+      { timeout: 15000 },
     )
   ).data;
   return tokens;

@@ -34,11 +34,12 @@ class LibraryNavigator implements SubscriptionProvider {
   private extensionUri: Uri;
   private webviewManager: WebViewManager;
 
-  constructor(context: ExtensionContext) {
+  constructor(context: ExtensionContext, createTreeView: boolean = true) {
     this.extensionUri = context.extensionUri;
     this.libraryDataProvider = new LibraryDataProvider(
       new LibraryModel(this.libraryAdapterForConnectionType()),
       context.extensionUri,
+      createTreeView,
     );
     this.webviewManager = new WebViewManager();
   }

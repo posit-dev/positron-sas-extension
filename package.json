@@ -1,7 +1,7 @@
 {
-  "name": "sas-lsp",
-  "displayName": "SAS",
-  "description": "Official SAS Language Extension for VS Code",
+  "name": "positron-sas",
+  "displayName": "Positron SAS",
+  "description ": "SAS Language Pack for Positron",
   "version": "1.19.1",
   "categories": [
     "Programming Languages",
@@ -9,16 +9,17 @@
     "Machine Learning",
     "Notebooks"
   ],
-  "publisher": "SAS",
+  "publisher": "posit",
   "license": "Apache-2.0",
   "icon": "icons/sas.png",
   "engines": {
-    "vscode": "^1.89.0"
+    "vscode": "^1.95.0"
   },
   "activationEvents": [
     "onWebviewPanel:SASResultPanel",
     "onLanguage:sas",
-    "onNotebook:sas-notebook"
+    "onNotebook:sas-notebook",
+    "onStartupFinished"
   ],
   "main": "./client/dist/node/extension",
   "browser": "./client/dist/browser/extension",
@@ -29,7 +30,81 @@
     },
     "virtualWorkspaces": true
   },
+  "enabledApiProposals": [
+    "chatContextProvider"
+  ],
   "contributes": {
+    "languageModelTools": [
+      {
+        "name": "sas_list_libraries",
+        "displayName": "List SAS Libraries",
+        "toolReferenceName": "sasLibraries",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Lists all SAS libraries available in the active SAS session. Use this to discover what data is available before writing SAS code.",
+        "userDescription": "List available SAS libraries in the current session.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sas_list_tables",
+        "displayName": "List SAS Tables",
+        "toolReferenceName": "sasTables",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Lists all datasets and views in a SAS library. Use this to see what tables are available before referencing them in code.",
+        "userDescription": "List tables in a SAS library.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "library": {
+              "type": "string",
+              "description": "The SAS library name (libname), e.g. SASHELP or WORK."
+            }
+          },
+          "required": [
+            "library"
+          ]
+        }
+      },
+      {
+        "name": "sas_describe_table",
+        "displayName": "Describe SAS Table",
+        "toolReferenceName": "sasDescribe",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Returns the column names, types, and row count for a SAS dataset. Use this before writing PROC SQL, DATA steps, or any code that references specific columns.",
+        "userDescription": "Describe the columns and row count of a SAS dataset.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "library": {
+              "type": "string",
+              "description": "The SAS library name, e.g. SASHELP."
+            },
+            "table": {
+              "type": "string",
+              "description": "The dataset name, e.g. CLASS."
+            }
+          },
+          "required": [
+            "library",
+            "table"
+          ]
+        }
+      },
+      {
+        "name": "sas_export_saspy_config",
+        "displayName": "Export saspy Configuration",
+        "toolReferenceName": "sasSaspyConfig",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Exports the active SAS connection profile as a saspy configuration for use with the sasquatch R package in Quarto documents. Use this when the user wants to create a Quarto document with SAS code or needs saspy setup. Save the output as sascfg_personal.py in the working directory (alongside the .qmd file) so the project is self-contained and deployable to Posit Connect. The sasquatch package (install.packages('sasquatch')) enables SAS code chunks in Quarto, and sasquatch::install_saspy() handles saspy installation.",
+        "userDescription": "Export the active SAS profile as a saspy configuration for Quarto/sasquatch.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ],
     "authentication": [
       {
         "id": "SAS",
@@ -848,6 +923,11 @@
         "category": "SAS"
       },
       {
+        "command": "SAS.viewDataInPositron",
+        "title": "View Data",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.notebook.new",
         "shortTitle": "%commands.SAS.notebook.new.short%",
         "title": "%commands.SAS.notebook.new%",
@@ -1411,27 +1491,27 @@
         {
           "id": "contentdataprovider",
           "name": "%views.SAS.explorer%",
-          "when": "SAS.authorized && SAS.connectionType == rest"
+          "when": "SAS.authorized && SAS.connectionType == rest && !positron.context"
         },
         {
           "id": "serverdataprovider",
           "name": "%views.SAS.serverExplorer%",
-          "when": "(SAS.authorized || SAS.serverDisplayed) && SAS.serverEnabled"
+          "when": "(SAS.authorized || SAS.serverDisplayed) && SAS.serverEnabled && !positron.context"
         },
         {
           "id": "librarydataprovider",
           "name": "%views.SAS.libraries%",
-          "when": "((SAS.authorized || SAS.librariesDisplayed) && SAS.librariesEnabled) || SAS.connection.direct"
+          "when": "(((SAS.authorized || SAS.librariesDisplayed) && SAS.librariesEnabled) || SAS.connection.direct) && !positron.context"
         },
         {
           "id": "sas-content-get-started",
           "name": "%views.SAS.signIn%",
-          "when": "(!(SAS.authorized || SAS.librariesDisplayed || SAS.serverDisplayed) && SAS.canSignIn) && !SAS.connection.direct"
+          "when": "(!(SAS.authorized || SAS.librariesDisplayed || SAS.serverDisplayed) && SAS.canSignIn) && !SAS.connection.direct && !positron.context"
         },
         {
           "id": "sas-content-invalid-connection",
           "name": "%views.SAS.signIn%",
-          "when": "!SAS.authorized && !SAS.canSignIn"
+          "when": "!SAS.authorized && !SAS.canSignIn && !positron.context"
         }
       ]
     },
@@ -1457,6 +1537,17 @@
         ]
       }
     ],
+    "customEditors": [
+      {
+        "viewType": "sas.sas7bdatViewer",
+        "displayName": "SAS Dataset Viewer",
+        "selector": [
+          { "filenamePattern": "*.sas7bdat" },
+          { "filenamePattern": "*.SAS7BDAT" }
+        ],
+        "priority": "default"
+      }
+    ],
     "notebookRenderer": [
       {
         "id": "sas-log-renderer",
@@ -1478,13 +1569,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sassoftware/vscode-sas-extension"
+    "url": "https://github.com/posit-dev/vscode-sas-extension"
   },
   "bugs": {
-    "url": "https://github.com/sassoftware/vscode-sas-extension/issues"
+    "url": "https://github.com/posit-dev/vscode-sas-extension/issues"
   },
   "homepage": "https://www.sas.com",
-  "qna": "https://marketplace.visualstudio.com/items?itemName=SAS.sas-lsp&ssr=false#qna",
   "scripts": {
     "vscode:prepublish": "npm run lint && npm run compile && npm run compile-browser",
     "lint": "node node_modules/eslint/bin/eslint.js \"./client/src/**/*.ts\" \"./client/src/**/*.tsx\" \"./server/src/**/*.ts\"",
@@ -1497,6 +1587,7 @@
     "pretest": "npm run compile && tsc -p ./client",
     "test-client": "node ./client/out/test/runTest.js",
     "test-server": "cross-env TS_NODE_PROJECT=./server/tsconfig.json mocha -r ts-node/register ./server/test/**/*.test.ts",
+    "test-positron": "cross-env TS_NODE_PROJECT=./client/tsconfig.json NODE_OPTIONS=--no-experimental-strip-types mocha -r ts-node/register -r ./client/test/positron/vscode-setup.js ./client/test/positron/**/*.test.ts",
     "test": "npm run test-server && npm run test-client",
     "pseudoLocalize": "npx @vscode/l10n-dev export -o ./l10n ./client/src && npx @vscode/l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
@@ -1514,11 +1605,11 @@
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/l10n-dev": "^0.0.35",
     "buffer": "6.0.3",
-    "chai": "^4.4.1",
+    "chai": "^6.2.2",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "esbuild": "^0.28.0",
-    "eslint": "^9.39.2",
+    "eslint": "^10.4.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "glob": "^13.0.3",
@@ -1531,7 +1622,7 @@
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "ts-sinon": "^2.0.2",
-    "typescript": "^5.5.3",
+    "typescript": "^6.0.3",
     "webpack": "^5.106.2",
     "webpack-cli": "^7.0.2"
   }

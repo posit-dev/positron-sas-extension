@@ -126,34 +126,52 @@ class RestSession extends Session {
       return;
     }
 
-    //Start a new session
-    if (this._config.serverId) {
-      const server1 = new ComputeServer(this._config.serverId);
-      server1.options = formattedOpts;
-      server1.autoExecLines = this._config.autoExecLines;
-      this._computeSession = await server1.getSession();
+    //Start a new session (retry up to 3 times for transient 5xx errors)
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (this._config.serverId) {
+          const server1 = new ComputeServer(this._config.serverId);
+          server1.options = formattedOpts;
+          server1.autoExecLines = this._config.autoExecLines;
+          this._computeSession = await server1.getSession();
+        } else {
+          const contextsApi = ContextsApi(apiConfig);
+          const context = await this.getContext();
 
-      //Maybe wait for session to be initialized?
-    } else {
-      const contextsApi = ContextsApi(apiConfig);
-      const context = await this.getContext();
-
-      //Create session from context
-      const sess = (
-        await contextsApi.createSession(
-          {
-            contextId: context.id,
-            sessionRequest: {
-              environment: {
-                options: [...formattedOpts],
-                autoExecLines: [...autoExecLines],
+          //Create session from context
+          const sess = (
+            await contextsApi.createSession(
+              {
+                contextId: context.id,
+                sessionRequest: {
+                  environment: {
+                    options: [...formattedOpts],
+                    autoExecLines: [...autoExecLines],
+                  },
+                },
               },
-            },
-          },
-          { headers: { "accept-language": locale } },
-        )
-      ).data;
-      this._computeSession = ComputeSession.fromInterface(sess);
+              { headers: { "accept-language": locale } },
+            )
+          ).data;
+          this._computeSession = ComputeSession.fromInterface(sess);
+        }
+        break;
+      } catch (err) {
+        const errObj = err instanceof Object ? err : {};
+        const status =
+          "response" in errObj &&
+          errObj.response instanceof Object &&
+          "status" in errObj.response &&
+          typeof errObj.response.status === "number"
+            ? errObj.response.status
+            : 0;
+        if (attempt < maxRetries && status && status >= 500) {
+          await new Promise((r) => setTimeout(r, attempt * 2000));
+          continue;
+        }
+        throw err;
+      }
     }
 
     await this.printSessionLog(this._computeSession);
