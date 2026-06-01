@@ -9,6 +9,8 @@ on:
 jobs:
   package:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -29,17 +31,16 @@ jobs:
       - run: echo "vsixPath=positron-sas-${{ steps.package-json.outputs.version }}.vsix" >> "$GITHUB_OUTPUT"
         id: vsixPath
         if: steps.package-json.outputs.has-updated == 'true'
-      - run: npx @vscode/vsce publish -i ${{ steps.vsixPath.outputs.vsixPath }}
-        if: steps.package-json.outputs.has-updated == 'true'
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      - run: npx ovsx publish ${{ steps.vsixPath.outputs.vsixPath }} -p ${{ secrets.OVSX_PAT }}
-        if: steps.package-json.outputs.has-updated == 'true'
       - run: |
           git tag -f v${{ steps.package-json.outputs.version }}
           git push -f origin v${{ steps.package-json.outputs.version }}
         if: steps.package-json.outputs.has-updated == 'true'
-      - run: gh release create v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --generate-notes
+      - run: |
+          if gh release view v${{ steps.package-json.outputs.version }} > /dev/null 2>&1; then
+            gh release upload v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --clobber
+          else
+            gh release create v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --generate-notes
+          fi
         if: steps.package-json.outputs.has-updated == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
