@@ -26,7 +26,7 @@ jobs:
         id: package-json
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: echo "vsixPath=sas-lsp-${{ steps.package-json.outputs.version }}.vsix" >> "$GITHUB_OUTPUT"
+      - run: echo "vsixPath=positron-sas-${{ steps.package-json.outputs.version }}.vsix" >> "$GITHUB_OUTPUT"
         id: vsixPath
         if: steps.package-json.outputs.has-updated == 'true'
       - run: npx @vscode/vsce publish -i ${{ steps.vsixPath.outputs.vsixPath }}
