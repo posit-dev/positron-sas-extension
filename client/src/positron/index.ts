@@ -8,7 +8,7 @@ import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
 import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
 import { registerAssistantIntegration } from "./sasAssistant";
-import type { SasWorkspaceContextProvider } from "./sasAssistant";
+// import type { SasWorkspaceContextProvider } from "./sasAssistant";
 import { PositronDataViewerProvider } from "./PositronDataViewerProvider";
 import type { SasClient } from "./sasClient";
 

@@ -62,8 +62,8 @@ import { SAS_TASK_TYPE } from "../components/tasks/SasTasks";
 import {
   isPositron,
   initializePositronIntegration,
-  getDataViewerProvider,
-  getRuntimeManager,
+  // getDataViewerProvider,
+  // getRuntimeManager,
 } from "../positron";
 import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
 
