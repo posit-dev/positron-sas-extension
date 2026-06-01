@@ -5,6 +5,7 @@ import { ExtensionContext, workspace, window } from "vscode";
 import { SASLanguageRuntimeManager } from "./PositronLanguageRuntimeManager";
 import { SASLanguageRuntimeManager_Supervisor } from "./PositronLanguageRuntimeManager_Supervisor";
 import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
+import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
 import type { SasClient } from "./sasClient";
 
@@ -24,6 +25,7 @@ declare global {
 
 let positronApi: PositronApi | undefined;
 let runtimeManager: SASLanguageRuntimeManager | SASLanguageRuntimeManager_Supervisor | undefined;
+let connectionsProvider: PositronConnectionsProvider | undefined;
 let plotsProvider: PositronPlotsProvider | undefined;
 
 // Holds the active SASLanguageRuntimeSession for direct operations.
@@ -145,6 +147,11 @@ export async function initializePositronIntegration(
   // Run once immediately in case a .sas file is already open.
   ensureSasConsoleSession().catch(() => {});
 
+  // Initialize Connections Provider for showing libraries in Connections pane
+  connectionsProvider = new PositronConnectionsProvider(api);
+  await connectionsProvider.initialize();
+  context.subscriptions.push(connectionsProvider);
+
   // Initialize Plots Provider for showing outputs
   plotsProvider = new PositronPlotsProvider(api);
   context.subscriptions.push(plotsProvider);
@@ -209,6 +216,11 @@ export async function cleanupPositronIntegration(): Promise<void> {
     } catch (error) {
       console.error("Error cleaning up sessions:", error);
     }
+  }
+
+  if (connectionsProvider) {
+    connectionsProvider.dispose();
+    connectionsProvider = undefined;
   }
 
   if (plotsProvider) {
