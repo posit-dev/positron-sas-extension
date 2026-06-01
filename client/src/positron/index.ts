@@ -8,7 +8,7 @@ import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
 import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
 import { registerAssistantIntegration } from "./sasAssistant";
-// import type { SasWorkspaceContextProvider } from "./sasAssistant";
+import type { SasWorkspaceContextProvider } from "./sasAssistant";
 import { PositronDataViewerProvider } from "./PositronDataViewerProvider";
 import type { SasClient } from "./sasClient";
 
@@ -31,6 +31,10 @@ let runtimeManager: SASLanguageRuntimeManager | SASLanguageRuntimeManager_Superv
 let connectionsProvider: PositronConnectionsProvider | undefined;
 let plotsProvider: PositronPlotsProvider | undefined;
 let dataViewerProvider: PositronDataViewerProvider | undefined;
+let assistantSessionProvider: SasWorkspaceContextProvider | undefined;
+
+// Holds the SasClient of the active console session for LM tool access.
+let activeAssistantClient: SasClient | undefined;
 
 // Holds the active SASLanguageRuntimeSession for direct operations.
 let activeSession: SASLanguageRuntimeSession | undefined;
