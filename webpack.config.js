@@ -39,6 +39,7 @@ const browserClientConfig = {
         use: [
           {
             loader: "ts-loader",
+            options: { transpileOnly: true },
           },
         ],
       },
@@ -98,6 +99,7 @@ const browserServerConfig = {
         use: [
           {
             loader: "ts-loader",
+            options: { transpileOnly: true },
           },
         ],
       },
@@ -122,6 +124,8 @@ const browserServerConfig = {
   externals: {
     vscode: "commonjs vscode", // ignored because it doesn't exist
     "@posit-dev/positron": "commonjs @posit-dev/positron", // only available in Positron
+    "vscode-languageserver/lib/common/progress":
+      "commonjs vscode-languageserver/lib/common/progress",
     fsevents: "commonjs2 fsevents",
   },
   performance: {
