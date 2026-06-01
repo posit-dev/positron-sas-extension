@@ -7,6 +7,8 @@ import { SASLanguageRuntimeManager_Supervisor } from "./PositronLanguageRuntimeM
 import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
 import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
+import { registerAssistantIntegration } from "./sasAssistant";
+import type { SasWorkspaceContextProvider } from "./sasAssistant";
 import { PositronDataViewerProvider } from "./PositronDataViewerProvider";
 import type { SasClient } from "./sasClient";
 
@@ -158,6 +160,9 @@ export async function initializePositronIntegration(
   plotsProvider = new PositronPlotsProvider(api);
   context.subscriptions.push(plotsProvider);
 
+  // Register Positron Assistant tools and session context provider.
+  const assistant = registerAssistantIntegration(context, () => activeAssistantClient);
+  assistantSessionProvider = assistant.sessionProvider;
   // Initialize Data Viewer Provider for showing datasets
   dataViewerProvider = new PositronDataViewerProvider(api);
   context.subscriptions.push(dataViewerProvider);
@@ -181,13 +186,16 @@ export function getDataViewerProvider(): PositronDataViewerProvider | undefined 
 
 /**
  * Called by PositronLanguageRuntimeSession when a Console session starts or stops.
- * Placeholder for assistant integration (added in feature/assistant branch).
+ * Updates the active SasClient available to LM tools and the context provider.
  */
 export function setActiveAssistantClient(
-  _client: SasClient | undefined,
-  _profileName?: string,
+  client: SasClient | undefined,
+  profileName?: string,
 ): void {
-  // No-op: assistant integration not present in this branch
+  activeAssistantClient = client;
+  assistantSessionProvider?.updateSession(
+    client && profileName ? { profileName, isActive: true } : undefined,
+  );
 }
 
 /**
