@@ -30,7 +30,81 @@
     },
     "virtualWorkspaces": true
   },
+  "enabledApiProposals": [
+    "chatContextProvider"
+  ],
   "contributes": {
+    "languageModelTools": [
+      {
+        "name": "sas_list_libraries",
+        "displayName": "List SAS Libraries",
+        "toolReferenceName": "sasLibraries",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Lists all SAS libraries available in the active SAS session. Use this to discover what data is available before writing SAS code.",
+        "userDescription": "List available SAS libraries in the current session.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sas_list_tables",
+        "displayName": "List SAS Tables",
+        "toolReferenceName": "sasTables",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Lists all datasets and views in a SAS library. Use this to see what tables are available before referencing them in code.",
+        "userDescription": "List tables in a SAS library.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "library": {
+              "type": "string",
+              "description": "The SAS library name (libname), e.g. SASHELP or WORK."
+            }
+          },
+          "required": [
+            "library"
+          ]
+        }
+      },
+      {
+        "name": "sas_describe_table",
+        "displayName": "Describe SAS Table",
+        "toolReferenceName": "sasDescribe",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Returns the column names, types, and row count for a SAS dataset. Use this before writing PROC SQL, DATA steps, or any code that references specific columns.",
+        "userDescription": "Describe the columns and row count of a SAS dataset.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "library": {
+              "type": "string",
+              "description": "The SAS library name, e.g. SASHELP."
+            },
+            "table": {
+              "type": "string",
+              "description": "The dataset name, e.g. CLASS."
+            }
+          },
+          "required": [
+            "library",
+            "table"
+          ]
+        }
+      },
+      {
+        "name": "sas_export_saspy_config",
+        "displayName": "Export saspy Configuration",
+        "toolReferenceName": "sasSaspyConfig",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Exports the active SAS connection profile as a saspy configuration for use with the sasquatch R package in Quarto documents. Use this when the user wants to create a Quarto document with SAS code or needs saspy setup. Save the output as sascfg_personal.py in the working directory (alongside the .qmd file) so the project is self-contained and deployable to Posit Connect. The sasquatch package (install.packages('sasquatch')) enables SAS code chunks in Quarto, and sasquatch::install_saspy() handles saspy installation.",
+        "userDescription": "Export the active SAS profile as a saspy configuration for Quarto/sasquatch.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ],
     "authentication": [
       {
         "id": "SAS",

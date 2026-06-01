@@ -6,6 +6,8 @@ import { SASLanguageRuntimeManager } from "./PositronLanguageRuntimeManager";
 import { SASLanguageRuntimeManager_Supervisor } from "./PositronLanguageRuntimeManager_Supervisor";
 import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
+import { registerAssistantIntegration } from "./sasAssistant";
+import type { SasWorkspaceContextProvider } from "./sasAssistant";
 import type { SasClient } from "./sasClient";
 
 // Import types only (not runtime code)
@@ -25,6 +27,10 @@ declare global {
 let positronApi: PositronApi | undefined;
 let runtimeManager: SASLanguageRuntimeManager | SASLanguageRuntimeManager_Supervisor | undefined;
 let plotsProvider: PositronPlotsProvider | undefined;
+let assistantSessionProvider: SasWorkspaceContextProvider | undefined;
+
+// Holds the SasClient of the active console session for LM tool access.
+let activeAssistantClient: SasClient | undefined;
 
 // Holds the active SASLanguageRuntimeSession for direct operations.
 let activeSession: SASLanguageRuntimeSession | undefined;
@@ -149,6 +155,10 @@ export async function initializePositronIntegration(
   plotsProvider = new PositronPlotsProvider(api);
   context.subscriptions.push(plotsProvider);
 
+  // Register Positron Assistant tools and session context provider.
+  const assistant = registerAssistantIntegration(context, () => activeAssistantClient);
+  assistantSessionProvider = assistant.sessionProvider;
+
   console.log("Positron integration initialized successfully");
 }
 
@@ -161,13 +171,16 @@ export function getRuntimeManager(): SASLanguageRuntimeManager | SASLanguageRunt
 
 /**
  * Called by PositronLanguageRuntimeSession when a Console session starts or stops.
- * Placeholder for assistant integration (added in feature/assistant branch).
+ * Updates the active SasClient available to LM tools and the context provider.
  */
 export function setActiveAssistantClient(
-  _client: SasClient | undefined,
-  _profileName?: string,
+  client: SasClient | undefined,
+  profileName?: string,
 ): void {
-  // No-op: assistant integration not present in this branch
+  activeAssistantClient = client;
+  assistantSessionProvider?.updateSession(
+    client && profileName ? { profileName, isActive: true } : undefined,
+  );
 }
 
 /**
