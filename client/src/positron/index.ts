@@ -5,9 +5,11 @@ import { ExtensionContext, workspace, window } from "vscode";
 import { SASLanguageRuntimeManager } from "./PositronLanguageRuntimeManager";
 import { SASLanguageRuntimeManager_Supervisor } from "./PositronLanguageRuntimeManager_Supervisor";
 import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
+import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
 import { registerAssistantIntegration } from "./sasAssistant";
 import type { SasWorkspaceContextProvider } from "./sasAssistant";
+import { PositronDataViewerProvider } from "./PositronDataViewerProvider";
 import type { SasClient } from "./sasClient";
 
 // Import types only (not runtime code)
@@ -26,11 +28,9 @@ declare global {
 
 let positronApi: PositronApi | undefined;
 let runtimeManager: SASLanguageRuntimeManager | SASLanguageRuntimeManager_Supervisor | undefined;
+let connectionsProvider: PositronConnectionsProvider | undefined;
 let plotsProvider: PositronPlotsProvider | undefined;
-let assistantSessionProvider: SasWorkspaceContextProvider | undefined;
-
-// Holds the SasClient of the active console session for LM tool access.
-let activeAssistantClient: SasClient | undefined;
+let dataViewerProvider: PositronDataViewerProvider | undefined;
 
 // Holds the active SASLanguageRuntimeSession for direct operations.
 let activeSession: SASLanguageRuntimeSession | undefined;
@@ -151,6 +151,11 @@ export async function initializePositronIntegration(
   // Run once immediately in case a .sas file is already open.
   ensureSasConsoleSession().catch(() => {});
 
+  // Initialize Connections Provider for showing libraries in Connections pane
+  connectionsProvider = new PositronConnectionsProvider(api);
+  await connectionsProvider.initialize();
+  context.subscriptions.push(connectionsProvider);
+
   // Initialize Plots Provider for showing outputs
   plotsProvider = new PositronPlotsProvider(api);
   context.subscriptions.push(plotsProvider);
@@ -158,6 +163,9 @@ export async function initializePositronIntegration(
   // Register Positron Assistant tools and session context provider.
   const assistant = registerAssistantIntegration(context, () => activeAssistantClient);
   assistantSessionProvider = assistant.sessionProvider;
+  // Initialize Data Viewer Provider for showing datasets
+  dataViewerProvider = new PositronDataViewerProvider(api);
+  context.subscriptions.push(dataViewerProvider);
 
   console.log("Positron integration initialized successfully");
 }
@@ -167,6 +175,13 @@ export async function initializePositronIntegration(
  */
 export function getRuntimeManager(): SASLanguageRuntimeManager | SASLanguageRuntimeManager_Supervisor | undefined {
   return runtimeManager;
+}
+
+/**
+ * Get the data viewer provider instance
+ */
+export function getDataViewerProvider(): PositronDataViewerProvider | undefined {
+  return dataViewerProvider;
 }
 
 /**
@@ -224,9 +239,19 @@ export async function cleanupPositronIntegration(): Promise<void> {
     }
   }
 
+  if (connectionsProvider) {
+    connectionsProvider.dispose();
+    connectionsProvider = undefined;
+  }
+
   if (plotsProvider) {
     plotsProvider.dispose();
     plotsProvider = undefined;
+  }
+
+  if (dataViewerProvider) {
+    dataViewerProvider.dispose();
+    dataViewerProvider = undefined;
   }
 
   runtimeManager = undefined;
