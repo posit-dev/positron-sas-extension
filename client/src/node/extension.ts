@@ -62,7 +62,10 @@ import { SAS_TASK_TYPE } from "../components/tasks/SasTasks";
 import {
   isPositron,
   initializePositronIntegration,
+  getDataViewerProvider,
+  getRuntimeManager,
 } from "../positron";
+import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
 
 let client: LanguageClient;
 
@@ -215,6 +218,9 @@ export async function activate(context: ExtensionContext) {
       toggleLineComment(editor, client);
     }),
   );
+
+  // Open .sas7bdat files in Positron's Data Explorer via custom editor
+  Sas7bdatEditorProvider.register(context);
 
   // Reset first to set "No Active Profiles"
   resetStatusBarItem();

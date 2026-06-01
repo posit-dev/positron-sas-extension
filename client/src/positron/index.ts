@@ -7,6 +7,7 @@ import { SASLanguageRuntimeManager_Supervisor } from "./PositronLanguageRuntimeM
 import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
 import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
+import { PositronDataViewerProvider } from "./PositronDataViewerProvider";
 import type { SasClient } from "./sasClient";
 
 // Import types only (not runtime code)
@@ -27,6 +28,7 @@ let positronApi: PositronApi | undefined;
 let runtimeManager: SASLanguageRuntimeManager | SASLanguageRuntimeManager_Supervisor | undefined;
 let connectionsProvider: PositronConnectionsProvider | undefined;
 let plotsProvider: PositronPlotsProvider | undefined;
+let dataViewerProvider: PositronDataViewerProvider | undefined;
 
 // Holds the active SASLanguageRuntimeSession for direct operations.
 let activeSession: SASLanguageRuntimeSession | undefined;
@@ -156,6 +158,10 @@ export async function initializePositronIntegration(
   plotsProvider = new PositronPlotsProvider(api);
   context.subscriptions.push(plotsProvider);
 
+  // Initialize Data Viewer Provider for showing datasets
+  dataViewerProvider = new PositronDataViewerProvider(api);
+  context.subscriptions.push(dataViewerProvider);
+
   console.log("Positron integration initialized successfully");
 }
 
@@ -164,6 +170,13 @@ export async function initializePositronIntegration(
  */
 export function getRuntimeManager(): SASLanguageRuntimeManager | SASLanguageRuntimeManager_Supervisor | undefined {
   return runtimeManager;
+}
+
+/**
+ * Get the data viewer provider instance
+ */
+export function getDataViewerProvider(): PositronDataViewerProvider | undefined {
+  return dataViewerProvider;
 }
 
 /**
@@ -226,6 +239,11 @@ export async function cleanupPositronIntegration(): Promise<void> {
   if (plotsProvider) {
     plotsProvider.dispose();
     plotsProvider = undefined;
+  }
+
+  if (dataViewerProvider) {
+    dataViewerProvider.dispose();
+    dataViewerProvider = undefined;
   }
 
   runtimeManager = undefined;
