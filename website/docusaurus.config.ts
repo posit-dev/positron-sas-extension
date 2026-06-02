@@ -8,10 +8,11 @@ const config: Config = {
   favicon: "images/sas.png",
 
   // Set the production url of your site here
-  url: "https://sassoftware.github.io",
+  url: "https://verbose-broccoli-5v241yo.pages.github.io/",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/vscode-sas-extension/",
+  // baseUrl: "/positron-sas-extension/",
+  baseUrl: "/",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
