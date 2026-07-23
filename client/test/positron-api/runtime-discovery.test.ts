@@ -24,6 +24,39 @@ const testProfile = {
   context: "SAS Job Execution compute context",
 };
 
+type ProfilesSetting = {
+  activeProfile?: string;
+  profiles?: Record<string, unknown>;
+};
+
+async function seedProfiles(
+  profiles: Record<string, typeof testProfile>,
+): Promise<void> {
+  await workspace.getConfiguration("SAS").update(
+    "connectionProfiles",
+    {
+      activeProfile: PROFILE_NAME,
+      profiles,
+    },
+    ConfigurationTarget.Global,
+  );
+}
+
+/**
+ * True if every profile in `profiles` is present in the current
+ * SAS.connectionProfiles setting.
+ */
+function profilesAreSeeded(
+  profiles: Record<string, typeof testProfile>,
+): boolean {
+  const current = workspace
+    .getConfiguration("SAS")
+    .get<ProfilesSetting>("connectionProfiles");
+  return Object.keys(profiles).every(
+    (name) => current?.profiles?.[name] !== undefined,
+  );
+}
+
 /** Poll until fn() resolves to a defined value, or time out. */
 async function waitFor<T>(
   fn: () => Thenable<T | undefined>,
@@ -61,6 +94,29 @@ async function findRegisteredRuntime(
   return runtimes.find((runtime) => runtime.runtimeId === runtimeId);
 }
 
+/**
+ * Wait for a runtime to appear in the Positron registry, re-seeding the
+ * connection profiles if they get clobbered along the way.
+ *
+ * The extension's ProfileConfig.validateSettings() fires an *unawaited*
+ * default write ({ activeProfile: "", profiles: {} }) whenever the setting is
+ * missing; if one of those was enqueued from a read that raced our seed, it
+ * can apply after it and wipe the test profile. It can only happen while the
+ * key is absent — after it exists no further default writes are enqueued — so
+ * re-seeding once heals it and converges.
+ */
+async function waitForRuntime(
+  runtimeId: string,
+  profiles: Record<string, typeof testProfile>,
+): Promise<LanguageRuntimeMetadata> {
+  return waitFor(async () => {
+    if (!profilesAreSeeded(profiles)) {
+      await seedProfiles(profiles);
+    }
+    return findRegisteredRuntime(runtimeId);
+  }, `runtime ${runtimeId} to appear in the Positron registry`);
+}
+
 describe("Positron runtime discovery", () => {
   before(async function () {
     this.timeout(120000);
@@ -73,14 +129,7 @@ describe("Positron runtime discovery", () => {
     assert.ok(extension, `${EXTENSION_ID} should be present`);
     await extension.activate();
 
-    await workspace.getConfiguration("SAS").update(
-      "connectionProfiles",
-      {
-        activeProfile: PROFILE_NAME,
-        profiles: { [PROFILE_NAME]: testProfile },
-      },
-      ConfigurationTarget.Global,
-    );
+    await seedProfiles({ [PROFILE_NAME]: testProfile });
   });
 
   after(async () => {
@@ -90,10 +139,9 @@ describe("Positron runtime discovery", () => {
   });
 
   it("registers a SAS runtime for a configured connection profile", async () => {
-    const runtime = await waitFor(
-      () => findRegisteredRuntime(`sas-${PROFILE_NAME}`),
-      `runtime sas-${PROFILE_NAME} to appear in the Positron registry`,
-    );
+    const runtime = await waitForRuntime(`sas-${PROFILE_NAME}`, {
+      [PROFILE_NAME]: testProfile,
+    });
 
     assert.strictEqual(runtime.runtimeName, `SAS (${PROFILE_NAME})`);
     assert.strictEqual(runtime.runtimeShortName, PROFILE_NAME);
@@ -118,21 +166,15 @@ describe("Positron runtime discovery", () => {
   it("re-discovers runtimes when connection profiles change", async () => {
     // Adding a profile must be picked up by the extension's configuration
     // watcher and surfaced as a new runtime without restarting Positron.
-    await workspace.getConfiguration("SAS").update(
-      "connectionProfiles",
-      {
-        activeProfile: PROFILE_NAME,
-        profiles: {
-          [PROFILE_NAME]: testProfile,
-          [SECOND_PROFILE_NAME]: testProfile,
-        },
-      },
-      ConfigurationTarget.Global,
-    );
+    const profiles = {
+      [PROFILE_NAME]: testProfile,
+      [SECOND_PROFILE_NAME]: testProfile,
+    };
+    await seedProfiles(profiles);
 
-    const runtime = await waitFor(
-      () => findRegisteredRuntime(`sas-${SECOND_PROFILE_NAME}`),
-      `runtime sas-${SECOND_PROFILE_NAME} to appear after a profile change`,
+    const runtime = await waitForRuntime(
+      `sas-${SECOND_PROFILE_NAME}`,
+      profiles,
     );
 
     assert.strictEqual(runtime.runtimeName, `SAS (${SECOND_PROFILE_NAME})`);
