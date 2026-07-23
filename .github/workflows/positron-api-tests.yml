@@ -5,9 +5,13 @@ name: Positron API Tests
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches:
       - main
+      # TEMPORARY: remove before merge — lets the workflow prove itself on
+      # this branch ahead of the PR.
+      - jonv/sas-extension-api-tests-40dbfc
 
 permissions:
   contents: read
