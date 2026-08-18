@@ -8,15 +8,11 @@
 // Run with `npm run test-positron-api` (which builds the extension and
 // compiles the tests first).
 //
-// NOTE: the published @posit-dev/positron-test-electron can currently only
-// download Positron builds for macOS; Windows/Linux archives are pending
-// upstream. On other platforms, rely on the Positron API Tests GitHub
-// Actions workflow.
+// On a headless Linux machine (including CI), Positron needs a display
+// server — wrap the run in xvfb: `xvfb-run -a npm run test-positron-api`.
 //
 // Environment variables:
-//   POSITRON_CHANNEL  "stable" or "daily". Defaults to "stable" on macOS and
-//                     "daily" elsewhere (when Windows/Linux archives land
-//                     upstream, they will be dailies first).
+//   POSITRON_CHANNEL  "stable" or "daily". Defaults to "stable".
 //   POSITRON_VERSION  Pin an exact Positron version (e.g. "2026.06.0-123")
 //                     for reproducible runs.
 import { runTests } from "@posit-dev/positron-test-electron";
@@ -40,9 +36,7 @@ async function main() {
     "index.js",
   );
 
-  const channel =
-    process.env.POSITRON_CHANNEL ??
-    (process.platform === "darwin" ? "stable" : "daily");
+  const channel = process.env.POSITRON_CHANNEL ?? "stable";
 
   const code = await runTests({
     channel,

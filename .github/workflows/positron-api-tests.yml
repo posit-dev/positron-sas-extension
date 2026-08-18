@@ -18,9 +18,9 @@ env:
 
 jobs:
   test:
-    # Stable Positron builds are currently only extractable on macOS, and
-    # posit-dev/setup-positron supports macOS runners only.
-    runs-on: macos-latest
+    # Linux Actions minutes bill at ~1/10 the macOS rate. Positron is an
+    # Electron app, so the test command runs under xvfb for a display server.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -31,20 +31,23 @@ jobs:
         run: echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
         shell: bash
       # Cache the downloaded Positron build, keyed by day so a fresh build is
-      # picked up at most once a day.
+      # picked up at most once a day. runner.os is in the key because the
+      # cache layout is .positron-test/<channel>/<version>/<platform> — an
+      # OS-less key could restore another platform's build and suppress the
+      # save step for this one.
       - uses: actions/cache/restore@v6
         id: cache
         with:
           path: ./.positron-test
-          key: positron-${{ env.POSITRON_CHANNEL }}-${{ steps.get-date.outputs.date }}
+          key: positron-${{ runner.os }}-${{ env.POSITRON_CHANNEL }}-${{ steps.get-date.outputs.date }}
       - run: npm ci --no-audit --no-fund
       - name: Run Positron API tests
-        uses: posit-dev/setup-positron@main
+        uses: posit-dev/setup-positron@v1
         with:
           positron-channel: ${{ env.POSITRON_CHANNEL }}
-          run: npm run test-positron-api
+          run: xvfb-run -a npm run test-positron-api
       - uses: actions/cache/save@v6
         if: steps.cache.outputs.cache-hit != 'true'
         with:
           path: ./.positron-test
-          key: positron-${{ env.POSITRON_CHANNEL }}-${{ steps.get-date.outputs.date }}
+          key: positron-${{ runner.os }}-${{ env.POSITRON_CHANNEL }}-${{ steps.get-date.outputs.date }}

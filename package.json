@@ -1603,7 +1603,7 @@
   },
   "devDependencies": {
     "@eslint/compat": "2.1.0",
-    "@posit-dev/positron-test-electron": "^0.0.2",
+    "@posit-dev/positron-test-electron": "^0.0.3",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/chai": "^4.3.11",
     "@types/mocha": "^10.0.10",

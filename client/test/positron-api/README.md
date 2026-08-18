@@ -47,11 +47,11 @@ POSITRON_CHANNEL=daily npm run test-positron-api # daily build
 POSITRON_VERSION=2026.06.0-123 npm run test-positron-api # pinned version
 ```
 
-> **Note:** `@posit-dev/positron-test-electron` can currently only download
-> Positron builds for **macOS**; Windows/Linux archives are pending upstream.
-> On other platforms, rely on the Positron API Tests GitHub Actions workflow
-> (`.github/workflows/positron-api-tests.yml`), which runs on every PR and
-> push to `main`.
+> **Note:** on a headless Linux machine, Positron (an Electron app) needs a
+> display server — wrap the run in xvfb:
+> `xvfb-run -a npm run test-positron-api`. This is how CI runs the suite
+> (`.github/workflows/positron-api-tests.yml`, `ubuntu-latest`, on every PR
+> and push to `main`).
 
 ## Adding tests
 
