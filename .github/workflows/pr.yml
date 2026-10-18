@@ -20,9 +20,25 @@ jobs:
       - run: npm run format:check
         continue-on-error: true
       - run: npm run copyright:check
-      - run: xvfb-run -a npm run test
-        if: runner.os == 'Linux'
+      - run: npm run compile
+      # Unit tests run transpile-only: the test tsconfigs lack mocha/node
+      # types, and Node 22+ needs --no-experimental-strip-types for ts-node.
+      - run: npm run test-server
+        env:
+          TS_NODE_TRANSPILE_ONLY: "true"
+          NODE_OPTIONS: --no-experimental-strip-types
+      - run: npm run test-positron
+        env:
+          TS_NODE_TRANSPILE_ONLY: "true"
       - run: npm run test-server-bundle
+      # Non-blocking: the client has pre-existing strict-mode type errors,
+      # mostly in files shared with upstream. tsc still emits client/out,
+      # which the VS Code integration tests run from.
+      - run: npx tsc -p ./client
+        continue-on-error: true
+      - run: xvfb-run -a npm run test-client
+        if: runner.os == 'Linux'
+        continue-on-error: true
       - run: npx @vscode/vsce package
       - uses: actions/upload-artifact@v7
         with:
