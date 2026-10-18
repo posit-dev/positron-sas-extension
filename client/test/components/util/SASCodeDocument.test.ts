@@ -226,6 +226,75 @@ cas; caslib _all_ assign;
     );
   });
 
+  it("wrapCodeWithSASProgramFileName with no fileName or uri", () => {
+    const parameters: SASCodeDocumentParameters = {
+      languageId: "sas",
+      code: "data test; run;",
+      selectedCode: "",
+      htmlStyle: "Illuminate",
+      outputHtml: false,
+      checkKeyword: async () => false,
+    };
+
+    const sasCodeDoc = new SASCodeDocument(parameters);
+    const wrappedCode = sasCodeDoc.getWrappedCode();
+
+    assert(
+      !wrappedCode.includes("_SASPROGRAMFILE"),
+      "wrapped code should not include _SASPROGRAMFILE when fileName and uri are not provided",
+    );
+    assert(
+      wrappedCode.includes("data test; run;"),
+      "wrapped code should include the original code",
+    );
+  });
+
+  it("wrapCodeWithSASProgramFileName with sasContent URI", () => {
+    const parameters: SASCodeDocumentParameters = {
+      languageId: "sas",
+      code: "this is the code",
+      selectedCode: "",
+      uri: "sasContent:/test.sas?id%3D%2Ffiles%2Ffiles%2F349be085-146d-4e0e-9fdc-99d330fa18d1",
+      fileName: "filename.sas",
+      htmlStyle: "Illuminate",
+      outputHtml: false,
+      checkKeyword: async () => false,
+    };
+
+    const sasCodeDoc = new SASCodeDocument(parameters);
+    const wrappedCode = sasCodeDoc.getWrappedCode();
+
+    assert(
+      wrappedCode.includes(
+        "%let _SASPROGRAMFILE = %nrquote(%nrstr(sascontent:/files/files/349be085-146d-4e0e-9fdc-99d330fa18d1));",
+      ),
+      "wrapped code should include _SASPROGRAMFILE with sascontent: prefix from sasContent URI",
+    );
+  });
+
+  it("wrapCodeWithSASProgramFileName with sas notebook URI", () => {
+    const parameters: SASCodeDocumentParameters = {
+      languageId: "sas",
+      code: "this is the code",
+      selectedCode: "",
+      uri: "vscode-notebook-cell:/testContent.sasnb?id%3D%2Ffiles%2Ffiles%2F916e7678-a1c9-4f5b-9d72-5af9f19fae87#W0sc2FzQ29udGVudA%3D%3D",
+      fileName: "filename.sas",
+      htmlStyle: "Illuminate",
+      outputHtml: false,
+      checkKeyword: async () => false,
+    };
+
+    const sasCodeDoc = new SASCodeDocument(parameters);
+    const wrappedCode = sasCodeDoc.getWrappedCode();
+
+    assert(
+      wrappedCode.includes(
+        "%let _SASPROGRAMFILE = %nrquote(%nrstr(sascontent:/files/files/916e7678-a1c9-4f5b-9d72-5af9f19fae87));",
+      ),
+      "wrapped code should include _SASPROGRAMFILE with sascontent: prefix from sasContent URI",
+    );
+  });
+
   it("getProblemLocationInRawCode", async () => {
     const parameters: SASCodeDocumentParameters = {
       languageId: "sas",
@@ -256,6 +325,96 @@ cas; caslib _all_ assign;
       codeLinesInLog,
     );
     assert.equal(problemLocationInRawCode.lineNumber, 66);
+  });
+
+  it("getBaseDirectory handles POSIX paths", function () {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require needed for Sinon stubbing (ES6 imports are non-configurable)
+    const path = require("path");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require needed for Sinon stubbing
+    const { createSandbox } = require("sinon");
+    const sandbox = createSandbox();
+
+    const posixDirname = path.posix.dirname.bind(path.posix);
+    sandbox.stub(path, "dirname").callsFake(posixDirname);
+
+    try {
+      const parameters: SASCodeDocumentParameters = {
+        languageId: "sas",
+        code: "%put &=_SASPROGRAMDIR;",
+        selectedCode: "",
+        fileName: "/home/user/projects/notebooks/test.sas",
+        htmlStyle: "Illuminate",
+        outputHtml: true,
+        uuid: "test-uuid",
+        checkKeyword: async () => false,
+      };
+
+      const sasCodeDoc = new SASCodeDocument(parameters);
+      const result = sasCodeDoc.getBaseDirectory();
+      assert.equal(result, "/home/user/projects/notebooks");
+    } finally {
+      sandbox.restore();
+    }
+  });
+
+  it("getBaseDirectory handles Windows paths", function () {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require needed for Sinon stubbing (ES6 imports are non-configurable)
+    const path = require("path");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require needed for Sinon stubbing
+    const { createSandbox } = require("sinon");
+    const sandbox = createSandbox();
+
+    const win32Dirname = path.win32.dirname.bind(path.win32);
+    sandbox.stub(path, "dirname").callsFake(win32Dirname);
+
+    try {
+      const parameters: SASCodeDocumentParameters = {
+        languageId: "sas",
+        code: "%put &=_SASPROGRAMDIR;",
+        selectedCode: "",
+        fileName: "C:\\Users\\user\\Documents\\SAS Files\\test.sas",
+        htmlStyle: "Illuminate",
+        outputHtml: true,
+        uuid: "test-uuid",
+        checkKeyword: async () => false,
+      };
+
+      const sasCodeDoc = new SASCodeDocument(parameters);
+      const result = sasCodeDoc.getBaseDirectory();
+      assert.equal(result, "C:\\Users\\user\\Documents\\SAS Files");
+    } finally {
+      sandbox.restore();
+    }
+  });
+
+  it("getBaseDirectory handles Windows paths with spaces", function () {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require needed for Sinon stubbing (ES6 imports are non-configurable)
+    const path = require("path");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require needed for Sinon stubbing
+    const { createSandbox } = require("sinon");
+    const sandbox = createSandbox();
+
+    const win32Dirname = path.win32.dirname.bind(path.win32);
+    sandbox.stub(path, "dirname").callsFake(win32Dirname);
+
+    try {
+      const parameters: SASCodeDocumentParameters = {
+        languageId: "sas",
+        code: "%put test;",
+        selectedCode: "",
+        fileName: "C:\\Program Files\\SAS\\My Projects\\analysis.sas",
+        htmlStyle: "Illuminate",
+        outputHtml: true,
+        uuid: "test-uuid",
+        checkKeyword: async () => false,
+      };
+
+      const sasCodeDoc = new SASCodeDocument(parameters);
+      const result = sasCodeDoc.getBaseDirectory();
+      assert.equal(result, "C:\\Program Files\\SAS\\My Projects");
+    } finally {
+      sandbox.restore();
+    }
   });
 });
 

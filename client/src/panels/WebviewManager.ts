@@ -16,9 +16,15 @@ export class WebViewManager {
       return;
     }
 
-    const panel = window.createWebviewPanel("webView", uid, ViewColumn.One, {
-      enableScripts: true,
-    });
+    const panel = window.createWebviewPanel(
+      "webView",
+      uid,
+      { viewColumn: ViewColumn.One, preserveFocus: true },
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+      },
+    );
 
     webview.onDispose = () => delete this.panels[uid];
     this.panels[uid] = webview.withPanel(panel).render();
@@ -96,6 +102,12 @@ export abstract class WebView {
     this.panel = webviewPanel;
     this.panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this.panel.webview.onDidReceiveMessage(this.processMessage.bind(this));
+    this.panel.onDidChangeViewState((e) =>
+      this.panel.webview.postMessage({
+        command: "panel:changeFocus",
+        data: { focused: e.webviewPanel.active },
+      }),
+    );
 
     return this;
   }
@@ -116,7 +128,7 @@ export abstract class WebView {
   }
 
   public display() {
-    this.panel.reveal(ViewColumn.One);
+    this.panel.reveal(ViewColumn.One, true);
   }
 
   public webviewUri(extensionUri: Uri, name: string): Uri {
