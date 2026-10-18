@@ -10,6 +10,7 @@ import type {
 } from "./positron-types";
 import { Disposable } from "vscode";
 import { ProfileConfig } from "../components/profile";
+import { SAS_ICON_SVG } from "./sasDataConnections";
 
 /**
  * Provides SAS libraries as connections in Positron's Connections pane
@@ -125,13 +126,7 @@ export class PositronConnectionsProvider implements Disposable {
    * Get SAS icon as base64-encoded SVG
    */
   private getSASIconSvg(): string {
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="45" fill="#0066CC"/>
-        <text x="50" y="60" font-family="Arial" font-size="40" fill="white" text-anchor="middle" font-weight="bold">S</text>
-      </svg>
-    `;
-    return Buffer.from(svg.trim()).toString("base64");
+    return Buffer.from(SAS_ICON_SVG).toString("base64");
   }
 
   /**

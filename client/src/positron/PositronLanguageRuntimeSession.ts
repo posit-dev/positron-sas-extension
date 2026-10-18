@@ -15,7 +15,12 @@ import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
 import { SasConnection } from "./sasConnection";
 import { SasDataExplorer } from "./sasDataExplorer";
 import { SasServerFilesConnection } from "./sasServerFilesConnection";
-import { getPositronApi, setActiveAssistantClient, setActiveSession } from "./index";
+import {
+  getDataConnectionsDriver,
+  getPositronApi,
+  setActiveAssistantClient,
+  setActiveSession,
+} from "./index";
 import { Session } from "../connection/session";
 import type {
   ConnectionsRpcRequest,
@@ -88,6 +93,9 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   // Active connection comm (one per session)
   private _connection: SasConnection | undefined;
   private _connectionListeners: Disposable[] = [];
+
+  // Registration with the Data Connections pane (Positron 2026.10+)
+  private _dataConnectionSource: Disposable | undefined;
 
   // Active server files connection comm (REST/Viya only)
   private _serverConnection: SasServerFilesConnection | undefined;
@@ -251,6 +259,20 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
     const profile = profileConfig.getProfileByName(this._profileName);
     const host = this.getProfileHost(profile);
+
+    // Data Connections pane: register as a source instead of opening a comm,
+    // which Positron would dispose. Server files have no equivalent there yet.
+    const dataConnections = getDataConnectionsDriver();
+    if (dataConnections) {
+      this._dataConnectionSource = dataConnections.addSource({
+        profileName: this._profileName,
+        host,
+        client: this.getSasClient(),
+        openDataExplorer: (lib, mem) => this.openDataExplorer(lib, mem),
+      });
+      return;
+    }
+
     const name = `SAS (${this._profileName})`;
     const conn = new SasConnection(
       this.getSasClient(),
@@ -290,6 +312,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   }
 
   private closeConnection(): void {
+    this._dataConnectionSource?.dispose();
+    this._dataConnectionSource = undefined;
     if (!this._connection) {
       return;
     }
