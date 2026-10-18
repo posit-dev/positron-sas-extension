@@ -38,7 +38,6 @@ jobs:
         continue-on-error: true
       - run: xvfb-run -a npm run test-client
         if: runner.os == 'Linux'
-        continue-on-error: true
       - run: npx @vscode/vsce package
       - uses: actions/upload-artifact@v7
         with:
