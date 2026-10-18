@@ -37,6 +37,104 @@ function toPathArray(value: unknown): Array<{ name: string; kind: string }> {
   return Array.isArray(value) ? value.filter(isPathEntry) : [];
 }
 
+export interface ServerFileEntry {
+  name: string;
+  isDirectory: boolean;
+}
+
+export interface ServerFileProperties {
+  size?: number;
+  modified?: string;
+}
+
+const LANGUAGE_BY_EXTENSION: Record<string, string> = {
+  sas: "sas",
+  py: "python",
+  r: "r",
+  json: "json",
+  xml: "xml",
+  html: "html",
+  htm: "html",
+  css: "css",
+  js: "javascript",
+  ts: "typescript",
+  csv: "csv",
+  txt: "plaintext",
+  log: "log",
+  lst: "plaintext",
+};
+
+export function guessLanguage(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return LANGUAGE_BY_EXTENSION[ext] ?? "plaintext";
+}
+
+/**
+ * Browses the SAS Viya Compute file system of one session. Paths are given as
+ * segments relative to the profile's file navigation root.
+ */
+export class ServerFilesBrowser {
+  private readonly fileSystemApi: ReturnType<typeof FileSystemApi>;
+
+  constructor(
+    private readonly sessionId: string,
+    private readonly fileNavigationRoot: string,
+    private readonly fileNavigationCustomRootPath: string,
+  ) {
+    this.fileSystemApi = FileSystemApi(getApiConfig());
+  }
+
+  private toServerPath(segments: string[]): string {
+    if (
+      this.fileNavigationRoot === "CUSTOM" &&
+      this.fileNavigationCustomRootPath
+    ) {
+      const rootSegments = this.fileNavigationCustomRootPath
+        .split("/")
+        .filter(Boolean);
+      return [...rootSegments, ...segments].join(SAS_FILE_SEPARATOR);
+    }
+    return SAS_FILE_SEPARATOR + segments.join(SAS_FILE_SEPARATOR);
+  }
+
+  async listDirectory(segments: string[]): Promise<ServerFileEntry[]> {
+    const response = await this.fileSystemApi.getDirectoryMembers({
+      sessionId: this.sessionId,
+      directoryPath: this.toServerPath(segments),
+      limit: 1000,
+      start: 0,
+    });
+    return (response.data?.items ?? []).map((item) => ({
+      name: item.name ?? "unknown",
+      isDirectory: !!item.isDirectory,
+    }));
+  }
+
+  async readFile(segments: string[]): Promise<string> {
+    const response = await this.fileSystemApi.getFileContentFromSystem({
+      sessionId: this.sessionId,
+      filePath: this.toServerPath(segments),
+    });
+    return typeof response.data === "string"
+      ? response.data
+      : JSON.stringify(response.data, null, 2);
+  }
+
+  async getProperties(segments: string[]): Promise<ServerFileProperties> {
+    const response = await this.fileSystemApi.getFileorDirectoryProperties({
+      sessionId: this.sessionId,
+      fileOrDirectoryPath: this.toServerPath(segments),
+    });
+    const props = response.data;
+    return {
+      size: props.size,
+      modified: props.modifiedTimeStamp
+        ? String(props.modifiedTimeStamp)
+        : undefined,
+    };
+  }
+}
+
 export interface ServerFilesEmitData {
   messageId: string;
   data: object;
@@ -55,18 +153,12 @@ export class SasServerFilesConnection {
   private readonly emitter = new EventEmitter<ServerFilesEmitData>();
   readonly onDidEmitData = this.emitter.event;
 
-  private readonly fileSystemApi: ReturnType<typeof FileSystemApi>;
-
   constructor(
-    private readonly sessionId: string,
+    private readonly browser: ServerFilesBrowser,
     readonly name: string,
     private readonly profileName: string,
     private readonly profileHost: string,
-    private readonly fileNavigationRoot: string,
-    private readonly fileNavigationCustomRootPath: string,
-  ) {
-    this.fileSystemApi = FileSystemApi(getApiConfig());
-  }
+  ) {}
 
   sendMessage(messageId: string, message: Record<string, unknown>): void {
     this.dispatch(message)
@@ -142,43 +234,12 @@ export class SasServerFilesConnection {
     }
   }
 
-  private getDirectoryPath(
-    path: Array<{ name: string; kind: string }>,
-  ): string {
-    if (path.length === 0) {
-      if (this.fileNavigationRoot === "CUSTOM" && this.fileNavigationCustomRootPath) {
-        return this.fileNavigationCustomRootPath
-          .split("/")
-          .filter(Boolean)
-          .join(SAS_FILE_SEPARATOR);
-      }
-      return SAS_FILE_SEPARATOR;
-    }
-    const segments = path.map((p) => p.name);
-    if (this.fileNavigationRoot === "CUSTOM" && this.fileNavigationCustomRootPath) {
-      const rootSegments = this.fileNavigationCustomRootPath
-        .split("/")
-        .filter(Boolean);
-      return [...rootSegments, ...segments].join(SAS_FILE_SEPARATOR);
-    }
-    return SAS_FILE_SEPARATOR + segments.join(SAS_FILE_SEPARATOR);
-  }
-
   private async listObjects(
     path: Array<{ name: string; kind: string }>,
   ): Promise<Array<{ name: string; kind: string }>> {
-    const directoryPath = this.getDirectoryPath(path);
-
-    const response = await this.fileSystemApi.getDirectoryMembers({
-      sessionId: this.sessionId,
-      directoryPath,
-      limit: 1000,
-      start: 0,
-    });
-
-    const items = response.data?.items ?? [];
+    const items = await this.browser.listDirectory(path.map((p) => p.name));
     return items.map((item) => ({
-      name: item.name ?? "unknown",
+      name: item.name,
       kind: item.isDirectory ? "schema" : "table",
     }));
   }
@@ -204,39 +265,17 @@ export class SasServerFilesConnection {
       return;
     }
 
-    const filePath = this.getFilePath(path);
-
     try {
-      const response = await this.fileSystemApi.getFileContentFromSystem({
-        sessionId: this.sessionId,
-        filePath,
-      });
-
-      const content = typeof response.data === "string"
-        ? response.data
-        : JSON.stringify(response.data, null, 2);
-
-      const fileName = lastItem.name;
+      const content = await this.browser.readFile(path.map((p) => p.name));
       const doc = await workspace.openTextDocument({
         content,
-        language: this.guessLanguage(fileName),
+        language: guessLanguage(lastItem.name),
       });
       await window.showTextDocument(doc, { preview: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       window.showErrorMessage(`Failed to open file: ${msg}`);
     }
-  }
-
-  private getFilePath(path: Array<{ name: string; kind: string }>): string {
-    const segments = path.map((p) => p.name);
-    if (this.fileNavigationRoot === "CUSTOM" && this.fileNavigationCustomRootPath) {
-      const rootSegments = this.fileNavigationCustomRootPath
-        .split("/")
-        .filter(Boolean);
-      return [...rootSegments, ...segments].join(SAS_FILE_SEPARATOR);
-    }
-    return SAS_FILE_SEPARATOR + segments.join(SAS_FILE_SEPARATOR);
   }
 
   private async listFields(
@@ -250,46 +289,19 @@ export class SasServerFilesConnection {
       return [];
     }
 
-    const filePath = this.getFilePath(path);
-
     try {
-      const response = await this.fileSystemApi.getFileorDirectoryProperties({
-        sessionId: this.sessionId,
-        fileOrDirectoryPath: filePath,
-      });
-      const props = response.data;
+      const props = await this.browser.getProperties(path.map((p) => p.name));
       const fields: Array<{ name: string; dtype: string }> = [];
       if (props.size !== undefined) {
         fields.push({ name: "size", dtype: `${props.size} bytes` });
       }
-      if (props.modifiedTimeStamp) {
-        fields.push({ name: "modified", dtype: String(props.modifiedTimeStamp) });
+      if (props.modified) {
+        fields.push({ name: "modified", dtype: props.modified });
       }
       return fields;
     } catch {
       return [];
     }
-  }
-
-  private guessLanguage(fileName: string): string {
-    const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-    const map: Record<string, string> = {
-      sas: "sas",
-      py: "python",
-      r: "r",
-      json: "json",
-      xml: "xml",
-      html: "html",
-      htm: "html",
-      css: "css",
-      js: "javascript",
-      ts: "typescript",
-      csv: "csv",
-      txt: "plaintext",
-      log: "log",
-      lst: "plaintext",
-    };
-    return map[ext] ?? "plaintext";
   }
 
   dispose(): void {

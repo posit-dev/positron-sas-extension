@@ -296,6 +296,99 @@ export interface PositronApi {
   readonly runtime: RuntimeManager;
   readonly connections: ConnectionsManager;
   readonly window: WindowManager;
+  /** Data Connections pane API; only present in Positron 2026.10 and later. */
+  readonly dataConnections?: DataConnectionsManager;
+}
+
+// Data Connections (Positron 2026.10+). Minimal subset of positron.d.ts used
+// by the SAS driver; see `positron.dataConnections` in Positron's API typings.
+
+export interface DataConnectionsManager {
+  registerDriver(driver: DataConnectionDriver): vscode.Disposable;
+}
+
+export type DataConnectionParameterValues = Record<
+  string,
+  string | number | boolean
+>;
+
+export interface DataConnectionParameter {
+  id: string;
+  label: string;
+  description?: string;
+  required?: boolean;
+  type: "option" | "string";
+  options?: string[];
+  defaultValue?: string;
+}
+
+export interface DataConnectionMechanism {
+  id: string;
+  label: string;
+  description: string;
+  parameters: DataConnectionParameter[];
+}
+
+export interface DiscoveredDataConnection {
+  id: string;
+  name: string;
+  description?: string;
+  mechanismId: string;
+  parameters: DataConnectionParameterValues;
+}
+
+export type DataConnectionNodeKind =
+  | "schema"
+  | "table"
+  | "view"
+  | "field"
+  | "directory"
+  | "file";
+
+export type DataConnectionNodeDetailsSection =
+  | {
+      kind: "properties";
+      title?: string;
+      properties: { name: string; value: string }[];
+    }
+  | { kind: "code"; title?: string; languageId?: string; code: string };
+
+export interface DataConnectionNodeDetails {
+  description?: string;
+  sections: DataConnectionNodeDetailsSection[];
+}
+
+export interface DataConnectionNode {
+  name: string;
+  kind: DataConnectionNodeKind;
+  dataType?: string;
+  path?: string;
+  getChildren?(): Thenable<DataConnectionNode[]>;
+  /** Only honored for table, view and field nodes. */
+  preview?(): Thenable<string | void>;
+  getDetails?(): Thenable<DataConnectionNodeDetails>;
+}
+
+export interface DataConnection {
+  isReadOnly(): Thenable<boolean>;
+  getChildren(): Thenable<DataConnectionNode[]>;
+  disconnect(): Thenable<void>;
+  isConnected(): Thenable<boolean>;
+}
+
+export interface DataConnectionDriver {
+  id: string;
+  name: string;
+  description: string;
+  iconSvg: string;
+  mechanisms: DataConnectionMechanism[];
+  supportedLanguageIds: string[];
+  connect(
+    mechanismId: string,
+    parameters: DataConnectionParameterValues,
+  ): Thenable<DataConnection>;
+  discoverConnections?(): Thenable<DiscoveredDataConnection[]>;
+  onDidChange?: vscode.Event<void>;
 }
 
 export interface RuntimeManager {

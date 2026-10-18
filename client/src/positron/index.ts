@@ -11,6 +11,10 @@ import { registerAssistantIntegration } from "./sasAssistant";
 import type { SasWorkspaceContextProvider } from "./sasAssistant";
 import { PositronDataViewerProvider } from "./PositronDataViewerProvider";
 import type { SasClient } from "./sasClient";
+import {
+  SasDataConnectionsDriver,
+  isDataConnectionsPaneActive,
+} from "./sasDataConnections";
 
 // Import types only (not runtime code)
 import type { PositronApi } from "./positron-types";
@@ -31,6 +35,7 @@ let runtimeManager: SASLanguageRuntimeManager | SASLanguageRuntimeManager_Superv
 let connectionsProvider: PositronConnectionsProvider | undefined;
 let plotsProvider: PositronPlotsProvider | undefined;
 let dataViewerProvider: PositronDataViewerProvider | undefined;
+let dataConnectionsDriver: SasDataConnectionsDriver | undefined;
 let assistantSessionProvider: SasWorkspaceContextProvider | undefined;
 
 // Holds the SasClient of the active console session for LM tool access.
@@ -155,6 +160,23 @@ export async function initializePositronIntegration(
   // Run once immediately in case a .sas file is already open.
   ensureSasConsoleSession().catch(() => {});
 
+  // Positron 2026.10+ replaces the Connections pane with the Data Connections
+  // pane, which disposes session connection comms. Register a driver there
+  // instead; sessions then add themselves as sources (see openConnection).
+  // Positron reads this setting once at startup, so we do the same.
+  if (
+    isDataConnectionsPaneActive(
+      api,
+      workspace.getConfiguration().get<boolean>("dataConnections.enabled"),
+    )
+  ) {
+    dataConnectionsDriver = new SasDataConnectionsDriver();
+    context.subscriptions.push(
+      dataConnectionsDriver,
+      api.dataConnections!.registerDriver(dataConnectionsDriver),
+    );
+  }
+
   // Initialize Connections Provider for showing libraries in Connections pane
   connectionsProvider = new PositronConnectionsProvider(api);
   await connectionsProvider.initialize();
@@ -172,6 +194,14 @@ export async function initializePositronIntegration(
   context.subscriptions.push(dataViewerProvider);
 
   console.log("Positron integration initialized successfully");
+}
+
+/**
+ * The Data Connections driver, or undefined when the legacy Connections pane
+ * is in use (Positron 2026.09 and earlier, or dataConnections.enabled off).
+ */
+export function getDataConnectionsDriver(): SasDataConnectionsDriver | undefined {
+  return dataConnectionsDriver;
 }
 
 /**
@@ -258,6 +288,7 @@ export async function cleanupPositronIntegration(): Promise<void> {
     dataViewerProvider = undefined;
   }
 
+  dataConnectionsDriver = undefined;
   runtimeManager = undefined;
   positronApi = undefined;
 
