@@ -2,7 +2,7 @@
   "name": "positron-sas",
   "displayName": "Positron SAS",
   "description": "SAS Language Pack for Positron",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "categories": [
     "Programming Languages",
     "Data Science",
@@ -1542,8 +1542,12 @@
         "viewType": "sas.sas7bdatViewer",
         "displayName": "SAS Dataset Viewer",
         "selector": [
-          { "filenamePattern": "*.sas7bdat" },
-          { "filenamePattern": "*.SAS7BDAT" }
+          {
+            "filenamePattern": "*.sas7bdat"
+          },
+          {
+            "filenamePattern": "*.SAS7BDAT"
+          }
         ],
         "priority": "default"
       }
