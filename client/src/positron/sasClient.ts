@@ -44,6 +44,19 @@ function parseSentinelOutput(stdout: string, delimiter?: string): string[] {
   return result;
 }
 
+/**
+ * Extract `PREFIX=a|b|c` records between sentinel markers, one per line.
+ *
+ * Metadata queries emit one short record per %put so results survive log
+ * line wrapping (LINESIZE, SSH pty width) regardless of how many items exist.
+ */
+function parsePrefixedRecords(stdout: string, prefix: string): string[][] {
+  const marker = `${prefix}=`;
+  return parseSentinelOutput(stdout)
+    .filter((l) => l.startsWith(marker))
+    .map((l) => l.slice(marker.length).split("|").map((s) => s.trim()));
+}
+
 /** Validate a SAS identifier (libname, memname). Returns uppercased value or throws. */
 export function sasIdent(value: unknown): string {
   if (typeof value !== "string") {
@@ -78,23 +91,27 @@ export class SasClient {
   async getLibraryList(): Promise<string[]> {
     const output = await this.execute(`
 options nosource nonotes;
-%let _sas_libs=;
+%let _sas_n=0;
 proc sql noprint;
   select distinct libname
-  into :_sas_libs separated by '|'
+  into :_sas_lib1-
   from sashelp.vlibnam
   where libname not in ('MAPS','MAPSSAS','MAPSGFK');
+  %let _sas_n=&sqlobs;
 quit;
 %put ${SENTINEL_START};
-%put &_sas_libs;
+%macro _sas_emit;
+  %do _i = 1 %to &_sas_n;
+    %put LIB=%superq(_sas_lib&_i);
+  %end;
+%mend;
+%_sas_emit;
 %put ${SENTINEL_END};
 options notes source;
 `);
-    const lines = parseSentinelOutput(output);
-    if (lines.length === 0) {
-      return [];
-    }
-    return lines[0].split("|").map((s) => s.trim()).filter(Boolean);
+    return parsePrefixedRecords(output, "LIB")
+      .map(([name]) => name)
+      .filter(Boolean);
   }
 
   /** Return all DATA/VIEW members of a library. */
@@ -102,30 +119,29 @@ options notes source;
     const libname = sasIdent(lib);
     const output = await this.execute(`
 options nosource nonotes;
-%let _sas_mems=;
-%let _sas_types=;
+%let _sas_n=0;
 proc sql noprint;
   select memname, memtype
-  into :_sas_mems separated by '|',
-       :_sas_types separated by '|'
+  into :_sas_mem1-, :_sas_typ1-
   from dictionary.tables
   where upcase(libname)=upcase("${libname}")
     and memtype in ('DATA','VIEW')
   order by memname;
+  %let _sas_n=&sqlobs;
 quit;
 %put ${SENTINEL_START};
-%put &_sas_mems;
-%put &_sas_types;
+%macro _sas_emit;
+  %do _i = 1 %to &_sas_n;
+    %put MEM=%superq(_sas_mem&_i)|%superq(_sas_typ&_i);
+  %end;
+%mend;
+%_sas_emit;
 %put ${SENTINEL_END};
 options notes source;
 `);
-    const lines = parseSentinelOutput(output);
-    if (lines.length < 2) {
-      return [];
-    }
-    const names = lines[0].split("|").map((s) => s.trim()).filter(Boolean);
-    const types = lines[1].split("|").map((s) => s.trim());
-    return names.map((name, i) => ({ name, type: types[i] || "DATA" }));
+    return parsePrefixedRecords(output, "MEM")
+      .filter(([name]) => name)
+      .map(([name, type]) => ({ name, type: type || "DATA" }));
   }
 
   /** Clear the column metadata cache (e.g. after a dataset is modified). */
@@ -152,43 +168,34 @@ options notes source;
   private async _fetchDatasetColumns(libname: string, memname: string): Promise<ColumnInfo[]> {
     const output = await this.execute(`
 options nosource nonotes;
-%let _sas_names=;
-%let _sas_types=;
-%let _sas_lens=;
-%let _sas_fmts=;
+%let _sas_n=0;
 proc sql noprint;
   select name, type, length, format
-  into :_sas_names separated by '|',
-       :_sas_types separated by '|',
-       :_sas_lens  separated by '|',
-       :_sas_fmts  separated by '|'
+  into :_sas_col1-, :_sas_typ1-, :_sas_len1-, :_sas_fmt1-
   from dictionary.columns
   where upcase(libname)=upcase("${libname}")
     and upcase(memname)=upcase("${memname}")
   order by varnum;
+  %let _sas_n=&sqlobs;
 quit;
 %put ${SENTINEL_START};
-%put &_sas_names;
-%put &_sas_types;
-%put &_sas_lens;
-%put &_sas_fmts;
+%macro _sas_emit;
+  %do _i = 1 %to &_sas_n;
+    %put COL=%superq(_sas_col&_i)|%superq(_sas_typ&_i)|%superq(_sas_len&_i)|%superq(_sas_fmt&_i);
+  %end;
+%mend;
+%_sas_emit;
 %put ${SENTINEL_END};
 options notes source;
 `);
-    const lines = parseSentinelOutput(output);
-    if (lines.length < 2) {
-      return [];
-    }
-    const names = lines[0].split("|").map((s) => s.trim()).filter(Boolean);
-    const types = lines[1].split("|").map((s) => s.trim());
-    const lens = lines[2] ? lines[2].split("|").map((s) => s.trim()) : [];
-    const fmts = lines[3] ? lines[3].split("|").map((s) => s.trim()) : [];
-    return names.map((name, i) => ({
-      name,
-      type: types[i] || "char",
-      length: lens[i] ? parseInt(lens[i], 10) : undefined,
-      format: fmts[i] || undefined,
-    }));
+    return parsePrefixedRecords(output, "COL")
+      .filter(([name]) => name)
+      .map(([name, type, len, fmt]) => ({
+        name,
+        type: type || "char",
+        length: len ? parseInt(len, 10) : undefined,
+        format: fmt || undefined,
+      }));
   }
 
   /** Return row count, optionally with a pre-built WHERE clause. */
