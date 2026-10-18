@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- Fix SAS syntax highlighting, completion and formatting: the language server crashed on startup because a bundled dependency was missing from the package [#46](https://github.com/posit-dev/positron-sas-extension/issues/46)
+- Connections Pane now lists all tables of a library instead of only the first ~15; wide tables now list all columns [#45](https://github.com/posit-dev/positron-sas-extension/issues/45)
+- SAS Viya sign-in: the authorization code is now handed back to Positron automatically after SSO (the callback URI pointed at the upstream `sas.sas-lsp` extension)
+- Default formatter for SAS files now points to this extension (`posit.positron-sas`)
+
 ## 0.1.0 - 2026-06-02
 
 ### Features

@@ -78,6 +78,12 @@ const browserServerConfig = {
         __dirname,
         "server/src/python/browser/fakeFileSystem",
       ),
+      // Deep import used by pyright-internal; not exposed by the package's
+      // "exports" map, so point at the file directly.
+      "vscode-languageserver/lib/common/progress$": path.resolve(
+        __dirname,
+        "server/node_modules/vscode-languageserver/lib/common/progress.js",
+      ),
     },
     fallback: {
       path: require.resolve("path-browserify"),
@@ -124,8 +130,6 @@ const browserServerConfig = {
   externals: {
     vscode: "commonjs vscode", // ignored because it doesn't exist
     "@posit-dev/positron": "commonjs @posit-dev/positron", // only available in Positron
-    "vscode-languageserver/lib/common/progress":
-      "commonjs vscode-languageserver/lib/common/progress",
     fsevents: "commonjs2 fsevents",
   },
   performance: {

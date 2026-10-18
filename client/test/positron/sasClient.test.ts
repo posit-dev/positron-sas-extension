@@ -43,9 +43,9 @@ describe("sasIdent", () => {
 // ─── SasClient.getLibraryList ─────────────────────────────────────────────────
 
 describe("SasClient.getLibraryList", () => {
-  it("returns library names parsed from pipe-delimited output", async () => {
+  it("returns library names parsed from one record per line", async () => {
     const { client } = makeClient({
-      "~~SAS_START~~": sentinelWrap("WORK|SASHELP|SASUSER"),
+      "~~SAS_START~~": sentinelWrap("LIB=WORK\nLIB=SASHELP\nLIB=SASUSER"),
     });
     const libs = await client.getLibraryList();
     expect(libs).to.deep.equal(["WORK", "SASHELP", "SASUSER"]);
@@ -57,12 +57,20 @@ describe("SasClient.getLibraryList", () => {
     expect(libs).to.deep.equal([]);
   });
 
-  it("filters empty tokens", async () => {
+  it("filters empty records", async () => {
     const { client } = makeClient({
-      "~~SAS_START~~": sentinelWrap("WORK||SASHELP"),
+      "~~SAS_START~~": sentinelWrap("LIB=WORK\nLIB=\nLIB=SASHELP"),
     });
     const libs = await client.getLibraryList();
     expect(libs).to.deep.equal(["WORK", "SASHELP"]);
+  });
+
+  it("emits one %put per library so output survives log line wrapping", async () => {
+    const { client, executor } = makeClient({});
+    await client.getLibraryList();
+    const code: string = executor.firstCall.args[0];
+    expect(code).to.include("%put LIB=%superq(_sas_lib&_i);");
+    expect(code).not.to.include("separated by");
   });
 });
 
@@ -71,13 +79,32 @@ describe("SasClient.getLibraryList", () => {
 describe("SasClient.getLibraryMembers", () => {
   it("returns members with type", async () => {
     const { client } = makeClient({
-      "~~SAS_START~~": sentinelWrap("CLASS|CARS\nDATA|DATA"),
+      "~~SAS_START~~": sentinelWrap("MEM=CLASS|DATA\nMEM=CARS|VIEW"),
     });
     const members = await client.getLibraryMembers("sashelp");
     expect(members).to.deep.equal([
       { name: "CLASS", type: "DATA" },
-      { name: "CARS", type: "DATA" },
+      { name: "CARS", type: "VIEW" },
     ]);
+  });
+
+  it("returns every member of a large library", async () => {
+    const names = Array.from({ length: 200 }, (_, i) => `TABLE${i}`);
+    const { client } = makeClient({
+      "~~SAS_START~~": sentinelWrap(
+        names.map((n) => `MEM=${n}|DATA`).join("\n"),
+      ),
+    });
+    const members = await client.getLibraryMembers("sashelp");
+    expect(members.map((m) => m.name)).to.deep.equal(names);
+  });
+
+  it("ignores unprefixed lines inside the sentinel block", async () => {
+    const { client } = makeClient({
+      "~~SAS_START~~": sentinelWrap("NOTE: noise\nMEM=CLASS|DATA\n|DATA"),
+    });
+    const members = await client.getLibraryMembers("sashelp");
+    expect(members).to.deep.equal([{ name: "CLASS", type: "DATA" }]);
   });
 
   it("validates the libname identifier", async () => {
@@ -92,10 +119,8 @@ describe("SasClient.getLibraryMembers", () => {
     expect(threw).to.be.true;
   });
 
-  it("returns empty array when sentinel block has fewer than 2 lines", async () => {
-    const { client } = makeClient({
-      "~~SAS_START~~": sentinelWrap("CLASS"),
-    });
+  it("returns empty array for an empty library", async () => {
+    const { client } = makeClient({ "~~SAS_START~~": sentinelWrap("") });
     const members = await client.getLibraryMembers("work");
     expect(members).to.deep.equal([]);
   });
@@ -106,13 +131,27 @@ describe("SasClient.getLibraryMembers", () => {
 describe("SasClient.getDatasetColumns", () => {
   it("returns parsed column metadata", async () => {
     const { client } = makeClient({
-      "~~SAS_START~~": sentinelWrap("NAME|AGE\nchar|num\n20|8\n$|BEST12."),
+      "~~SAS_START~~": sentinelWrap(
+        "COL=NAME|char|20|$\nCOL=AGE|num|8|BEST12.",
+      ),
     });
     const cols = await client.getDatasetColumns("work", "class");
     expect(cols).to.deep.equal([
       { name: "NAME", type: "char", length: 20, format: "$" },
       { name: "AGE", type: "num", length: 8, format: "BEST12." },
     ]);
+  });
+
+  it("returns every column of a wide table", async () => {
+    const names = Array.from({ length: 100 }, (_, i) => `VAR${i}`);
+    const { client } = makeClient({
+      "~~SAS_START~~": sentinelWrap(
+        names.map((n) => `COL=${n}|num|8|`).join("\n"),
+      ),
+    });
+    const cols = await client.getDatasetColumns("work", "wide");
+    expect(cols.map((c) => c.name)).to.deep.equal(names);
+    expect(cols.every((c) => c.type === "num")).to.be.true;
   });
 
   it("validates both identifiers", async () => {
@@ -128,7 +167,7 @@ describe("SasClient.getDatasetColumns", () => {
   });
 
   it("caches concurrent requests for the same table", async () => {
-    const executor = sinon.stub().resolves(sentinelWrap("ID\nnum\n8\n"));
+    const executor = sinon.stub().resolves(sentinelWrap("COL=ID|num|8|"));
     const client = new SasClient(executor);
     const [a, b] = await Promise.all([
       client.getDatasetColumns("WORK", "CLASS"),
@@ -140,7 +179,7 @@ describe("SasClient.getDatasetColumns", () => {
 
   it("treats missing format as undefined", async () => {
     const { client } = makeClient({
-      "~~SAS_START~~": sentinelWrap("X\nnum\n8\n"),
+      "~~SAS_START~~": sentinelWrap("COL=X|num|8|"),
     });
     const cols = await client.getDatasetColumns("work", "t");
     expect(cols[0].format).to.be.undefined;

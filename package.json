@@ -663,7 +663,7 @@
       "[sas]": {
         "editor.formatOnType": true,
         "editor.formatOnPaste": true,
-        "editor.defaultFormatter": "SAS.sas-lsp"
+        "editor.defaultFormatter": "posit.positron-sas"
       }
     },
     "commands": [
@@ -1589,6 +1589,7 @@
     "test-server": "cross-env TS_NODE_PROJECT=./server/tsconfig.json mocha -r ts-node/register ./server/test/**/*.test.ts",
     "test-positron": "cross-env TS_NODE_PROJECT=./client/tsconfig.json NODE_OPTIONS=--no-experimental-strip-types mocha -r ts-node/register -r ./client/test/positron/vscode-setup.js ./client/test/positron/**/*.test.ts",
     "test": "npm run test-server && npm run test-client",
+    "test-server-bundle": "node ./tools/smoke-server.mjs",
     "pseudoLocalize": "npx @vscode/l10n-dev export -o ./l10n ./client/src && npx @vscode/l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
     "copyright:check": "node ./tools/check-copyright.mjs",

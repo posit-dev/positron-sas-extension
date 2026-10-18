@@ -20,7 +20,13 @@ const plugins = [
 const commonBuildOptions = {
   bundle: true,
   outdir: ".",
-  external: ["vscode", "@posit-dev/positron", "vscode-languageserver/lib/common/progress"],
+  external: ["vscode", "@posit-dev/positron"],
+  // pyright-internal deep-imports this file, but vscode-languageserver's
+  // "exports" map doesn't expose it. Alias to the real path so it gets bundled.
+  alias: {
+    "vscode-languageserver/lib/common/progress":
+      "./server/node_modules/vscode-languageserver/lib/common/progress.js",
+  },
   loader: {
     ".properties": "text",
     ".node": "copy",

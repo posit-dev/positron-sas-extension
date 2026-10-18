@@ -27,6 +27,13 @@ export async function getContextValue(
   return context.workspaceState.get(key);
 }
 
+/**
+ * The running extension's ID (publisher.name), e.g. for URI handler callbacks.
+ */
+export function getExtensionId(): string {
+  return context.extension.id;
+}
+
 export function getGlobalStorageUri(): Uri {
   return context.globalStorageUri;
 }
