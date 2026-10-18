@@ -6,11 +6,17 @@ import type {
   DataConnection,
   DataConnectionDriver,
   DataConnectionNode,
+  DataConnectionNodeDetails,
+  DataConnectionNodeDetailsSection,
   DataConnectionParameterValues,
   DiscoveredDataConnection,
   PositronApi,
 } from "./positron-types";
 import type { ColumnInfo, SasClient } from "./sasClient";
+import {
+  type ServerFilesBrowser,
+  guessLanguage,
+} from "./sasServerFilesConnection";
 
 export const SAS_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <circle cx="50" cy="50" r="45" fill="#0066CC"/>
@@ -18,6 +24,27 @@ export const SAS_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 
 </svg>`;
 
 const MECHANISM_ID = "session";
+const CONTENT_LIBRARIES = "libraries";
+const CONTENT_FILES = "files";
+
+// Files shown inline in the details editor; larger or binary ones are not.
+const MAX_INLINE_FILE_BYTES = 512 * 1024;
+const BINARY_EXTENSIONS = new Set([
+  "sas7bdat",
+  "sas7bcat",
+  "sas7bvew",
+  "sas7bndx",
+  "sas7bitm",
+  "xlsx",
+  "xls",
+  "zip",
+  "gz",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "pdf",
+]);
 
 /** A running SAS session whose libraries can be browsed. */
 export interface SasDataConnectionSource {
@@ -28,6 +55,11 @@ export interface SasDataConnectionSource {
     "getLibraryList" | "getLibraryMembers" | "getDatasetColumns"
   >;
   openDataExplorer(lib: string, mem: string): void;
+  /** Compute file system of the session (REST/Viya profiles only). */
+  serverFiles?: Pick<
+    ServerFilesBrowser,
+    "listDirectory" | "readFile" | "getProperties"
+  >;
 }
 
 /**
@@ -60,7 +92,8 @@ export class SasDataConnectionsDriver
 {
   readonly id = "posit-sas";
   readonly name = "SAS";
-  readonly description = "Browse the libraries of a running SAS session";
+  readonly description =
+    "Browse the libraries and server files of a running SAS session";
   readonly iconSvg = SAS_ICON_SVG;
   readonly supportedLanguageIds: string[] = [];
   readonly mechanisms = [
@@ -75,6 +108,14 @@ export class SasDataConnectionsDriver
           description: "A SAS console session must be running for this profile",
           type: "string" as const,
           required: true,
+        },
+        {
+          id: "content",
+          label: "Content",
+          description: "Server files are available for SAS Viya profiles only",
+          type: "option" as const,
+          options: [CONTENT_LIBRARIES, CONTENT_FILES],
+          defaultValue: CONTENT_LIBRARIES,
         },
       ],
     },
@@ -97,13 +138,31 @@ export class SasDataConnectionsDriver
   }
 
   async discoverConnections(): Promise<DiscoveredDataConnection[]> {
-    return [...this.sources.values()].map((source) => ({
-      id: source.profileName,
-      name: `SAS (${source.profileName})`,
-      description: source.host || undefined,
-      mechanismId: MECHANISM_ID,
-      parameters: { profile: source.profileName },
-    }));
+    return [...this.sources.values()].flatMap((source) => {
+      const description = source.host || undefined;
+      const connections: DiscoveredDataConnection[] = [
+        {
+          id: source.profileName,
+          name: `SAS (${source.profileName})`,
+          description,
+          mechanismId: MECHANISM_ID,
+          parameters: {
+            profile: source.profileName,
+            content: CONTENT_LIBRARIES,
+          },
+        },
+      ];
+      if (source.serverFiles) {
+        connections.push({
+          id: `${source.profileName}/files`,
+          name: `SAS Server Files (${source.profileName})`,
+          description,
+          mechanismId: MECHANISM_ID,
+          parameters: { profile: source.profileName, content: CONTENT_FILES },
+        });
+      }
+      return connections;
+    });
   }
 
   async connect(
@@ -123,6 +182,25 @@ export class SasDataConnectionsDriver
     };
     getSource();
 
+    if (parameters.content === CONTENT_FILES) {
+      const getFiles = () => {
+        const files = getSource().serverFiles;
+        if (!files) {
+          throw new Error(
+            `Server files are not available for profile "${profileName}".`,
+          );
+        }
+        return files;
+      };
+      getFiles();
+      return {
+        isReadOnly: async () => true,
+        isConnected: async () => !!this.sources.get(profileName)?.serverFiles,
+        disconnect: async () => {},
+        getChildren: () => this.directoryChildren(getFiles, []),
+      };
+    }
+
     return {
       isReadOnly: async () => true,
       isConnected: async () => this.sources.has(profileName),
@@ -132,6 +210,63 @@ export class SasDataConnectionsDriver
         return libraries.map((lib) => this.libraryNode(getSource, lib));
       },
     };
+  }
+
+  private async directoryChildren(
+    getFiles: () => NonNullable<SasDataConnectionSource["serverFiles"]>,
+    segments: string[],
+  ): Promise<DataConnectionNode[]> {
+    const entries = await getFiles().listDirectory(segments);
+    return entries.map(({ name, isDirectory }) => {
+      const path = [...segments, name];
+      return isDirectory
+        ? {
+            name,
+            kind: "directory" as const,
+            path: `/${path.join("/")}`,
+            getChildren: () => this.directoryChildren(getFiles, path),
+          }
+        : {
+            name,
+            kind: "file" as const,
+            path: `/${path.join("/")}`,
+            getDetails: () => this.fileDetails(getFiles, path),
+          };
+    });
+  }
+
+  private async fileDetails(
+    getFiles: () => NonNullable<SasDataConnectionSource["serverFiles"]>,
+    segments: string[],
+  ): Promise<DataConnectionNodeDetails> {
+    const files = getFiles();
+    const fileName = segments[segments.length - 1];
+    const props = await files.getProperties(segments);
+    const properties = [{ name: "Path", value: `/${segments.join("/")}` }];
+    if (props.size !== undefined) {
+      properties.push({ name: "Size", value: `${props.size} bytes` });
+    }
+    if (props.modified) {
+      properties.push({ name: "Modified", value: props.modified });
+    }
+    const sections: DataConnectionNodeDetailsSection[] = [
+      { kind: "properties", properties },
+    ];
+
+    const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+    if (BINARY_EXTENSIONS.has(ext)) {
+      return { description: "Binary file; content not shown", sections };
+    }
+    if (props.size !== undefined && props.size > MAX_INLINE_FILE_BYTES) {
+      return { description: "File too large to show inline", sections };
+    }
+    sections.push({
+      kind: "code",
+      title: "Content",
+      languageId: guessLanguage(fileName),
+      code: await files.readFile(segments),
+    });
+    return { sections };
   }
 
   private libraryNode(

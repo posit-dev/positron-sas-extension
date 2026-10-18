@@ -14,7 +14,10 @@ import { getCodeDocumentConstructionParameters } from "../components/utils/SASCo
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
 import { SasConnection } from "./sasConnection";
 import { SasDataExplorer } from "./sasDataExplorer";
-import { SasServerFilesConnection } from "./sasServerFilesConnection";
+import {
+  SasServerFilesConnection,
+  ServerFilesBrowser,
+} from "./sasServerFilesConnection";
 import {
   getDataConnectionsDriver,
   getPositronApi,
@@ -260,8 +263,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     const profile = profileConfig.getProfileByName(this._profileName);
     const host = this.getProfileHost(profile);
 
-    // Data Connections pane: register as a source instead of opening a comm,
-    // which Positron would dispose. Server files have no equivalent there yet.
+    // Data Connections pane: register as a source instead of opening comms,
+    // which Positron would dispose.
     const dataConnections = getDataConnectionsDriver();
     if (dataConnections) {
       this._dataConnectionSource = dataConnections.addSource({
@@ -269,6 +272,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         host,
         client: this.getSasClient(),
         openDataExplorer: (lib, mem) => this.openDataExplorer(lib, mem),
+        serverFiles: this.createServerFilesBrowser(),
       });
       return;
     }
@@ -325,24 +329,20 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   }
 
   /** Open the Server Files connection comm (REST/Viya only). */
-  private openServerFilesConnection(): void {
-    this.closeServerFilesConnection();
-
+  /** File system browser for REST (Viya) profiles; undefined otherwise. */
+  private createServerFilesBrowser(): ServerFilesBrowser | undefined {
     const profile = profileConfig.getProfileByName(this._profileName);
     if (!profile || typeof profile !== "object") {
-      return;
+      return undefined;
     }
     if (!("connectionType" in profile) || profile.connectionType !== ConnectionType.Rest) {
-      return;
+      return undefined;
     }
 
     const sessionId = this._sasSession?.sessionId?.();
     if (!sessionId) {
-      return;
+      return undefined;
     }
-
-    const host = this.getProfileHost(profile);
-    const name = `SAS Server Files (${this._profileName})`;
 
     // Determine file navigation root from profile settings
     const fileNavigationRoot =
@@ -354,13 +354,30 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         ? profile.fileNavigationCustomRootPath
         : "";
 
-    const conn = new SasServerFilesConnection(
+    return new ServerFilesBrowser(
       sessionId,
+      fileNavigationRoot,
+      fileNavigationCustomRootPath,
+    );
+  }
+
+  private openServerFilesConnection(): void {
+    this.closeServerFilesConnection();
+
+    const browser = this.createServerFilesBrowser();
+    if (!browser) {
+      return;
+    }
+
+    const profile = profileConfig.getProfileByName(this._profileName);
+    const host = this.getProfileHost(profile);
+    const name = `SAS Server Files (${this._profileName})`;
+
+    const conn = new SasServerFilesConnection(
+      browser,
       name,
       this._profileName,
       host,
-      fileNavigationRoot,
-      fileNavigationCustomRootPath,
     );
 
     const dataListener = conn.onDidEmitData(({ messageId, data }) => {

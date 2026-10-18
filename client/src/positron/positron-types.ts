@@ -337,7 +337,26 @@ export interface DiscoveredDataConnection {
   parameters: DataConnectionParameterValues;
 }
 
-export type DataConnectionNodeKind = "schema" | "table" | "view" | "field";
+export type DataConnectionNodeKind =
+  | "schema"
+  | "table"
+  | "view"
+  | "field"
+  | "directory"
+  | "file";
+
+export type DataConnectionNodeDetailsSection =
+  | {
+      kind: "properties";
+      title?: string;
+      properties: { name: string; value: string }[];
+    }
+  | { kind: "code"; title?: string; languageId?: string; code: string };
+
+export interface DataConnectionNodeDetails {
+  description?: string;
+  sections: DataConnectionNodeDetailsSection[];
+}
 
 export interface DataConnectionNode {
   name: string;
@@ -345,7 +364,9 @@ export interface DataConnectionNode {
   dataType?: string;
   path?: string;
   getChildren?(): Thenable<DataConnectionNode[]>;
+  /** Only honored for table, view and field nodes. */
   preview?(): Thenable<string | void>;
+  getDetails?(): Thenable<DataConnectionNodeDetails>;
 }
 
 export interface DataConnection {

@@ -63,7 +63,7 @@ describe("SasDataConnectionsDriver", () => {
         name: "SAS (Viya)",
         description: "https://viya.example.com",
         mechanismId: "session",
-        parameters: { profile: "Viya" },
+        parameters: { profile: "Viya", content: "libraries" },
       },
     ]);
 
@@ -156,5 +156,124 @@ describe("SasDataConnectionsDriver", () => {
 
     registration.dispose();
     expect(await connection.isConnected()).to.be.false;
+  });
+
+  describe("server files", () => {
+    function makeFilesSource() {
+      const source = makeSource("Viya");
+      source.serverFiles = {
+        listDirectory: sinon.stub().callsFake(async (segments: string[]) =>
+          segments.length === 0
+            ? [
+                { name: "code", isDirectory: true },
+                { name: "data.sas7bdat", isDirectory: false },
+              ]
+            : [{ name: "hello.sas", isDirectory: false }],
+        ),
+        readFile: sinon.stub().resolves("proc print data=sashelp.class; run;"),
+        getProperties: sinon
+          .stub()
+          .resolves({ size: 35, modified: "2026-10-18T12:00:00Z" }),
+      };
+      return source;
+    }
+
+    it("discovers a server files connection only for sources that have one", async () => {
+      const driver = new SasDataConnectionsDriver();
+      driver.addSource(makeSource("Local"));
+      driver.addSource(makeFilesSource());
+      const discovered = await driver.discoverConnections();
+      expect(
+        discovered.map((c) => [c.name, c.parameters.content]),
+      ).to.deep.equal([
+        ["SAS (Local)", "libraries"],
+        ["SAS (Viya)", "libraries"],
+        ["SAS Server Files (Viya)", "files"],
+      ]);
+    });
+
+    it("rejects server files for a profile without them", async () => {
+      const driver = new SasDataConnectionsDriver();
+      driver.addSource(makeSource("Local"));
+      let error: unknown;
+      try {
+        await driver.connect("session", { profile: "Local", content: "files" });
+      } catch (e) {
+        error = e;
+      }
+      expect(String(error)).to.include("Server files are not available");
+    });
+
+    it("browses folders and shows file content in the details", async () => {
+      const driver = new SasDataConnectionsDriver();
+      const source = makeFilesSource();
+      driver.addSource(source);
+      const connection = await driver.connect("session", {
+        profile: "Viya",
+        content: "files",
+      });
+
+      const root = await connection.getChildren();
+      expect(
+        root.map(({ name, kind, path }) => ({ name, kind, path })),
+      ).to.deep.equal([
+        { name: "code", kind: "directory", path: "/code" },
+        { name: "data.sas7bdat", kind: "file", path: "/data.sas7bdat" },
+      ]);
+
+      const [file] = await root[0].getChildren!();
+      expect(file).to.include({
+        name: "hello.sas",
+        kind: "file",
+        path: "/code/hello.sas",
+      });
+      const details = await file.getDetails!();
+      expect(details.sections).to.deep.equal([
+        {
+          kind: "properties",
+          properties: [
+            { name: "Path", value: "/code/hello.sas" },
+            { name: "Size", value: "35 bytes" },
+            { name: "Modified", value: "2026-10-18T12:00:00Z" },
+          ],
+        },
+        {
+          kind: "code",
+          title: "Content",
+          languageId: "sas",
+          code: "proc print data=sashelp.class; run;",
+        },
+      ]);
+      expect(
+        (source.serverFiles!.readFile as sinon.SinonStub).calledOnceWith([
+          "code",
+          "hello.sas",
+        ]),
+      ).to.be.true;
+    });
+
+    it("does not read binary or large files", async () => {
+      const driver = new SasDataConnectionsDriver();
+      const source = makeFilesSource();
+      driver.addSource(source);
+      const connection = await driver.connect("session", {
+        profile: "Viya",
+        content: "files",
+      });
+      const [, dataset] = await connection.getChildren();
+      const binary = await dataset.getDetails!();
+      expect(binary.description).to.include("Binary file");
+      expect(binary.sections.map((s) => s.kind)).to.deep.equal(["properties"]);
+
+      (source.serverFiles!.getProperties as sinon.SinonStub).resolves({
+        size: 10 * 1024 * 1024,
+      });
+      const [folder] = await connection.getChildren();
+      const [big] = await folder.getChildren!();
+      const large = await big.getDetails!();
+      expect(large.description).to.include("too large");
+      expect((source.serverFiles!.readFile as sinon.SinonStub).called).to.be
+        .false;
+    });
   });
 });
