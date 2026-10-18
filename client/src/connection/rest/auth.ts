@@ -7,6 +7,7 @@ import { createHash } from "crypto";
 import { URLSearchParams } from "url";
 
 import { Config } from ".";
+import { getExtensionId } from "../../components/ExtensionContext";
 import { RootApi } from "./api/compute";
 import { Configuration } from "./api/configuration";
 
@@ -66,8 +67,10 @@ export async function getTokens(
 
   const { codeVerifier, codeChallenge } = getPKCE();
 
+  // URI handler callbacks are routed by extension ID, so this must match the
+  // running extension (not the upstream SAS.sas-lsp ID).
   const callbackUrl = await env.asExternalUri(
-    Uri.parse(`${env.uriScheme}://sas.sas-lsp`),
+    Uri.parse(`${env.uriScheme}://${getExtensionId()}`),
   );
 
   const params = new URLSearchParams([
