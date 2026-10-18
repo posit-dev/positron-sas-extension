@@ -2,12 +2,19 @@
 
 ## Unreleased
 
+### Features
+
+- Positron 2026.10+: SAS libraries and SAS Server Files appear in the new Data Connections pane; Positron 2026.09 and earlier keep using the Connections pane [#47](https://github.com/posit-dev/positron-sas-extension/issues/47)
+- "SAS Authentication" log channel for diagnosing SAS Viya sign-in
+- Updated to SAS Extension for VS Code 1.21.0 (upstream main at commit 7d14ab4, tag v1.21.0)
+
 ### Bug Fixes
 
 - Fix SAS syntax highlighting, completion and formatting: the language server crashed on startup because a bundled dependency was missing from the package [#46](https://github.com/posit-dev/positron-sas-extension/issues/46)
 - Connections Pane now lists all tables of a library instead of only the first ~15; wide tables now list all columns [#45](https://github.com/posit-dev/positron-sas-extension/issues/45)
-- SAS Viya sign-in: the authorization code is now handed back to Positron automatically after SSO (the callback URI pointed at the upstream `sas.sas-lsp` extension)
+- SAS Viya sign-in: the OAuth callback URI now points at this extension instead of the upstream `sas.sas-lsp`, and the URI handler is registered before the browser opens
 - Default formatter for SAS files now points to this extension (`posit.positron-sas`)
+- The extension description was missing (misspelled `"description "` key in `package.json`)
 
 ## 0.1.0 - 2026-06-02
 

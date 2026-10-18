@@ -155,14 +155,17 @@ export async function activate(context: ExtensionContext) {
     commands.registerCommand("SAS.run", async () => {
       await run();
       await libraryNavigator.refresh();
+      libraryNavigator.refreshOpenTableViewers();
     }),
     commands.registerCommand("SAS.runSelected", async (uri: Uri) => {
       await runSelected(uri);
       await libraryNavigator.refresh();
+      libraryNavigator.refreshOpenTableViewers();
     }),
     commands.registerCommand("SAS.runRegion", async () => {
       await runRegion(client);
       await libraryNavigator.refresh();
+      libraryNavigator.refreshOpenTableViewers();
     }),
     commands.registerCommand("SAS.close", (silent) => {
       closeSession(
@@ -255,6 +258,7 @@ function updateViewSettings(): void {
     librariesDisplayed: false,
     serverEnabled: false,
     serverDisplayed: false,
+    allowDownload: true,
   };
   if (activeProfile) {
     settings.librariesEnabled =

@@ -2,20 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Uri, l10n, window } from "vscode";
 
-import type { ColumnState, SortModelItem } from "ag-grid-community";
+import type { SortModelItem } from "ag-grid-community";
 
 import PaginatedResultSet from "../components/LibraryNavigator/PaginatedResultSet";
-import { TableData, TableQuery } from "../components/LibraryNavigator/types";
-import { Column } from "../connection/rest/api/compute";
+import {
+  TableColumn,
+  TableData,
+  TableQuery,
+} from "../components/LibraryNavigator/types";
 import { WebView } from "./WebviewManager";
 
-export type ViewProperties = {
-  columnState?: ColumnState[];
-  query?: TableQuery;
-};
-
 class DataViewer extends WebView {
-  protected viewProperties: ViewProperties = {};
   public constructor(
     extensionUri: Uri,
     uid: string,
@@ -23,7 +20,7 @@ class DataViewer extends WebView {
       data: TableData;
       error?: Error;
     }>,
-    protected readonly fetchColumns: () => Column[],
+    protected readonly fetchColumns: () => TableColumn[],
     protected readonly loadColumnProperties: (columnName: string) => void,
   ) {
     super(extensionUri, uid);
@@ -73,6 +70,12 @@ class DataViewer extends WebView {
     return `<div class="data-viewer-container" data-title="${this.title}"></div>`;
   }
 
+  public refreshData() {
+    this.panel.webview.postMessage({
+      command: "panel:refreshData",
+    });
+  }
+
   public async processMessage(
     event: Event & {
       key: string;
@@ -82,7 +85,6 @@ class DataViewer extends WebView {
         end?: number;
         sortModel?: SortModelItem[];
         columnName?: string;
-        viewProperties?: Partial<ViewProperties>;
         query: TableQuery | undefined;
       };
     },
@@ -105,27 +107,20 @@ class DataViewer extends WebView {
         }
         break;
       }
-      case "request:loadColumns":
+      case "request:loadColumns": {
+        const columns = await this.fetchColumns();
         this.panel.webview.postMessage({
           key: event.key,
           command: "response:loadColumns",
           data: {
-            columns: await this.fetchColumns(),
-            viewProperties: this.viewProperties,
+            columns,
           },
         });
         break;
+      }
       case "request:loadColumnProperties":
         if (event.data.columnName) {
           this.loadColumnProperties(event.data.columnName);
-        }
-        break;
-      case "request:storeViewProperties":
-        if (event.data.viewProperties) {
-          this.viewProperties = {
-            ...this.viewProperties,
-            ...event.data.viewProperties,
-          };
         }
         break;
       default:

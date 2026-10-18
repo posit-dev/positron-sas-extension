@@ -31,11 +31,11 @@ const DataViewer = () => {
   const {
     columnMenu,
     columns,
+    setColumns,
     dismissMenu,
     gridRef,
     onGridReady,
     refreshResults,
-    viewProperties,
   } = useDataViewer();
 
   const handleKeydown = useCallback(
@@ -51,14 +51,35 @@ const DataViewer = () => {
     [dismissMenu],
   );
 
+  const panelMessageHandler = useCallback(
+    (event: MessageEvent) => {
+      if (event.data.command === "panel:refreshData") {
+        refreshResults(undefined);
+        setColumns([]);
+      }
+
+      if (
+        event.data.command === "panel:changeFocus" &&
+        event.data.data.focused
+      ) {
+        const cell = gridRef.current?.api.getFocusedCell();
+        if (cell) {
+          gridRef.current?.api.setFocusedCell(cell.rowIndex, cell.column);
+        }
+      }
+    },
+    [gridRef, refreshResults, setColumns],
+  );
   useEffect(() => {
     document.addEventListener("keydown", handleKeydown);
     window.addEventListener("blur", dismissMenuWithoutFocus);
+    window.addEventListener("message", panelMessageHandler);
     return () => {
       document.removeEventListener("keydown", handleKeydown);
       window.removeEventListener("blur", dismissMenuWithoutFocus);
+      window.removeEventListener("message", panelMessageHandler);
     };
-  }, [handleKeydown, dismissMenuWithoutFocus]);
+  }, [handleKeydown, dismissMenuWithoutFocus, panelMessageHandler]);
 
   if (columns.length === 0) {
     return null;
@@ -71,7 +92,7 @@ const DataViewer = () => {
         onCommit={(value) => {
           refreshResults({ filterValue: value });
         }}
-        initialValue={viewProperties()?.query?.filterValue ?? ""}
+        initialValue={""}
       />
       {columnMenu && <ColumnMenu {...columnMenu} />}
       <div

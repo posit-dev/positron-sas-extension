@@ -16,7 +16,6 @@ import { createWriteStream } from "fs";
 import * as path from "path";
 
 import { profileConfig } from "../../commands/profile";
-import { Column } from "../../connection/rest/api/compute";
 import DataViewer from "../../panels/DataViewer";
 import TablePropertiesViewer from "../../panels/TablePropertiesViewer";
 import { WebViewManager } from "../../panels/WebviewManager";
@@ -27,7 +26,7 @@ import LibraryDataProvider from "./LibraryDataProvider";
 import LibraryModel from "./LibraryModel";
 import PaginatedResultSet from "./PaginatedResultSet";
 import { Messages } from "./const";
-import { LibraryAdapter, LibraryItem, TableData } from "./types";
+import { LibraryAdapter, LibraryItem, TableColumn, TableData } from "./types";
 
 class LibraryNavigator implements SubscriptionProvider {
   private libraryDataProvider: LibraryDataProvider;
@@ -52,7 +51,7 @@ class LibraryNavigator implements SubscriptionProvider {
         async (
           item: LibraryItem,
           paginator: PaginatedResultSet<{ data: TableData; error?: Error }>,
-          fetchColumns: () => Column[],
+          fetchColumns: () => TableColumn[],
         ) => {
           this.webviewManager.render(
             new DataViewer(
@@ -151,6 +150,17 @@ class LibraryNavigator implements SubscriptionProvider {
     this.libraryDataProvider.useAdapter(this.libraryAdapterForConnectionType());
   }
 
+  public refreshOpenTableViewers(): void {
+    Object.values(this.webviewManager.panels).forEach((panel) => {
+      if (
+        panel instanceof DataViewer ||
+        panel instanceof TablePropertiesViewer
+      ) {
+        panel.refreshData();
+      }
+    });
+  }
+
   private async displayTableProperties(
     item: LibraryItem,
     showPropertiesTab: boolean = false,
@@ -168,6 +178,8 @@ class LibraryNavigator implements SubscriptionProvider {
           columns,
           showPropertiesTab,
           focusedColumn,
+          () => this.libraryDataProvider.getTableInfo(item),
+          () => this.libraryDataProvider.fetchColumns(item),
         ),
         `properties-${item.uid}`,
         true,
@@ -188,7 +200,10 @@ class LibraryNavigator implements SubscriptionProvider {
       return;
     }
 
-    return new LibraryAdapterFactory().create(activeProfile.connectionType);
+    return new LibraryAdapterFactory().create(
+      activeProfile.connectionType,
+      () => this.libraryDataProvider.refresh(),
+    );
   }
 }
 
