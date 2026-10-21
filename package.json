@@ -1592,6 +1592,8 @@
     "test-client": "node ./client/out/test/runTest.js",
     "test-server": "cross-env TS_NODE_PROJECT=./server/tsconfig.json mocha -r ts-node/register ./server/test/**/*.test.ts",
     "test-positron": "cross-env TS_NODE_PROJECT=./client/tsconfig.json NODE_OPTIONS=--no-experimental-strip-types mocha -r ts-node/register -r ./client/test/positron/vscode-setup.js ./client/test/positron/**/*.test.ts",
+    "pretest-positron-api": "npm run compile && tsc -p ./client",
+    "test-positron-api": "node ./tools/run-positron-tests.mjs",
     "test": "npm run test-server && npm run test-client",
     "test-server-bundle": "node ./tools/smoke-server.mjs",
     "pseudoLocalize": "npx @vscode/l10n-dev export -o ./l10n ./client/src && npx @vscode/l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json",
@@ -1601,6 +1603,7 @@
   },
   "devDependencies": {
     "@eslint/compat": "2.1.0",
+    "@posit-dev/positron-test-electron": "^0.0.3",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/chai": "^4.3.11",
     "@types/mocha": "^10.0.10",

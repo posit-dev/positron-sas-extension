@@ -18,7 +18,12 @@ export function run(): Promise<void> {
 
   return new Promise((resolve, reject) => {
     try {
-      const files = glob.sync(pattern, { cwd: testsRoot }).sort();
+      // positron-api/ holds the Positron API integration tests, which only
+      // run inside Positron (npm run test-positron-api) — keep them out of
+      // the plain VS Code suite.
+      const files = glob
+        .sync(pattern, { cwd: testsRoot, ignore: "positron-api/**" })
+        .sort();
       // Add files to the test suite
       files.forEach((f) => mocha.addFile(path.resolve(testsRoot, f)));
 
