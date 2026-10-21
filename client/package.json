@@ -13,10 +13,10 @@
     "ag-grid-react": "^36.1.0",
     "axios": "^1.18.1",
     "highlight.js": "^11.11.1",
-    "katex": "^0.16.45",
+    "katex": "^0.17.0",
     "marked": "^18.0.4",
     "marked-katex-extension": "^5.1.10",
-    "media-typer": "^1.1.0",
+    "media-typer": "^2.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "ssh2": "^1.17.0",
@@ -26,12 +26,12 @@
   },
   "devDependencies": {
     "@posit-dev/positron": "^0.2.4",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@types/ssh2": "^1.15.5",
     "@types/uuid": "^11.0.0",
     "@types/vscode": "^1.95.0",
     "@types/vscode-notebook-renderer": "^1.72.4",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^3.1.0"
   }
 }

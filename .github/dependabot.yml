@@ -4,51 +4,42 @@
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 
 version: 2
+
+# All version updates (every directory and ecosystem) are collated into a
+# single monthly pull request.
+multi-ecosystem-groups:
+  monthly:
+    schedule:
+      interval: "monthly"
+
 updates:
   # Maintain dependencies for npm
   - package-ecosystem: "npm"
     directory: "/"
-    schedule:
-      interval: "monthly"
-    groups:
-      dev:
-        patterns:
-          - "eslint*"
-          - "@types*"
-          - "ts-*"
+    patterns: ["*"]
+    multi-ecosystem-group: "monthly"
+    ignore:
+      # eslint-plugin-react 7.x only supports eslint up to 9 (peer dependency)
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "npm"
     directory: "/client"
-    schedule:
-      interval: "monthly"
-    groups:
-      aggrid:
-        patterns:
-          - "ag-grid*"
-      react:
-        patterns:
-          - "react*"
-          - "@types/react*"
+    patterns: ["*"]
+    multi-ecosystem-group: "monthly"
     ignore:
       # @types/vscode should match the engine version we're using
       # should not be upgraded on its own
       - dependency-name: "@types/vscode"
   - package-ecosystem: "npm"
     directory: "/server"
-    schedule:
-      interval: "monthly"
+    patterns: ["*"]
+    multi-ecosystem-group: "monthly"
   - package-ecosystem: "npm"
     directory: "/website"
-    schedule:
-      interval: "monthly"
-    groups:
-      docusaurus:
-        patterns:
-          - "@docusaurus/*"
-      react:
-        patterns:
-          - "react*"
+    patterns: ["*"]
+    multi-ecosystem-group: "monthly"
   - package-ecosystem: "github-actions"
     # Don't need to specify `/.github/workflows` for `directory`. Github knows it.
     directory: "/"
-    schedule:
-      interval: "monthly"
+    patterns: ["*"]
+    multi-ecosystem-group: "monthly"
