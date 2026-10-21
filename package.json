@@ -1491,27 +1491,27 @@
         {
           "id": "contentdataprovider",
           "name": "%views.SAS.explorer%",
-          "when": "SAS.authorized && SAS.connectionType == rest && !positron.context"
+          "when": "SAS.authorized && SAS.connectionType == rest"
         },
         {
           "id": "serverdataprovider",
           "name": "%views.SAS.serverExplorer%",
-          "when": "(SAS.authorized || SAS.serverDisplayed) && SAS.serverEnabled && !positron.context"
+          "when": "(SAS.authorized || SAS.serverDisplayed) && SAS.serverEnabled"
         },
         {
           "id": "librarydataprovider",
           "name": "%views.SAS.libraries%",
-          "when": "(((SAS.authorized || SAS.librariesDisplayed) && SAS.librariesEnabled) || SAS.connection.direct) && !positron.context"
+          "when": "(((SAS.authorized || SAS.librariesDisplayed) && SAS.librariesEnabled) || SAS.connection.direct) && !isPositron"
         },
         {
           "id": "sas-content-get-started",
           "name": "%views.SAS.signIn%",
-          "when": "(!(SAS.authorized || SAS.librariesDisplayed || SAS.serverDisplayed) && SAS.canSignIn) && !SAS.connection.direct && !positron.context"
+          "when": "(!(SAS.authorized || SAS.librariesDisplayed || SAS.serverDisplayed) && SAS.canSignIn) && !SAS.connection.direct"
         },
         {
           "id": "sas-content-invalid-connection",
           "name": "%views.SAS.signIn%",
-          "when": "!SAS.authorized && !SAS.canSignIn && !positron.context"
+          "when": "!SAS.authorized && !SAS.canSignIn"
         }
       ]
     },
