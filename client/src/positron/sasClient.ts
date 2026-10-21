@@ -57,6 +57,58 @@ function parsePrefixedRecords(stdout: string, prefix: string): string[][] {
     .map((l) => l.slice(marker.length).split("|").map((s) => s.trim()));
 }
 
+/**
+ * Group `PREFIX<i>=rest` lines between sentinel markers by index i, keeping
+ * every line for an index in order. Used by the indexed metadata queries.
+ */
+function parseIndexedRecords(
+  stdout: string,
+  prefix: string,
+): Map<number, string[]> {
+  const pattern = new RegExp(`^${prefix}(\\d+)=(.*)$`);
+  const records = new Map<number, string[]>();
+  for (const line of parseSentinelOutput(stdout)) {
+    const match = pattern.exec(line);
+    if (!match) {
+      continue;
+    }
+    const i = parseInt(match[1], 10);
+    records.set(i, [...(records.get(i) ?? []), match[2]]);
+  }
+  return records;
+}
+
+/** Parse a SAS numeric value from the log; missing (".", ".A") is null. */
+function parseSasNumber(value: string | undefined): number | null {
+  const v = value?.trim() ?? "";
+  if (v === "" || /^\.[A-Z_]?$/i.test(v)) {
+    return null;
+  }
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+
+export interface BinningStats {
+  n: number;
+  min: number | null;
+  max: number | null;
+  q1: number | null;
+  q3: number | null;
+  nonInteger: number;
+}
+
+export interface HistogramBins {
+  lo: number;
+  width: number;
+  nbins: number;
+}
+
+export interface FrequencyTable {
+  values: string[];
+  counts: number[];
+  otherCount: number;
+}
+
 /** Validate a SAS identifier (libname, memname). Returns uppercased value or throws. */
 export function sasIdent(value: unknown): string {
   if (typeof value !== "string") {
@@ -348,15 +400,16 @@ options notes source nomprint nosymbolgen nomlogic;
     const memname = sasIdent(mem);
     const whereClause = where ? `where ${where}` : "";
 
+    // Indexed macro names: `_nc_<column>` exceeds SAS's 32-character limit
+    // for long column names.
     const selectExprs = columnNames
-      .map((col) => `nmiss(${col}) as _nc_${col}`)
+      .map((col, i) => `nmiss(${col}) as _nc${i}`)
       .join(", ");
-    const intoExprs = columnNames.map((col) => `:_nc_${col}`).join(", ");
+    const intoExprs = columnNames.map((_, i) => `:_nc${i} trimmed`).join(", ");
+    const initLines = columnNames.map((_, i) => `%let _nc${i}=0;`).join("\n");
     const putLines = columnNames
-      .map((col) => `%put NC_${col}=&_nc_${col};`)
+      .map((_, i) => `%put NC${i}=&_nc${i};`)
       .join("\n");
-
-    const initLines = columnNames.map((col) => `%let _nc_${col}=0;`).join("\n");
 
     const output = await this.execute(`
 options nosource nonotes;
@@ -372,14 +425,10 @@ ${putLines}
 %put ${SENTINEL_END};
 options notes source;
 `);
-    const lines = parseSentinelOutput(output);
-    return columnNames.map((col) => {
-      const line = lines.find((l) => l.startsWith(`NC_${col}=`));
-      if (!line) {
-        return 0;
-      }
-      return parseInt(line.split("=")[1]?.trim() ?? "0", 10) || 0;
-    });
+    const records = parseIndexedRecords(output, "NC");
+    return columnNames.map(
+      (_, i) => parseInt(records.get(i)?.[0] ?? "0", 10) || 0,
+    );
   }
 
   /** Return summary stats for a set of numeric columns (batched into one query). */
@@ -404,31 +453,24 @@ options notes source;
     const memname = sasIdent(mem);
     const whereClause = where ? `where ${where}` : "";
 
+    // Indexed macro names, see getColumnNullCounts.
+    const stats = ["min", "max", "mean", "median", "std"];
     const selectExprs = columnNames
-      .map(
-        (col) =>
-          `min(${col}) as _min_${col}, max(${col}) as _max_${col}, ` +
-          `mean(${col}) as _mean_${col}, median(${col}) as _med_${col}, ` +
-          `std(${col}) as _std_${col}`,
+      .map((col, i) =>
+        stats.map((fn, k) => `${fn}(${col}) as _s${i}_${k}`).join(", "),
       )
       .join(", ");
-
     const intoExprs = columnNames
-      .map(
-        (col) =>
-          `:_min_${col}, :_max_${col}, :_mean_${col}, :_med_${col}, :_std_${col}`,
-      )
+      .map((_, i) => stats.map((_fn, k) => `:_s${i}_${k}`).join(", "))
       .join(", ");
-
+    const initLines = columnNames
+      .map((_, i) => stats.map((_fn, k) => `%let _s${i}_${k}=;`).join(" "))
+      .join("\n");
     const putLines = columnNames
       .map(
-        (col) =>
-          `%put STATS_${col}=&_min_${col}|&_max_${col}|&_mean_${col}|&_med_${col}|&_std_${col};`,
+        (_, i) =>
+          `%put STATS${i}=${stats.map((_fn, k) => `&_s${i}_${k}`).join("|")};`,
       )
-      .join("\n");
-
-    const initLines = columnNames
-      .map((col) => `%let _min_${col}=; %let _max_${col}=; %let _mean_${col}=; %let _med_${col}=; %let _std_${col}=;`)
       .join("\n");
 
     const output = await this.execute(`
@@ -446,32 +488,287 @@ ${putLines}
 options notes source;
 `);
 
-    const lines = parseSentinelOutput(output);
-    return columnNames.map((col) => {
-      const line = lines.find((l) => l.startsWith(`STATS_${col}=`));
-      if (!line) {
-        return {
-          minValue: null,
-          maxValue: null,
-          meanValue: null,
-          stdevValue: null,
-          medianValue: null,
-        };
-      }
-      const vals = line.split("=")[1]?.split("|") ?? [];
-      const parseNum = (s: string | undefined): number | null => {
-        if (!s || s.trim() === "" || s.trim() === ".") {
-          return null;
-        }
-        const n = parseFloat(s.trim());
-        return isNaN(n) ? null : n;
-      };
+    const records = parseIndexedRecords(output, "STATS");
+    return columnNames.map((_, i) => {
+      const vals = records.get(i)?.[0]?.split("|") ?? [];
       return {
-        minValue: parseNum(vals[0]),
-        maxValue: parseNum(vals[1]),
-        meanValue: parseNum(vals[2]),
-        medianValue: parseNum(vals[3]),
-        stdevValue: parseNum(vals[4]),
+        minValue: parseSasNumber(vals[0]),
+        maxValue: parseSasNumber(vals[1]),
+        meanValue: parseSasNumber(vals[2]),
+        medianValue: parseSasNumber(vals[3]),
+        stdevValue: parseSasNumber(vals[4]),
+      };
+    });
+  }
+
+  /**
+   * Return the statistics needed to bin numeric columns for a histogram:
+   * non-missing count, min, max, quartiles and the number of non-integer
+   * values. The WHERE clause is applied in a PROC SQL view so that it has
+   * the same semantics as the other queries (e.g. LIKE ... ESCAPE).
+   */
+  async getColumnBinningStats(
+    lib: unknown,
+    mem: unknown,
+    columnNames: string[],
+    where?: string,
+  ): Promise<BinningStats[]> {
+    if (columnNames.length === 0) {
+      return [];
+    }
+    const libname = sasIdent(lib);
+    const memname = sasIdent(mem);
+    const whereClause = where ? `where ${where}` : "";
+    const idx = columnNames.map((_, i) => i);
+    const names = (prefix: string) => idx.map((i) => `${prefix}${i}`).join(" ");
+
+    const output = await this.execute(`
+options nosource nonotes;
+${idx.map((i) => `%let _hs${i}=; %let _ni${i}=0;`).join("\n")}
+proc sql;
+  create view work._sas_hv as
+  select ${columnNames.join(", ")} from ${libname}.${memname}
+  ${whereClause};
+quit;
+proc means data=work._sas_hv noprint;
+  var ${columnNames.join(" ")};
+  output out=work._sas_hs n=${names("_n")} min=${names("_lo")} max=${names("_hi")} q1=${names("_qa")} q3=${names("_qb")};
+run;
+proc sql noprint;
+  select ${columnNames.map((col) => `sum(${col} ne int(${col}))`).join(", ")}
+  into ${idx.map((i) => `:_ni${i} trimmed`).join(", ")}
+  from work._sas_hv;
+quit;
+data _null_;
+  set work._sas_hs;
+  ${idx
+    .map(
+      (i) =>
+        `call symputx('_hs${i}', catx('|', ${["_n", "_lo", "_hi", "_qa", "_qb"]
+          .map((v) => `put(${v}${i}, best32.)`)
+          .join(", ")}));`,
+    )
+    .join("\n  ")}
+run;
+%put ${SENTINEL_START};
+${idx.map((i) => `%put HS${i}=&_hs${i}|&_ni${i};`).join("\n")}
+%put ${SENTINEL_END};
+proc datasets library=work nolist;
+  delete _sas_hs;
+  delete _sas_hv / memtype=view;
+quit;
+options notes source;
+`);
+
+    const records = parseIndexedRecords(output, "HS");
+    return idx.map((i) => {
+      const vals = records.get(i)?.[0]?.split("|") ?? [];
+      return {
+        n: parseSasNumber(vals[0]) ?? 0,
+        min: parseSasNumber(vals[1]),
+        max: parseSasNumber(vals[2]),
+        q1: parseSasNumber(vals[3]),
+        q3: parseSasNumber(vals[4]),
+        nonInteger: parseSasNumber(vals[5]) ?? 0,
+      };
+    });
+  }
+
+  /**
+   * Count the values of numeric columns per histogram bin. Bin b covers
+   * [lo + b*width, lo + (b+1)*width); values beyond the last edge (rounding)
+   * are clamped into the last bin. Returns one array of `nbins` counts per
+   * request.
+   */
+  async getColumnHistogramCounts(
+    lib: unknown,
+    mem: unknown,
+    requests: Array<{ column: string; bins: HistogramBins }>,
+    where?: string,
+  ): Promise<number[][]> {
+    const queried = requests
+      .map((r, i) => ({ ...r, i }))
+      .filter((r) => r.bins.nbins > 0 && r.bins.width > 0);
+    const results = requests.map((r) => new Array<number>(r.bins.nbins).fill(0));
+    if (queried.length === 0) {
+      return results;
+    }
+    const libname = sasIdent(lib);
+    const memname = sasIdent(mem);
+
+    const queries = queried
+      .map(({ column, bins, i }) => {
+        const filter = `not missing(${column})${where ? ` and (${where})` : ""}`;
+        const bin = `max(0, min(${bins.nbins - 1}, floor((${column} - (${bins.lo})) / (${bins.width}))))`;
+        return `  select b, count(*) into :_hb${i}b1-, :_hb${i}n1-
+  from (select ${bin} as b from ${libname}.${memname} where ${filter})
+  group by b;
+  %let _hbn${i}=&sqlobs;`;
+      })
+      .join("\n");
+
+    const output = await this.execute(`
+options nosource nonotes;
+${queried.map(({ i }) => `%let _hbn${i}=0;`).join("\n")}
+proc sql noprint;
+${queries}
+quit;
+%put ${SENTINEL_START};
+%macro _sas_emit_hb;
+${queried
+  .map(
+    ({ i }) => `  %do _j = 1 %to &_hbn${i};
+    %put HB${i}=&&_hb${i}b&_j|&&_hb${i}n&_j;
+  %end;`,
+  )
+  .join("\n")}
+%mend;
+%_sas_emit_hb;
+%put ${SENTINEL_END};
+options notes source;
+`);
+
+    const records = parseIndexedRecords(output, "HB");
+    for (const { i } of queried) {
+      for (const line of records.get(i) ?? []) {
+        const [b, n] = line.split("|").map((v) => parseInt(v, 10));
+        if (b >= 0 && b < results[i].length && !isNaN(n)) {
+          results[i][b] += n;
+        }
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Return the most frequent non-missing values of each column (ties ordered
+   * by value) plus the count of all other non-missing values. Values are
+   * truncated to 60 characters to stay clear of SSH terminal line wrapping.
+   */
+  async getColumnFrequencyTables(
+    lib: unknown,
+    mem: unknown,
+    requests: Array<{ column: string; limit: number }>,
+    where?: string,
+  ): Promise<FrequencyTable[]> {
+    if (requests.length === 0) {
+      return [];
+    }
+    const libname = sasIdent(lib);
+    const memname = sasIdent(mem);
+    const whereClause = where ? `where ${where}` : "";
+
+    // Each request reads its own alias (_fv<i>) from the view, so a column
+    // named COUNT or PERCENT can't clash with PROC FREQ's output variables.
+    const steps = requests
+      .map(
+        ({ limit }, i) => `proc freq data=work._sas_fv noprint;
+  tables _fv${i} / out=work._sas_ft${i}(keep=_fv${i} count);
+run;
+proc sort data=work._sas_ft${i}; by descending count _fv${i}; run;
+data _null_;
+  set work._sas_ft${i}(obs=${Math.max(1, Math.floor(limit))});
+  call symputx(cats('_ftv${i}_', _n_), substr(strip(vvalue(_fv${i})), 1, 60));
+  call symputx(cats('_ftc${i}_', _n_), count);
+  call symputx('_ftn${i}', _n_);
+run;`,
+      )
+      .join("\n");
+
+    const output = await this.execute(`
+options nosource nonotes;
+${requests.map((_, i) => `%let _ftn${i}=0; %let _ftt${i}=0;`).join("\n")}
+proc sql;
+  create view work._sas_fv as
+  select ${requests.map(({ column }, i) => `${column} as _fv${i}`).join(", ")}
+  from ${libname}.${memname}
+  ${whereClause};
+quit;
+proc sql noprint;
+  select ${requests.map((_, i) => `count(_fv${i})`).join(", ")}
+  into ${requests.map((_, i) => `:_ftt${i} trimmed`).join(", ")}
+  from work._sas_fv;
+quit;
+${steps}
+%put ${SENTINEL_START};
+%macro _sas_emit_ft;
+${requests
+  .map(
+    (_, i) => `  %put FTT${i}=&_ftt${i};
+  %do _j = 1 %to &_ftn${i};
+    %put FT${i}=&&_ftc${i}_&_j|%superq(_ftv${i}_&_j);
+  %end;`,
+  )
+  .join("\n")}
+%mend;
+%_sas_emit_ft;
+%put ${SENTINEL_END};
+proc datasets library=work nolist;
+  delete ${requests.map((_, i) => `_sas_ft${i}`).join(" ")};
+  delete _sas_fv / memtype=view;
+quit;
+options notes source;
+`);
+
+    const totals = parseIndexedRecords(output, "FTT");
+    const records = parseIndexedRecords(output, "FT");
+    return requests.map((_, i) => {
+      const values: string[] = [];
+      const counts: number[] = [];
+      for (const line of records.get(i) ?? []) {
+        // Split on the first "|" only: values may contain "|".
+        const sep = line.indexOf("|");
+        const count = parseInt(sep >= 0 ? line.slice(0, sep) : line, 10);
+        if (sep < 0 || isNaN(count)) {
+          continue;
+        }
+        counts.push(count);
+        values.push(line.slice(sep + 1));
+      }
+      const total = parseInt(totals.get(i)?.[0] ?? "0", 10) || 0;
+      const shown = counts.reduce((sum, n) => sum + n, 0);
+      return { values, counts, otherCount: Math.max(0, total - shown) };
+    });
+  }
+
+  /** Return distinct and empty (missing) value counts for character columns. */
+  async getColumnStringStats(
+    lib: unknown,
+    mem: unknown,
+    columnNames: string[],
+    where?: string,
+  ): Promise<Array<{ numUnique: number; numEmpty: number }>> {
+    if (columnNames.length === 0) {
+      return [];
+    }
+    const libname = sasIdent(lib);
+    const memname = sasIdent(mem);
+    const whereClause = where ? `where ${where}` : "";
+    const idx = columnNames.map((_, i) => i);
+
+    const output = await this.execute(`
+options nosource nonotes;
+${idx.map((i) => `%let _ssu${i}=0; %let _sse${i}=0;`).join("\n")}
+proc sql noprint;
+  select ${columnNames
+    .map((col) => `count(distinct ${col}), sum(missing(${col}))`)
+    .join(", ")}
+  into ${idx.map((i) => `:_ssu${i} trimmed, :_sse${i} trimmed`).join(", ")}
+  from ${libname}.${memname}
+  ${whereClause};
+quit;
+%put ${SENTINEL_START};
+${idx.map((i) => `%put SS${i}=&_ssu${i}|&_sse${i};`).join("\n")}
+%put ${SENTINEL_END};
+options notes source;
+`);
+
+    const records = parseIndexedRecords(output, "SS");
+    return idx.map((i) => {
+      const [unique, empty] = records.get(i)?.[0]?.split("|") ?? [];
+      return {
+        numUnique: parseSasNumber(unique) ?? 0,
+        numEmpty: parseSasNumber(empty) ?? 0,
       };
     });
   }

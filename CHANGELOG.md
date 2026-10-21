@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- Data Explorer: column distributions (histograms for numeric columns, frequency bars for character columns) and character column statistics (unique and empty counts) are now shown for SAS tables [#55](https://github.com/posit-dev/positron-sas-extension/issues/55)
+- Data Explorer: summary statistics and missing-value counts no longer fail for column names longer than about 26 characters
+
 ## 0.2.0 - 2026-10-18
 
 ### Features

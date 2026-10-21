@@ -3,7 +3,12 @@
 
 import { EventEmitter } from "vscode";
 import { v4 as uuidv4 } from "uuid";
-import type { SasClient, ColumnInfo } from "./sasClient";
+import type {
+  BinningStats,
+  ColumnInfo,
+  HistogramBins,
+  SasClient,
+} from "./sasClient";
 
 // SAS date formats (stored as days since 1960-01-01)
 const DATE_FORMATS = new Set([
@@ -54,6 +59,53 @@ function toRecordArray(value: unknown): Array<Record<string, unknown>> {
     (v): v is Record<string, unknown> => typeof v === "object" && v !== null,
   );
 }
+
+// ─── Histogram binning ──────────────────────────────────────────────────────
+
+/**
+ * Choose histogram bins the way Positron's Python backend does for the
+ * "freedman_diaconis" method: Freedman–Diaconis width capped at `numBins`
+ * bins, Sturges when the IQR is 0, a single [v, v] bin for a constant column,
+ * and no more bins than distinct integers for integer-valued columns.
+ */
+export function computeHistogramBins(
+  stats: BinningStats,
+  numBins: number,
+): HistogramBins & { edges: number[] } {
+  const { n, min, max, q1, q3, nonInteger } = stats;
+  if (n <= 0 || min === null || max === null) {
+    return { lo: 0, width: 0, nbins: 0, edges: [] };
+  }
+  if (min === max) {
+    return { lo: min, width: 0, nbins: 1, edges: [min, max] };
+  }
+  const range = max - min;
+  const iqr = q1 !== null && q3 !== null ? q3 - q1 : 0;
+  let nbins =
+    iqr > 0
+      ? Math.ceil(range / ((2 * iqr) / Math.cbrt(n)))
+      : Math.ceil(Math.log2(n)) + 1;
+  nbins = Math.max(1, Math.min(nbins, Math.max(1, Math.floor(numBins))));
+  if (nonInteger === 0 && nbins > range) {
+    nbins = Math.max(1, Math.min(Math.floor(range) + 1, Math.floor(numBins)));
+  }
+  const width = range / nbins;
+  const edges = Array.from({ length: nbins + 1 }, (_, k) =>
+    k === nbins ? max : min + k * width,
+  );
+  return { lo: min, width, nbins, edges };
+}
+
+const formatEdge = (value: number) => String(Number(value.toPrecision(10)));
+
+const COLUMN_PROFILE_TYPES = [
+  "null_count",
+  "summary_stats",
+  "small_histogram",
+  "large_histogram",
+  "small_frequency_table",
+  "large_frequency_table",
+];
 
 // ─── Types for Positron Data Explorer protocol ──────────────────────────────
 
@@ -373,7 +425,10 @@ export class SasDataExplorer {
         set_sort_columns: { support_status: "supported" },
         get_column_profiles: {
           support_status: "supported",
-          supported_types: ["null_count", "summary_stats"],
+          supported_types: COLUMN_PROFILE_TYPES.map((profile_type) => ({
+            profile_type,
+            support_status: "supported",
+          })),
         },
         export_data_selection: {
           support_status: "unsupported",
@@ -503,85 +558,88 @@ export class SasDataExplorer {
     params: Record<string, unknown>,
   ): Promise<void> {
     const columns = await this.getColumns();
-    const requests = Array.isArray(params.profiles) ? params.profiles : [];
+    const requests = toRecordArray(params.profiles);
     const callbackId = params.callback_id;
     const where = this.buildWhereClause();
 
     const nullCountIndices: number[] = [];
-    const summaryStatsIndices: number[] = [];
+    const numericStatsIndices: number[] = [];
+    const stringStatsIndices: number[] = [];
+    const histograms: Array<{ colIdx: number; type: string; numBins: number }> = [];
+    const frequencyTables: Array<{ colIdx: number; type: string; limit: number }> = [];
+    const addUnique = (list: number[], colIdx: number) => {
+      if (!list.includes(colIdx)) {
+        list.push(colIdx);
+      }
+    };
 
-    for (const raw of toRecordArray(requests)) {
+    for (const raw of requests) {
       const colIdx = typeof raw.column_index === "number" ? raw.column_index : -1;
       if (colIdx < 0 || colIdx >= columns.length) {
         continue;
       }
+      const isNum = columns[colIdx].type === "num";
       for (const spec of toRecordArray(raw.profiles)) {
         const pt = String(spec.profile_type ?? "");
+        const specParams = toRecord(spec.params);
         if (pt === "null_count") {
-          nullCountIndices.push(colIdx);
-        } else if (pt === "summary_stats" && columns[colIdx].type === "num") {
-          summaryStatsIndices.push(colIdx);
+          addUnique(nullCountIndices, colIdx);
+        } else if (pt === "summary_stats") {
+          addUnique(isNum ? numericStatsIndices : stringStatsIndices, colIdx);
+        } else if ((pt === "small_histogram" || pt === "large_histogram") && isNum) {
+          const numBins = typeof specParams.num_bins === "number" ? specParams.num_bins : 20;
+          histograms.push({ colIdx, type: pt, numBins });
+        } else if (pt === "small_frequency_table" || pt === "large_frequency_table") {
+          const limit = typeof specParams.limit === "number" ? specParams.limit : 8;
+          frequencyTables.push({ colIdx, type: pt, limit });
         }
       }
     }
 
-    const nullCountMap = new Map<number, number>();
-    const summaryMap = new Map<number, {
-      minValue: number | null; maxValue: number | null;
-      meanValue: number | null; stdevValue: number | null; medianValue: number | null;
-    }>();
+    const names = (indices: number[]) => indices.map((i) => columns[i].name);
+    const histogramColumns = [...new Set(histograms.map((h) => h.colIdx))];
 
-    const fetches: Promise<void>[] = [];
+    const [nullCounts, numericStats, stringStats, freqTables, binningStats] =
+      await Promise.all([
+        this.client.getColumnNullCounts(this.lib, this.mem, names(nullCountIndices), where),
+        this.client.getColumnSummaryStats(this.lib, this.mem, names(numericStatsIndices), where),
+        this.client.getColumnStringStats(this.lib, this.mem, names(stringStatsIndices), where),
+        this.client.getColumnFrequencyTables(
+          this.lib,
+          this.mem,
+          frequencyTables.map((f) => ({ column: columns[f.colIdx].name, limit: f.limit })),
+          where,
+        ),
+        this.client.getColumnBinningStats(this.lib, this.mem, names(histogramColumns), where),
+      ]);
 
-    if (nullCountIndices.length > 0) {
-      fetches.push(
-        this.client
-          .getColumnNullCounts(
-            this.lib, this.mem,
-            nullCountIndices.map((i) => columns[i].name),
-            where,
-          )
-          .then((counts) => {
-            counts.forEach((count, idx) => {
-              nullCountMap.set(nullCountIndices[idx], count);
-            });
-          }),
-      );
-    }
+    // Bin each requested histogram, then count all of them in one query.
+    const binned = histograms.map((h) => {
+      const stats = binningStats[histogramColumns.indexOf(h.colIdx)];
+      return { ...h, stats, bins: computeHistogramBins(stats, h.numBins) };
+    });
+    const binCounts = await this.client.getColumnHistogramCounts(
+      this.lib,
+      this.mem,
+      binned.map((b) => ({ column: columns[b.colIdx].name, bins: b.bins })),
+      where,
+    );
 
-    if (summaryStatsIndices.length > 0) {
-      fetches.push(
-        this.client
-          .getColumnSummaryStats(
-            this.lib, this.mem,
-            summaryStatsIndices.map((i) => columns[i].name),
-            where,
-          )
-          .then((statsArr) => {
-            statsArr.forEach((s, idx) => {
-              summaryMap.set(summaryStatsIndices[idx], s);
-            });
-          }),
-      );
-    }
-
-    await Promise.all(fetches);
-
-    const profiles = toRecordArray(requests).map((raw) => {
+    const profiles = requests.map((raw) => {
       const colIdx = typeof raw.column_index === "number" ? raw.column_index : -1;
+      const col = columns[colIdx];
       const result: Record<string, unknown> = {};
       for (const spec of toRecordArray(raw.profiles)) {
         const pt = String(spec.profile_type ?? "");
         if (pt === "null_count") {
-          result.null_count = nullCountMap.get(colIdx) ?? 0;
-        } else if (pt === "summary_stats") {
-          const s = summaryMap.get(colIdx);
+          result.null_count = nullCounts[nullCountIndices.indexOf(colIdx)] ?? 0;
+        } else if (pt === "summary_stats" && col) {
+          const typeDisplay = sasColumnDisplayType(col.type, col.format ?? "");
+          const s = numericStats[numericStatsIndices.indexOf(colIdx)];
+          const ss = stringStats[stringStatsIndices.indexOf(colIdx)];
           if (s) {
-            const col = columns[colIdx];
             result.summary_stats = {
-              type_display: col
-                ? sasColumnDisplayType(col.type, col.format ?? "")
-                : "floating",
+              type_display: typeDisplay,
               number_stats: {
                 min_value: s.minValue !== null ? String(s.minValue) : undefined,
                 max_value: s.maxValue !== null ? String(s.maxValue) : undefined,
@@ -589,6 +647,32 @@ export class SasDataExplorer {
                 median: s.medianValue !== null ? String(s.medianValue) : undefined,
                 stdev: s.stdevValue !== null ? String(s.stdevValue) : undefined,
               },
+            };
+          } else if (ss) {
+            result.summary_stats = {
+              type_display: typeDisplay,
+              string_stats: { num_empty: ss.numEmpty, num_unique: ss.numUnique },
+            };
+          }
+        } else if (pt === "small_histogram" || pt === "large_histogram") {
+          const k = binned.findIndex((b) => b.colIdx === colIdx && b.type === pt);
+          if (k >= 0) {
+            const { bins, stats } = binned[k];
+            result[pt] = {
+              bin_edges: bins.edges.map(formatEdge),
+              // A constant column has one zero-width bin holding every value.
+              bin_counts: bins.width === 0 && bins.nbins === 1 ? [stats.n] : binCounts[k],
+              quantiles: [],
+            };
+          }
+        } else if (pt === "small_frequency_table" || pt === "large_frequency_table") {
+          const k = frequencyTables.findIndex((f) => f.colIdx === colIdx && f.type === pt);
+          if (k >= 0) {
+            const table = freqTables[k];
+            result[pt] = {
+              values: table.values,
+              counts: table.counts,
+              other_count: table.otherCount,
             };
           }
         }
