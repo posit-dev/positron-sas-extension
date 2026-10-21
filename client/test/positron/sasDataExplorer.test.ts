@@ -4,7 +4,10 @@
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { SasDataExplorer } from "../../src/positron/sasDataExplorer";
+import {
+  SasDataExplorer,
+  computeHistogramBins,
+} from "../../src/positron/sasDataExplorer";
 import type { SasClient } from "../../src/positron/sasClient";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -27,6 +30,10 @@ function makeClient(overrides: Partial<SasClient> = {}): SasClient {
       { minValue: 1, maxValue: 90, meanValue: 45, medianValue: 44, stdevValue: 10 },
       { minValue: 100, maxValue: 200, meanValue: 150, medianValue: 148, stdevValue: 20 },
     ]),
+    getColumnStringStats: sinon.stub().resolves([]),
+    getColumnFrequencyTables: sinon.stub().resolves([]),
+    getColumnBinningStats: sinon.stub().resolves([]),
+    getColumnHistogramCounts: sinon.stub().resolves([]),
     clearColumnCache: sinon.stub(),
     ...overrides,
   } as unknown as SasClient;
@@ -87,6 +94,18 @@ describe("SasDataExplorer.get_state", () => {
     expect(shape.num_rows).to.equal(100);
     expect(shape.num_columns).to.equal(3);
     expect(result.display_name).to.equal("WORK.CLASS");
+  });
+
+  it("advertises column profile types as {profile_type, support_status} objects", async () => {
+    const explorer = new SasDataExplorer(makeClient(), "WORK", "CLASS");
+    const { result } = await sendRpc(explorer, "get_state") as { result: Record<string, unknown> };
+    const features = result.supported_features as Record<string, Record<string, unknown>>;
+    const types = features.get_column_profiles.supported_types as Array<Record<string, unknown>>;
+    expect(types.map((t) => t.profile_type)).to.have.members([
+      "null_count", "summary_stats", "small_histogram", "large_histogram",
+      "small_frequency_table", "large_frequency_table",
+    ]);
+    expect(types.every((t) => t.support_status === "supported")).to.be.true;
   });
 
   it("reports unfiltered and filtered counts separately when filters are active", async () => {
@@ -349,16 +368,113 @@ describe("SasDataExplorer.get_column_profiles", () => {
     expect(nums.max_value).to.equal("90");
   });
 
-  it("skips summary_stats for character columns", async () => {
+  it("returns string_stats for character columns", async () => {
     const getSummary = sinon.stub().resolves([]);
-    const client = makeClient({ getColumnSummaryStats: getSummary });
+    const getStringStats = sinon.stub().resolves([{ numUnique: 19, numEmpty: 2 }]);
+    const client = makeClient({ getColumnSummaryStats: getSummary, getColumnStringStats: getStringStats });
     const explorer = new SasDataExplorer(client, "WORK", "CLASS");
 
-    await sendRpcForEvent(explorer, "get_column_profiles", {
+    const event = await sendRpcForEvent(explorer, "get_column_profiles", {
       callback_id: "cb-3",
       profiles: [{ column_index: 0, profiles: [{ profile_type: "summary_stats" }] }],
     });
-    expect(getSummary.callCount).to.equal(0);
+    expect(getSummary.firstCall.args[2]).to.deep.equal([]);
+    expect(getStringStats.firstCall.args[2]).to.deep.equal(["NAME"]);
+    const profiles = (event.params as Record<string, unknown>).profiles as Array<Record<string, unknown>>;
+    expect(profiles[0].summary_stats).to.deep.equal({
+      type_display: "string",
+      string_stats: { num_empty: 2, num_unique: 19 },
+    });
+  });
+
+  it("returns small and large histograms for a numeric column", async () => {
+    const getBinningStats = sinon.stub().resolves([
+      { n: 19, min: 11, max: 16, q1: 12, q3: 15, nonInteger: 0 },
+    ]);
+    const getCounts = sinon.stub().callsFake(async (_lib, _mem, requests) =>
+      requests.map((r: { bins: { nbins: number } }) => new Array(r.bins.nbins).fill(1)),
+    );
+    const client = makeClient({ getColumnBinningStats: getBinningStats, getColumnHistogramCounts: getCounts });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+
+    const event = await sendRpcForEvent(explorer, "get_column_profiles", {
+      callback_id: "cb-h",
+      profiles: [{
+        column_index: 1,
+        profiles: [
+          { profile_type: "small_histogram", params: { method: "freedman_diaconis", num_bins: 80 } },
+          { profile_type: "large_histogram", params: { method: "freedman_diaconis", num_bins: 200 } },
+        ],
+      }],
+    });
+
+    // Binning stats are fetched once for both histograms.
+    expect(getBinningStats.callCount).to.equal(1);
+    expect(getBinningStats.firstCall.args[2]).to.deep.equal(["AGE"]);
+    const profile = ((event.params as Record<string, unknown>).profiles as Array<Record<string, unknown>>)[0];
+    const small = profile.small_histogram as { bin_edges: string[]; bin_counts: number[]; quantiles: unknown[] };
+    expect(small.bin_edges[0]).to.equal("11");
+    expect(small.bin_edges[small.bin_edges.length - 1]).to.equal("16");
+    expect(small.bin_counts).to.have.length(small.bin_edges.length - 1);
+    expect(small.quantiles).to.deep.equal([]);
+    expect(profile.large_histogram).to.exist;
+  });
+
+  it("returns one bin holding every value for a constant column", async () => {
+    const client = makeClient({
+      getColumnBinningStats: sinon.stub().resolves([{ n: 7, min: 3, max: 3, q1: 3, q3: 3, nonInteger: 0 }]),
+      getColumnHistogramCounts: sinon.stub().resolves([[0]]),
+    });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    const event = await sendRpcForEvent(explorer, "get_column_profiles", {
+      callback_id: "cb-c",
+      profiles: [{ column_index: 2, profiles: [{ profile_type: "small_histogram", params: { num_bins: 80 } }] }],
+    });
+    const profile = ((event.params as Record<string, unknown>).profiles as Array<Record<string, unknown>>)[0];
+    expect(profile.small_histogram).to.deep.equal({ bin_edges: ["3", "3"], bin_counts: [7], quantiles: [] });
+  });
+
+  it("returns frequency tables for a character column", async () => {
+    const getFreq = sinon.stub().resolves([
+      { values: ["Alfred", "Alice"], counts: [1, 1], otherCount: 17 },
+    ]);
+    const explorer = new SasDataExplorer(makeClient({ getColumnFrequencyTables: getFreq }), "WORK", "CLASS");
+    const event = await sendRpcForEvent(explorer, "get_column_profiles", {
+      callback_id: "cb-f",
+      profiles: [{ column_index: 0, profiles: [{ profile_type: "small_frequency_table", params: { limit: 8 } }] }],
+    });
+    expect(getFreq.firstCall.args[2]).to.deep.equal([{ column: "NAME", limit: 8 }]);
+    const profile = ((event.params as Record<string, unknown>).profiles as Array<Record<string, unknown>>)[0];
+    expect(profile.small_frequency_table).to.deep.equal({
+      values: ["Alfred", "Alice"], counts: [1, 1], other_count: 17,
+    });
+  });
+
+  it("passes the active row filter to every profile query", async () => {
+    const client = makeClient({
+      getColumnBinningStats: sinon.stub().resolves([{ n: 5, min: 1, max: 9, q1: 2, q3: 7, nonInteger: 0 }]),
+    });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await sendRpc(explorer, "set_row_filters", {
+      filters: [{
+        filter_type: "compare",
+        column_schema: { column_index: 1 },
+        params: { op: ">", value: "12" },
+      }],
+    });
+    await sendRpcForEvent(explorer, "get_column_profiles", {
+      callback_id: "cb-w",
+      profiles: [{
+        column_index: 1,
+        profiles: [
+          { profile_type: "null_count" },
+          { profile_type: "small_histogram", params: { num_bins: 80 } },
+        ],
+      }],
+    });
+    for (const stub of ["getColumnNullCounts", "getColumnBinningStats", "getColumnHistogramCounts"] as const) {
+      expect((client[stub] as sinon.SinonStub).lastCall.args[3], stub).to.equal("AGE > 12");
+    }
   });
 
   it("returns {} as RPC result immediately (fire-and-forget pattern)", async () => {
@@ -368,5 +484,49 @@ describe("SasDataExplorer.get_column_profiles", () => {
       profiles: [],
     });
     expect(rpcReply.result).to.deep.equal({});
+  });
+});
+
+// ─── computeHistogramBins ─────────────────────────────────────────────────────
+
+describe("computeHistogramBins", () => {
+  const stats = (o: Partial<{ n: number; min: number | null; max: number | null; q1: number | null; q3: number | null; nonInteger: number }>) => ({
+    n: 100, min: 0, max: 10, q1: 2.5, q3: 7.5, nonInteger: 100, ...o,
+  });
+
+  it("uses the Freedman-Diaconis width", () => {
+    // width = 2 * 5 / cbrt(1000) = 1  →  10 bins over [0, 10]
+    const bins = computeHistogramBins(stats({ n: 1000 }), 80);
+    expect(bins.nbins).to.equal(10);
+    expect(bins.width).to.equal(1);
+    expect(bins.edges).to.have.length(11);
+    expect(bins.edges[0]).to.equal(0);
+    expect(bins.edges[10]).to.equal(10);
+  });
+
+  it("caps the number of bins at num_bins", () => {
+    const bins = computeHistogramBins(stats({ n: 1e6, max: 1000 }), 80);
+    expect(bins.nbins).to.equal(80);
+  });
+
+  it("falls back to Sturges when the IQR is 0", () => {
+    const bins = computeHistogramBins(stats({ n: 64, q1: 5, q3: 5 }), 80);
+    expect(bins.nbins).to.equal(7); // ceil(log2(64)) + 1
+  });
+
+  it("uses one [v, v] bin for a constant column", () => {
+    expect(computeHistogramBins(stats({ min: 4, max: 4 }), 80)).to.deep.equal({
+      lo: 4, width: 0, nbins: 1, edges: [4, 4],
+    });
+  });
+
+  it("uses no more bins than distinct integers for integer columns", () => {
+    // FD would ask for 1000 * 5 / ... bins; integers 0..4 need at most 5.
+    const bins = computeHistogramBins(stats({ n: 1e6, max: 4, q1: 1, q3: 3, nonInteger: 0 }), 80);
+    expect(bins.nbins).to.equal(5);
+  });
+
+  it("returns an empty histogram when there are no values", () => {
+    expect(computeHistogramBins(stats({ n: 0, min: null, max: null }), 80).nbins).to.equal(0);
   });
 });
