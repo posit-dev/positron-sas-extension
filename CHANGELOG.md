@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- Positron: the SAS sidebar no longer shows an empty Libraries view; libraries are listed in the Connections / Data Connections pane. SAS Content and SAS Server stay available [#54](https://github.com/posit-dev/positron-sas-extension/issues/54)
+
 ## 0.2.0 - 2026-10-18
 
 ### Features
