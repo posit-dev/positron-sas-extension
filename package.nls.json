@@ -67,6 +67,7 @@
   "configuration.SAS.log.showOnExecutionFinish": "Show SAS Log when code execution is finished",
   "configuration.SAS.log.showOnExecutionStart": "Show SAS Log when code execution starts",
   "configuration.SAS.notebook.export.includeLog": "Include SAS log in exported notebook",
+  "configuration.SAS.audit.logFile": "Positron only: file that records every SAS console submission (user, session, code and outcome) as JSON Lines, for audit and traceability. `~` expands to the home directory. Leave empty to turn auditing off.",
   "configuration.SAS.problems.log.enabled": "Show problems from SAS log",
   "configuration.SAS.results.html.custom.style": "Specifies which SAS style to use for the light, dark, highContrast, or highContrastLight themes. This option takes effect when `#SAS.results.html.style#` is set to `(auto)`.",
   "configuration.SAS.results.html.custom.style.dark": "Style to use for dark theme",

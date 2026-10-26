@@ -655,6 +655,13 @@
             "type": "boolean",
             "default": false,
             "description": "%configuration.SAS.notebook.export.includeLog%"
+          },
+          "SAS.audit.logFile": {
+            "order": 11,
+            "type": "string",
+            "default": "",
+            "scope": "machine",
+            "markdownDescription": "%configuration.SAS.audit.logFile%"
           }
         }
       }
@@ -1719,6 +1726,19 @@
           },
           {
             "filenamePattern": "*.SAS7BDAT"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "sas.xptViewer",
+        "displayName": "SAS Transport File Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.xpt"
+          },
+          {
+            "filenamePattern": "*.XPT"
           }
         ],
         "priority": "default"

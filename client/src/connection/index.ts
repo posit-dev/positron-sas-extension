@@ -35,6 +35,21 @@ export interface RunResult {
 export interface BaseConfig {
   sasOptions?: string[];
   autoExecLines?: string[];
+  sessionTags?: SessionTags;
+}
+
+/** Name, description and attributes recorded on a new SAS Viya compute session. */
+export interface SessionTags {
+  name?: string;
+  description?: string;
+  attributes?: { [key: string]: string };
+}
+
+let sessionTags: SessionTags | undefined;
+
+/** Set the tags added to SAS Viya compute sessions created from now on. */
+export function setSessionTags(tags: SessionTags | undefined): void {
+  sessionTags = tags;
 }
 
 export function getSession(): Session {
@@ -72,6 +87,7 @@ export function getSession(): Session {
  */
 function toRestConfig(profile: ViyaProfile): RestConfig {
   const mapped: RestConfig = profile;
+  mapped.sessionTags = sessionTags;
   if (profile.autoExec) {
     mapped.autoExecLines = toAutoExecLines(profile.autoExec);
   }

@@ -4,6 +4,7 @@ import { l10n } from "vscode";
 
 import { AxiosResponse } from "axios";
 
+import type { SessionTags } from "..";
 import { Link, Server, ServersApi, SessionRequest } from "./api/compute";
 import { BaseCompute, Compute, getApiConfig, stateOptions } from "./common";
 import { ComputeSession } from "./session";
@@ -15,6 +16,7 @@ export class ComputeServer extends Compute {
   _self: Server & BaseCompute;
   _options?: string[];
   _autoExecLines?: string[];
+  _sessionTags?: SessionTags;
 
   constructor(id: string) {
     super();
@@ -38,6 +40,10 @@ export class ComputeServer extends Compute {
 
   set autoExecLines(value: string[]) {
     this._autoExecLines = value;
+  }
+
+  set sessionTags(value: SessionTags | undefined) {
+    this._sessionTags = value;
   }
 
   static fromInterface(server: Server): ComputeServer {
@@ -88,6 +94,7 @@ export class ComputeServer extends Compute {
       name: "mysess",
       description: "This is a session",
       attributes: {},
+      ...this._sessionTags,
       environment: {
         options: [...DEFAULT_COMPUTE_OPTS, ...this._options],
         autoExecLines: this._autoExecLines || [],

@@ -228,6 +228,7 @@ export class SasServerFilesConnection {
         return ICON_SAS_PROGRAM;
       case "sas7bdat":
       case "sas7bvew":
+      case "xpt":
         return ICON_SAS_DATASET;
       default:
         return "";

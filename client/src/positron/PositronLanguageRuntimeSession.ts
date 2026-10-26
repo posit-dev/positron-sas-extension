@@ -1,17 +1,34 @@
 // Copyright © 2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Disposable, EventEmitter, Uri, window } from "vscode";
+import {
+  Disposable,
+  EventEmitter,
+  Uri,
+  authentication,
+  window,
+  workspace,
+} from "vscode";
 
 import { v4 as uuidv4 } from "uuid";
 
 import { profileConfig } from "../commands/profile";
 import { ConnectionType } from "../components/profile";
-import { type LogLine, getSession } from "../connection";
+import { type LogLine, getSession, setSessionTags } from "../connection";
 import { sasDiagnostic } from "../components/logViewer/sasDiagnostics";
 import { SASCodeDocument } from "../components/utils/SASCodeDocument";
 import { getCodeDocumentConstructionParameters } from "../components/utils/SASCodeDocumentHelper";
+import { AuditLog } from "./auditLog";
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
+import {
+  type SessionIdentity,
+  buildIdentityMacroCode,
+  buildJobTags,
+  buildSessionTags,
+  buildSubmissionComment,
+  getSessionIdentity,
+  tagCode,
+} from "./sessionIdentity";
 import { SasConnection } from "./sasConnection";
 import { SasDataExplorer } from "./sasDataExplorer";
 import {
@@ -68,6 +85,18 @@ interface SortKey {
   ascending: boolean;
 }
 
+// Console submissions are appended here when SAS.audit.logFile is set
+// (posit-dev/positron-sas-extension#58).
+const auditLog = new AuditLog(
+  () => workspace.getConfiguration("SAS").get<string>("audit.logFile"),
+  (error, file) => {
+    console.error(`SAS audit log: cannot write ${file}:`, error);
+    window.showWarningMessage(
+      `SAS audit log: cannot write ${file}: ${error.message}`,
+    );
+  },
+);
+
 // ColumnInfo is imported from sasClient
 type ColumnInfo = SasColumnInfo;
 
@@ -77,6 +106,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   private _runtimeMetadata: LanguageRuntimeMetadata;
   private _profileName: string;
+  private _identity!: SessionIdentity;
   private _sasSession: Session | undefined;
   private _runtimeInfo: LanguageRuntimeInfo | undefined;
   private _state: RuntimeState = RuntimeState.Uninitialized;
@@ -189,6 +219,13 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this.setState(RuntimeState.Starting);
 
     try {
+      // Identify the user and session so submissions can be traced (#58).
+      const profile = profileConfig.getProfileByName(this._profileName);
+      const connectionType =
+        profile && "connectionType" in profile ? String(profile.connectionType) : "";
+      this._identity = getSessionIdentity(this.sessionId, this._profileName, connectionType);
+      setSessionTags(buildSessionTags(this._identity));
+
       // Get the SAS session using existing connection logic
       this._sasSession = getSession();
       console.log("SAS session obtained:", !!this._sasSession);
@@ -212,7 +249,10 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       // initialized before any real queries hit it. Without this, the first
       // silentExecute often returns empty because the session isn't ready.
       // The extra delay lets the SSH stream fully drain any residual buffered data.
-      await this._sasSession.run("options nosource nonotes; %put; options notes source;");
+      this._identity.sasUser = await this.getSasUser(profile);
+      await this._sasSession.run(
+        `options nosource nonotes; ${buildIdentityMacroCode(this._identity)} %put; options notes source;`,
+      );
       await new Promise((r) => setTimeout(r, 500));
 
       this._runtimeInfo = {
@@ -254,6 +294,26 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       this.setState(RuntimeState.Exited);
       throw error;
     }
+  }
+
+  /** The SAS-side account: the signed-in Viya user, or the profile username. */
+  private async getSasUser(
+    profile: ReturnType<typeof profileConfig.getProfileByName>,
+  ): Promise<string | undefined> {
+    if (!profile || !("connectionType" in profile)) {
+      return undefined;
+    }
+    if (profile.connectionType === ConnectionType.Rest) {
+      try {
+        const session = await authentication.getSession("SAS", [], { silent: true });
+        return session?.account.label;
+      } catch {
+        return undefined;
+      }
+    }
+    return "username" in profile && typeof profile.username === "string"
+      ? profile.username
+      : undefined;
   }
 
   /** Open the Connections Pane comm for this session. */
@@ -411,7 +471,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   }
 
   /** Open a Data Explorer comm for a dataset. */
-  openDataExplorer(lib: string, mem: string): void {
+  openDataExplorer(lib: string, mem: string, title = `${lib}.${mem}`): void {
     const explorer = new SasDataExplorer(this.getSasClient(), lib, mem);
     this._dataExplorers.set(explorer.id, explorer);
 
@@ -429,14 +489,14 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       this.fireCommMessage("comm_open", {
         comm_id: explorer.id,
         target_name: "positron.dataExplorer",
-        data: { title: `${lib}.${mem}` },
+        data: { title },
       });
     }).catch(() => {
       // Open anyway even if warm-up fails — Positron will retry on demand.
       this.fireCommMessage("comm_open", {
         comm_id: explorer.id,
         target_name: "positron.dataExplorer",
-        data: { title: `${lib}.${mem}` },
+        data: { title },
       });
     });
   }
@@ -563,9 +623,34 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       `  options(bitmap_mode='inline' svg_mode='inline')`,
       `  body="${odsBodyId}.htm";`,
     ].join("\n");
-    const wrappedCode = hasOdsHtml
-      ? code
-      : `options source notes;\n${odsOpen}\n${code}\n;*';*";*/;run;quit;ods html5(id=vscode) close;`;
+    // Tag the submission on its first line so it is traceable in the SAS log
+    // without shifting log line numbers (#58).
+    const wrappedCode = tagCode(
+      hasOdsHtml
+        ? code
+        : `options source notes;\n${odsOpen}\n${code}\n;*';*";*/;run;quit;ods html5(id=vscode) close;`,
+      buildSubmissionComment(this._identity, id),
+    );
+
+    const startedAt = Date.now();
+    void auditLog.write({
+      event: "input",
+      ts: new Date(startedAt).toISOString(),
+      ...this._identity,
+      executionId: id,
+      code,
+    });
+    const auditComplete = (status: "ok" | "error") =>
+      void auditLog.write({
+        event: "complete",
+        ts: new Date().toISOString(),
+        positronSessionId: this._identity.positronSessionId,
+        executionId: id,
+        status,
+        errorCount: this._execErrorCount,
+        warningCount: this._execWarningCount,
+        durationMs: Date.now() - startedAt,
+      });
 
     // Collect every log line so we can run the existing parseLog→diagnostics
     // pipeline after execution. All types are needed: 'source' lines carry
@@ -595,7 +680,13 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
           this.emitLogMessage(log.line, log.type, this._currentExecutionId);
         });
       };
-      return this._sasSession!.run(wrappedCode);
+      // Job tags are REST-only; ITC reads its second run() argument as a
+      // skipPageHeaders flag, so don't pass anything there.
+      return this._identity.connectionType === ConnectionType.Rest
+        ? this._sasSession!.run(wrappedCode, {
+            jobTags: buildJobTags(this._identity, id),
+          })
+        : this._sasSession!.run(wrappedCode);
     };
 
     runWhenReady()
@@ -604,6 +695,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         console.log(`  - html5 length: ${result.html5?.length || 0}`);
         console.log(`  - html5 value: ${result.html5?.substring(0, 200) || 'empty'}`);
         console.log(`  - title: ${result.title || 'empty'}`);
+
+        auditComplete(this._execErrorCount > 0 ? "error" : "ok");
 
         if (result.html5 && result.html5.trim()) {
           this.emitOutputMessage(result.html5, "text/html", id);
@@ -663,6 +756,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       })
       .catch((error) => {
         console.error(`Execution error:`, error);
+        auditComplete("error");
         this.emitErrorMessage(error.message || String(error), id);
 
         // Send "state: idle" so the assistant knows execution finished (even on error).
@@ -1056,6 +1150,11 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    */
   runSilent(code: string): Promise<string> {
     return this.silentExecute(code);
+  }
+
+  /** Return the DATA/VIEW members of a library. */
+  listMembers(lib: string): Promise<Array<{ name: string; type: string }>> {
+    return this.getSasClient().getLibraryMembers(lib);
   }
 
   /** Return (or lazily create) the SasClient bound to this session's silentExecute. */
