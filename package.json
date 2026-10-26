@@ -1272,12 +1272,12 @@
         },
         {
           "command": "SAS.clinical.addFolder",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && !listMultiSelection",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "1_new@0"
         },
         {
           "submenu": "SAS.clinical.checkOutSubmenu",
-          "when": "view == clinicalrepositorydataprovider && (viewItem =~ /;container;/ || viewItem =~ /;coNone;/)",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;canWrite;/ && (viewItem =~ /;container;/ || viewItem =~ /;coNone;/)",
           "group": "2_checkout@0"
         },
         {
@@ -1292,7 +1292,7 @@
         },
         {
           "command": "SAS.clinical.rename",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;canRename;/ && !listMultiSelection",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;canRename;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "4_modify@0"
         },
         {
@@ -1302,12 +1302,12 @@
         },
         {
           "command": "SAS.clinical.upload",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && !listMultiSelection",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "5_transfer@1"
         },
         {
           "command": "SAS.clinical.uploadAndExpand",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && !listMultiSelection",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "5_transfer@2"
         }
       ],

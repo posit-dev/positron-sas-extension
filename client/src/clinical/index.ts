@@ -47,7 +47,7 @@ export class ClinicalRepository {
       log: true,
     });
     const log = (message: string) => output.info(message);
-    const model = new RepositoryModel();
+    const model = new RepositoryModel(log);
     const decorator = new RepositoryDecorator();
     const provider = new RepositoryDataProvider(
       model,

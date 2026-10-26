@@ -4,7 +4,7 @@
 
 ### Features
 
-- SAS Clinical Acceleration Repository view: it is detected automatically when the active profile is a SAS Viya profile whose server runs the Clinical Repository service, and it uses the existing SAS Viya sign-in. You can browse, open (read-only), create folders, rename, upload or upload and expand, download, copy paths, and check out / undo check out. Ported from SAS's Clinical Acceleration extension for VS Code [#60](https://github.com/posit-dev/positron-sas-extension/issues/60)
+- SAS Clinical Acceleration Repository view: it is detected automatically when the active profile is a SAS Viya profile whose server runs the Clinical Repository service, and it uses the existing SAS Viya sign-in. You can browse, open (read-only), create folders, rename, upload or upload and expand, download, copy paths, and check out / undo check out. Actions that change an item (check out, rename, new folder, upload) are offered only where you have write permission, so read-only files still show Copy Path and Download. Ported from SAS's Clinical Acceleration extension for VS Code [#60](https://github.com/posit-dev/positron-sas-extension/issues/60)
 - Traceability of SAS console code, including code run by Positron Assistant [#58](https://github.com/posit-dev/positron-sas-extension/issues/58):
   - New setting `SAS.audit.logFile`: when set, every console submission (user, host, Positron and Posit Workbench session, profile, code) and its outcome are appended to that file as JSON Lines
   - Each submission carries a `/* positron: user=… session=… exec=… */` comment, so it can be traced in the SAS log

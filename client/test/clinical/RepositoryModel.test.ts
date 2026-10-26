@@ -202,6 +202,102 @@ describe("Clinical RepositoryModel", () => {
     expect(connection.post.firstCall.args[1]).to.deep.equal([file.path]);
   });
 
+  describe("permissions", () => {
+    const permissionsUrl = (id: string) =>
+      `/clinicalRepository/authorizations/${id}/permissions`;
+
+    it("looks up effective permissions once per item", async () => {
+      connection.get.withArgs(permissionsUrl("11")).resolves({
+        data: ["READ", "WRITE"],
+      });
+      connection.get.withArgs(permissionsUrl("12")).resolves({
+        data: ["READ"],
+      });
+      expect(model.getKnownPermission("11")).to.be.undefined;
+      expect(await model.loadPermission("11")).to.equal("write");
+      expect(await model.loadPermission("12")).to.equal("read");
+      expect(await model.loadPermission("11")).to.equal("write");
+      expect(model.getKnownPermission("12")).to.equal("read");
+      expect(
+        connection.get
+          .getCalls()
+          .filter((c) => c.args[0] === permissionsUrl("11")),
+      ).to.have.length(1);
+    });
+
+    it("treats a 403 on the lookup as read-only", async () => {
+      connection.get.withArgs(permissionsUrl("11")).rejects(
+        Object.assign(new Error("403"), {
+          isAxiosError: true,
+          response: { status: 403 },
+        }),
+      );
+      expect(await model.loadPermission("11")).to.equal("read");
+    });
+
+    it("fails open when the endpoint is unavailable, and stops asking", async () => {
+      const log = sinon.stub();
+      model = new RepositoryModel(log);
+      connection.get.withArgs(permissionsUrl("11")).rejects(
+        Object.assign(new Error("404"), {
+          isAxiosError: true,
+          response: { status: 404 },
+        }),
+      );
+      expect(await model.loadPermission("11")).to.equal("write");
+      expect(await model.loadPermission("12")).to.equal("write");
+      expect(model.getKnownPermission("99")).to.equal("write");
+      expect(log.calledOnce).to.be.true;
+      expect(
+        connection.get
+          .getCalls()
+          .filter((c) => String(c.args[0]).includes("/authorizations/")),
+      ).to.have.length(1);
+      // Refresh (reset) tries again.
+      model.reset();
+      expect(model.getKnownPermission("99")).to.be.undefined;
+    });
+
+    it("limits concurrent lookups", async () => {
+      let running = 0;
+      let peak = 0;
+      connection.get.callsFake(async (url: string) => {
+        if (!url.includes("/authorizations/")) {
+          return { data: {} };
+        }
+        running++;
+        peak = Math.max(peak, running);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        running--;
+        return { data: ["READ"] };
+      });
+      await Promise.all(
+        Array.from({ length: 30 }, (_, i) => model.loadPermission(`i${i}`)),
+      );
+      expect(peak).to.be.at.most(8);
+    });
+
+    it("retries after a failure that isn't about permissions", async () => {
+      sandbox.restore();
+      sandbox = sinon.createSandbox();
+      const profile = sandbox
+        .stub(profileConfig, "getActiveProfileDetail")
+        .returns(undefined);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        let error: unknown;
+        try {
+          await model.loadPermission("11");
+        } catch (e) {
+          error = e;
+        }
+        expect(error).to.be.instanceOf(Error);
+      }
+      // Each call tried again instead of reusing the failed lookup.
+      expect(profile.callCount).to.equal(2);
+      expect(model.getKnownPermission("11")).to.be.undefined;
+    });
+  });
+
   it("refuses non-Viya profiles", async () => {
     sandbox.restore();
     sandbox = sinon.createSandbox();

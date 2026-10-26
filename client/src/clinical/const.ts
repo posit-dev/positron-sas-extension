@@ -18,6 +18,10 @@ export const TYPES = "/clinicalRepository/types";
 export const WORKSPACE_ITEMS_BATCH =
   "/clinicalRepository/workspaces/@currentUser/items/batch";
 export const ACTION_STATUS = "/clinicalActionStatus/actionstatus";
+// Effective permissions of the signed-in user on an item. Not in the public
+// v3 spec, but listed in the service's root links and used by SAS's own
+// Clinical Acceleration extension.
+export const AUTHORIZATIONS = "/clinicalRepository/authorizations";
 
 export const API_MEDIA_TYPE = "application/vnd.sas.api+json";
 export const REPOSITORY_ITEM_MEDIA_TYPE =
@@ -29,3 +33,4 @@ export const ACTION_STATUS_MEDIA_TYPE =
 export const ROOT_ITEM_ID = "1";
 export const CHILDREN_PAGE_LIMIT = 500;
 export const MAX_CHILDREN_PAGES = 100;
+export const PERMISSION_CONCURRENCY = 8;
