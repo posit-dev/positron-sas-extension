@@ -134,6 +134,7 @@ class RestSession extends Session {
           const server1 = new ComputeServer(this._config.serverId);
           server1.options = formattedOpts;
           server1.autoExecLines = this._config.autoExecLines;
+          server1.sessionTags = this._config.sessionTags;
           this._computeSession = await server1.getSession();
         } else {
           const contextsApi = ContextsApi(apiConfig);
@@ -145,6 +146,7 @@ class RestSession extends Session {
               {
                 contextId: context.id,
                 sessionRequest: {
+                  ...this._config.sessionTags,
                   environment: {
                     options: [...formattedOpts],
                     autoExecLines: [...autoExecLines],
@@ -198,6 +200,7 @@ class RestSession extends Session {
 
     //Get the job
     const job = await this._computeSession.execute({
+      ...runArgs.jobTags,
       code: [code],
       variables: variables,
     });
