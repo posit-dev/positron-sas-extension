@@ -7,6 +7,7 @@ import {
   Uri,
   WebviewPanel,
   window,
+  workspace,
 } from "vscode";
 
 import * as fs from "fs";
@@ -82,8 +83,9 @@ export class XptEditorProvider implements CustomReadonlyEditorProvider<XptDocume
     document: XptDocument,
     webviewPanel: WebviewPanel,
   ): Promise<void> {
-    const filePath = document.uri.fsPath;
-    const fileName = path.basename(filePath);
+    const uri = document.uri;
+    const local = uri.scheme === "file";
+    const fileName = path.basename(local ? uri.fsPath : uri.path);
     const webview = webviewPanel.webview;
 
     webview.html = this.getHtml(
@@ -99,7 +101,14 @@ export class XptEditorProvider implements CustomReadonlyEditorProvider<XptDocume
     }
 
     try {
-      const format = detectTransportFormat(await readHeader(filePath));
+      // Files from non-local views (Clinical Repository, SAS Content) are
+      // read through VS Code and copied into WORK, where SAS can read them.
+      const content = local ? undefined : await workspace.fs.readFile(uri);
+      const format = detectTransportFormat(
+        content
+          ? content.subarray(0, TRANSPORT_HEADER_BYTES)
+          : await readHeader(uri.fsPath),
+      );
       if (!format) {
         webview.html = this.getErrorHtml(
           `${fileName} is not a SAS transport file (XPORT or CPORT).`,
@@ -107,7 +116,14 @@ export class XptEditorProvider implements CustomReadonlyEditorProvider<XptDocume
         return;
       }
 
-      const libref = this.librefs.librefFor(filePath);
+      const libref = this.librefs.librefFor(uri.toString());
+      const filePath = content
+        ? await session.uploadToWork(
+            "_fxptsrc",
+            `${libref.toLowerCase()}.xpt`,
+            content,
+          )
+        : uri.fsPath;
       const log = await session.runSilent(
         buildTransportLoadCode(format, filePath, libref),
       );

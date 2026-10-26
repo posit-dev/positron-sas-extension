@@ -90,21 +90,51 @@ export function findSasErrors(log: string): string[] {
 }
 
 /**
- * Hands out one libref per transport file (`_FXPT1`, `_FXPT2`, ...), so
- * reopening a file refreshes its own library and never clobbers a dataset
- * from another file that is still open in the Data Explorer.
+ * Hands out one libref per file (`_FXPT1`, `_FXPT2`, ...), so reopening a
+ * file refreshes its own library and never clobbers a dataset from another
+ * file that is still open in the Data Explorer.
  */
 export class TransportLibrefPool {
   private readonly librefs = new Map<string, string>();
+  // Librefs are at most 8 characters: the prefix plus a counter.
+  private readonly max: number;
 
-  librefFor(filePath: string): string {
-    let libref = this.librefs.get(filePath);
+  constructor(private readonly prefix = "_FXPT") {
+    this.max = 10 ** (8 - prefix.length) - 1;
+  }
+
+  librefFor(key: string): string {
+    let libref = this.librefs.get(key);
     if (!libref) {
-      // Librefs are at most 8 characters: "_FXPT" plus up to three digits.
-      const next = (this.librefs.size % 999) + 1;
-      libref = `_FXPT${next}`;
-      this.librefs.set(filePath, libref);
+      libref = `${this.prefix}${(this.librefs.size % this.max) + 1}`;
+      this.librefs.set(key, libref);
     }
     return libref;
   }
+}
+
+/** Marker line used to read the WORK path back from the SAS log. */
+export const WORK_PATH_MARKER = "_POSIT_WORK_=";
+
+/**
+ * SAS code that creates `subdir` under WORK and prints the WORK path on a
+ * line of its own (source echo off, so only the %put output matches).
+ */
+export function buildWorkSubdirCode(subdir: string): string {
+  return [
+    "options nosource nonotes;",
+    `data _null_; length d $1024; d=dcreate("${subdir}", pathname("work")); run;`,
+    `%put ${WORK_PATH_MARKER}%sysfunc(pathname(work));`,
+    "options notes source;",
+  ].join("\n");
+}
+
+/** The WORK path printed by {@link buildWorkSubdirCode}. */
+export function parseWorkPath(log: string): string | undefined {
+  const line = log
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find((l) => l.startsWith(WORK_PATH_MARKER));
+  const value = line?.slice(WORK_PATH_MARKER.length).trim();
+  return value || undefined;
 }

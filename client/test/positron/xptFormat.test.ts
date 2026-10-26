@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect } from "chai";
 
+import { toComputePath } from "../../src/positron/computeFiles";
 import {
   TransportLibrefPool,
   buildTransportLoadCode,
+  buildWorkSubdirCode,
   detectTransportFormat,
   findSasErrors,
+  parseWorkPath,
 } from "../../src/positron/xptFormat";
 
 const header = (text: string) =>
@@ -119,5 +122,44 @@ describe("TransportLibrefPool", () => {
     for (let i = 0; i < 1200; i++) {
       expect(pool.librefFor(`/f${i}.xpt`).length).to.be.at.most(8);
     }
+  });
+});
+
+describe("TransportLibrefPool prefixes", () => {
+  it("uses the prefix and stays within 8 characters", () => {
+    const pool = new TransportLibrefPool("_FVW");
+    expect(pool.librefFor("a")).to.equal("_FVW1");
+    for (let i = 0; i < 12000; i++) {
+      expect(pool.librefFor(`k${i}`).length).to.be.at.most(8);
+    }
+  });
+});
+
+describe("WORK path helpers", () => {
+  it("creates the subdirectory and prints WORK without echoing source", () => {
+    const code = buildWorkSubdirCode("_fvw1");
+    expect(code.startsWith("options nosource nonotes;")).to.be.true;
+    expect(code).to.include('dcreate("_fvw1", pathname("work"))');
+    expect(code).to.include("%put _POSIT_WORK_=%sysfunc(pathname(work));");
+  });
+
+  it("reads the WORK path from the log, ignoring echoed source", () => {
+    const log = [
+      "12   %put _POSIT_WORK_=%sysfunc(pathname(work));",
+      "_POSIT_WORK_=/opt/sas/viya/saswork/SAS_work1234_sas-compute",
+      "NOTE: done",
+    ].join("\n");
+    expect(parseWorkPath(log)).to.equal(
+      "/opt/sas/viya/saswork/SAS_work1234_sas-compute",
+    );
+    expect(parseWorkPath("NOTE: nothing")).to.be.undefined;
+  });
+});
+
+describe("toComputePath", () => {
+  it("maps absolute server paths to the compute file API form", () => {
+    expect(toComputePath("/opt/saswork/_fvw1")).to.equal(
+      "~fs~opt~fs~saswork~fs~_fvw1",
+    );
   });
 });

@@ -19,6 +19,7 @@ import { sasDiagnostic } from "../components/logViewer/sasDiagnostics";
 import { SASCodeDocument } from "../components/utils/SASCodeDocument";
 import { getCodeDocumentConstructionParameters } from "../components/utils/SASCodeDocumentHelper";
 import { AuditLog } from "./auditLog";
+import { writeComputeFile } from "./computeFiles";
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
 import {
   type SessionIdentity,
@@ -30,6 +31,7 @@ import {
   tagCode,
 } from "./sessionIdentity";
 import { SasConnection } from "./sasConnection";
+import { buildWorkSubdirCode, parseWorkPath } from "./xptFormat";
 import { SasDataExplorer } from "./sasDataExplorer";
 import {
   SasServerFilesConnection,
@@ -1150,6 +1152,32 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    */
   runSilent(code: string): Promise<string> {
     return this.silentExecute(code);
+  }
+
+  /**
+   * Copy a file into `subdir` under this session's WORK directory and return
+   * its path on the SAS server. Used for files that aren't on a disk SAS can
+   * read, e.g. ones opened from the Clinical Repository or SAS Content views.
+   * WORK is always readable, even when SAS runs in lockdown. SAS Viya only.
+   */
+  async uploadToWork(
+    subdir: string,
+    name: string,
+    content: Uint8Array,
+  ): Promise<string> {
+    const sessionId = this._sasSession?.sessionId?.();
+    if (this._identity?.connectionType !== ConnectionType.Rest || !sessionId) {
+      throw new Error(
+        "Files that are not on the local disk can only be opened with a SAS Viya session.",
+      );
+    }
+    const workPath = parseWorkPath(
+      await this.runSilent(buildWorkSubdirCode(subdir)),
+    );
+    if (!workPath) {
+      throw new Error("Could not determine the SAS WORK directory.");
+    }
+    return writeComputeFile(sessionId, `${workPath}/${subdir}`, name, content);
   }
 
   /** Return the DATA/VIEW members of a library. */

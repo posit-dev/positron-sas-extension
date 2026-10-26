@@ -12,9 +12,10 @@ import {
   Uri,
   WebviewPanel,
   window,
+  workspace,
 } from "vscode";
 import { getActiveSession } from "./index";
-import { findSasErrors } from "./xptFormat";
+import { TransportLibrefPool, findSasErrors } from "./xptFormat";
 
 /** Minimal document representing a .sas7bdat file. */
 class Sas7bdatDocument implements CustomDocument {
@@ -34,6 +35,10 @@ export class Sas7bdatEditorProvider
   implements CustomReadonlyEditorProvider<Sas7bdatDocument>
 {
   static readonly viewType = "sas.sas7bdatViewer";
+
+  // Datasets from non-local views (Clinical Repository, SAS Content) are
+  // copied into WORK, one directory and libref per file.
+  private readonly uploadLibrefs = new TransportLibrefPool("_FVW");
 
   static register(context: ExtensionContext): void {
     const provider = new Sas7bdatEditorProvider();
@@ -59,11 +64,13 @@ export class Sas7bdatEditorProvider
     webviewPanel: WebviewPanel,
     _token: CancellationToken,
   ): Promise<void> {
-    const filePath = document.uri.fsPath;
-    const dir = path.dirname(filePath);
+    const uri = document.uri;
+    const local = uri.scheme === "file";
+    const filePath = local ? uri.fsPath : uri.path;
+    let dir = path.dirname(filePath);
     const ext = path.extname(filePath);
     const member = path.basename(filePath, ext).toUpperCase();
-    const libname = "_FVIEW";
+    let libname = "_FVIEW";
 
     webviewPanel.webview.html = this.getLoadingHtml(member);
 
@@ -76,13 +83,28 @@ export class Sas7bdatEditorProvider
     }
 
     try {
+      if (!local) {
+        // Not on a disk SAS can read: copy it into WORK first. SAS on UNIX
+        // only finds datasets whose file names are lowercase.
+        libname = this.uploadLibrefs.librefFor(uri.toString());
+        const serverPath = await session.uploadToWork(
+          libname.toLowerCase(),
+          `${member.toLowerCase()}${ext.toLowerCase()}`,
+          await workspace.fs.readFile(uri),
+        );
+        dir = path.posix.dirname(serverPath);
+      }
       const code = `libname ${libname} '${dir.replace(/'/g, "''")}';`;
       const errors = findSasErrors(await session.runSilent(code));
       if (errors.length > 0) {
         throw new Error(errors.join(" "));
       }
       session.openDataExplorer(libname, member);
-      webviewPanel.webview.html = this.getSuccessHtml(member, dir);
+      webviewPanel.webview.html = this.getSuccessHtml(
+        member,
+        local ? dir : path.dirname(filePath),
+        libname,
+      );
     } catch (error) {
       const msg =
         error instanceof Error ? error.message : String(error);
@@ -99,13 +121,13 @@ export class Sas7bdatEditorProvider
 </body></html>`;
   }
 
-  private getSuccessHtml(member: string, dir: string): string {
+  private getSuccessHtml(member: string, dir: string, libname: string): string {
     return `<!DOCTYPE html>
 <html><body style="font-family:sans-serif;padding:20px;color:#ccc;background:#1e1e1e;">
 <h2>${member}</h2>
 <p style="color:#999;">Opened in Data Explorer</p>
 <p style="color:#666;font-size:12px;">Source: ${dir}</p>
-<p style="color:#666;font-size:12px;">Library: _FVIEW</p>
+<p style="color:#666;font-size:12px;">Library: ${libname}</p>
 <p style="margin-top:20px;color:#999;">You can close this tab — the data is displayed in the Data Explorer pane.</p>
 </body></html>`;
   }
