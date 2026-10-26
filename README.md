@@ -7,7 +7,7 @@ While the VS Code Extension for SAS is fully functional in Positron, the Extensi
 - Ability to start SAS from the "Start Session" menu (the same as starting an R or Python session)
 - See all your SAS data libraries in the Connection Pane of Positron
 - Full integration into Data Explorer including code export functionality
-- Open sas7bdat files listed in the file browser directly in Data Explorer
+- Open sas7bdat and SAS transport (.xpt) files listed in the file browser directly in Data Explorer
 - LLM Integration with Posit(ron) Assistant for both coding assistance but also exploratory data analysis
 - Export and summarize LLM chat as quarto document with full code included.
 - Traceability of console code: every submission is tagged with the user and session in the SAS log (and on SAS Viya, in the compute session and job metadata). Set `SAS.audit.logFile` to also keep a local JSON Lines audit log
