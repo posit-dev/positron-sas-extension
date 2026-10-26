@@ -65,6 +65,7 @@ import {
   // getDataViewerProvider,
   // getRuntimeManager,
 } from "../positron";
+import { ClinicalRepository } from "../clinical";
 import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
 
 let client: LanguageClient;
@@ -224,6 +225,7 @@ export async function activate(context: ExtensionContext) {
 
   // Open .sas7bdat files in Positron's Data Explorer via custom editor
   Sas7bdatEditorProvider.register(context);
+  ClinicalRepository.register(context);
 
   // Reset first to set "No Active Profiles"
   resetStatusBarItem();

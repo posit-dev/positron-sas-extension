@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- SAS Clinical Acceleration Repository view: it is detected automatically when the active profile is a SAS Viya profile whose server runs the Clinical Repository service, and it uses the existing SAS Viya sign-in. You can browse, open (read-only), create folders, rename, upload or upload and expand, download, copy paths, and check out / undo check out. Ported from SAS's Clinical Acceleration extension for VS Code [#60](https://github.com/posit-dev/positron-sas-extension/issues/60)
+
 ## 0.2.1 - 2026-10-21
 
 ### Bug Fixes
