@@ -124,12 +124,72 @@ const CHECKOUT_TOKENS: Record<CheckoutState, string> = {
  * Tree item context value, matched by the `viewItem =~ /;token;/` clauses
  * in package.json. Tokens are delimited so one can't match inside another.
  */
+/** Whether the signed-in user may change an item, as far as we know yet. */
+export type ItemPermission = "write" | "read" | "unknown";
+
+const PERMISSION_TOKENS: Record<ItemPermission, string> = {
+  write: "canWrite",
+  read: "readOnly",
+  unknown: "permUnknown",
+};
+
+/**
+ * Whether an effective-permissions response grants WRITE. Accepts the shapes
+ * the service may use (an array of names, a delimited string, or an object
+ * holding such a list); undefined if the response isn't recognisable.
+ */
+export function parseWritePermission(data: unknown): boolean | undefined {
+  let names: unknown = data;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    names =
+      "permissions" in data
+        ? data.permissions
+        : "items" in data
+          ? data.items
+          : undefined;
+  }
+  if (typeof names === "string") {
+    names = names.split(/[\s,]+/);
+  }
+  if (!Array.isArray(names)) {
+    return undefined;
+  }
+  return names.some((n) => String(n).toUpperCase() === "WRITE");
+}
+
+/** Run at most `limit` of the given tasks at a time. */
+export function createLimiter(
+  limit: number,
+): <T>(task: () => Promise<T>) => Promise<T> {
+  let active = 0;
+  const waiting: Array<() => void> = [];
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (active < limit) {
+      active++;
+    } else {
+      // The finishing task hands its slot over, so `active` stays the same.
+      await new Promise<void>((resolve) => waiting.push(resolve));
+    }
+    try {
+      return await task();
+    } finally {
+      const next = waiting.shift();
+      if (next) {
+        next();
+      } else {
+        active--;
+      }
+    }
+  };
+}
+
 export function buildContextValue(
   item: RepositoryItem,
   type: ObjectType | undefined,
   currentUserId: string | undefined,
+  permission: ItemPermission = "unknown",
 ): string {
-  const tokens = ["clinical"];
+  const tokens = ["clinical", PERMISSION_TOKENS[permission]];
   if (isContainer(item)) {
     tokens.push("container", "canCreate");
   } else {

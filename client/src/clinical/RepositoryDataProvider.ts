@@ -119,6 +119,16 @@ export class RepositoryDataProvider
     const uri = getItemUri(item);
     const type = await this.model.getObjectType(item.typeId);
     const userId = await this.model.getCurrentUserId();
+    let permission = this.model.getKnownPermission(item.id);
+    if (!permission) {
+      // Render now with write actions hidden; refine this item's menu once
+      // the permission lookup returns.
+      permission = "unknown";
+      this.model.loadPermission(item.id).then(
+        () => this._onDidChangeTreeData.fire(item),
+        () => {},
+      );
+    }
     if (!container) {
       this.decorator.set(
         uri,
@@ -132,7 +142,7 @@ export class RepositoryDataProvider
       resourceUri: uri,
       tooltip: item.path,
       iconPath: this.iconFor(item, type?.name),
-      contextValue: buildContextValue(item, type, userId),
+      contextValue: buildContextValue(item, type, userId, permission),
       collapsibleState: container
         ? TreeItemCollapsibleState.Collapsed
         : TreeItemCollapsibleState.None,

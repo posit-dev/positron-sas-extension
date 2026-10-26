@@ -16,10 +16,12 @@ import {
   buildIdFilter,
   classifyProbe,
   collectPages,
+  createLimiter,
   downloadFileName,
   extractSingleZipEntry,
   isAvailable,
   isZip,
+  parseWritePermission,
   validateFileName,
   validateFolderName,
   validateVersion,
@@ -147,17 +149,17 @@ describe("classifyProbe / isAvailable", () => {
 
 describe("buildContextValue", () => {
   it("marks containers and protects top-level contexts from rename", () => {
-    expect(buildContextValue(folder, undefined, "me")).to.equal(
-      ";clinical;container;canCreate;canRename;",
+    expect(buildContextValue(folder, undefined, "me", "write")).to.equal(
+      ";clinical;canWrite;container;canCreate;canRename;",
     );
-    expect(buildContextValue(org, topType, "me")).to.equal(
-      ";clinical;container;canCreate;",
+    expect(buildContextValue(org, topType, "me", "write")).to.equal(
+      ";clinical;canWrite;container;canCreate;",
     );
   });
 
   it("reflects who has a file checked out", () => {
-    expect(buildContextValue(file(), undefined, "me")).to.equal(
-      ";clinical;file;coNone;canRename;",
+    expect(buildContextValue(file(), undefined, "me", "write")).to.equal(
+      ";clinical;canWrite;file;coNone;canRename;",
     );
     expect(
       buildContextValue(
@@ -173,6 +175,15 @@ describe("buildContextValue", () => {
         "me",
       ),
     ).to.include(";coOther;");
+  });
+
+  it("records the permission, unknown until looked up", () => {
+    expect(buildContextValue(file(), undefined, "me")).to.include(
+      ";permUnknown;",
+    );
+    expect(buildContextValue(file(), undefined, "me", "read")).to.include(
+      ";readOnly;",
+    );
   });
 
   // Evaluate the package.json `when` clauses of the view's context menu
@@ -210,22 +221,22 @@ describe("buildContextValue", () => {
         .map((menu) => menu.command ?? menu.submenu);
 
     it("offers folder actions on containers", () => {
-      expect(shown(buildContextValue(folder, undefined, "me"))).to.have.members(
-        [
-          "SAS.clinical.addFolder",
-          "SAS.clinical.checkOutSubmenu",
-          "SAS.clinical.undoCheckout",
-          "SAS.clinical.copyPath",
-          "SAS.clinical.rename",
-          "SAS.clinical.download",
-          "SAS.clinical.upload",
-          "SAS.clinical.uploadAndExpand",
-        ],
-      );
+      expect(
+        shown(buildContextValue(folder, undefined, "me", "write")),
+      ).to.have.members([
+        "SAS.clinical.addFolder",
+        "SAS.clinical.checkOutSubmenu",
+        "SAS.clinical.undoCheckout",
+        "SAS.clinical.copyPath",
+        "SAS.clinical.rename",
+        "SAS.clinical.download",
+        "SAS.clinical.upload",
+        "SAS.clinical.uploadAndExpand",
+      ]);
     });
 
     it("offers check out only for files nobody has checked out", () => {
-      const free = shown(buildContextValue(file(), undefined, "me"));
+      const free = shown(buildContextValue(file(), undefined, "me", "write"));
       expect(free).to.include("SAS.clinical.checkOutSubmenu");
       expect(free).to.not.include("SAS.clinical.undoCheckout");
       expect(free).to.not.include("SAS.clinical.upload");
@@ -235,6 +246,7 @@ describe("buildContextValue", () => {
           file({ checkedOut: true, checkedOutBy: "me" }),
           undefined,
           "me",
+          "write",
         ),
       );
       expect(mine).to.include("SAS.clinical.undoCheckout");
@@ -245,6 +257,7 @@ describe("buildContextValue", () => {
           file({ checkedOut: true, checkedOutBy: "you" }),
           undefined,
           "me",
+          "write",
         ),
       );
       expect(theirs).to.not.include("SAS.clinical.undoCheckout");
@@ -252,10 +265,41 @@ describe("buildContextValue", () => {
     });
 
     it("hides single-item actions for multi-selections", () => {
-      const multi = shown(buildContextValue(folder, undefined, "me"), true);
+      const multi = shown(
+        buildContextValue(folder, undefined, "me", "write"),
+        true,
+      );
       expect(multi).to.not.include("SAS.clinical.rename");
       expect(multi).to.not.include("SAS.clinical.addFolder");
       expect(multi).to.include("SAS.clinical.download");
+    });
+
+    it("offers only read actions without write permission", () => {
+      for (const permission of ["read", "unknown"] as const) {
+        expect(
+          shown(buildContextValue(file(), undefined, "me", permission)),
+        ).to.have.members(["SAS.clinical.copyPath", "SAS.clinical.download"]);
+        expect(
+          shown(buildContextValue(folder, undefined, "me", permission)),
+        ).to.have.members([
+          "SAS.clinical.undoCheckout",
+          "SAS.clinical.copyPath",
+          "SAS.clinical.download",
+        ]);
+      }
+    });
+
+    it("still offers undo for your own check-outs when read-only", () => {
+      const mine = shown(
+        buildContextValue(
+          file({ checkedOut: true, checkedOutBy: "me" }),
+          undefined,
+          "me",
+          "read",
+        ),
+      );
+      expect(mine).to.include("SAS.clinical.undoCheckout");
+      expect(mine).to.not.include("SAS.clinical.rename");
     });
 
     it("declares every command it uses", () => {
@@ -268,6 +312,57 @@ describe("buildContextValue", () => {
         }
       }
     });
+  });
+});
+
+describe("parseWritePermission", () => {
+  it("reads the permission shapes the service may return", () => {
+    expect(parseWritePermission(["READ", "WRITE"])).to.be.true;
+    expect(parseWritePermission(["READ"])).to.be.false;
+    expect(parseWritePermission("READ,WRITE")).to.be.true;
+    expect(parseWritePermission("read")).to.be.false;
+    expect(parseWritePermission({ permissions: ["write"] })).to.be.true;
+    expect(parseWritePermission({ items: ["READ"] })).to.be.false;
+    expect(parseWritePermission([])).to.be.false;
+  });
+
+  it("gives up on unrecognised responses", () => {
+    expect(parseWritePermission(undefined)).to.be.undefined;
+    expect(parseWritePermission({ entries: [] })).to.be.undefined;
+    expect(parseWritePermission(42)).to.be.undefined;
+  });
+});
+
+describe("createLimiter", () => {
+  it("never runs more than the limit at once and runs everything", async () => {
+    const limit = createLimiter(3);
+    let running = 0;
+    let peak = 0;
+    const results = await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        limit(async () => {
+          running++;
+          peak = Math.max(peak, running);
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          running--;
+          return i;
+        }),
+      ),
+    );
+    expect(peak).to.equal(3);
+    expect(results).to.deep.equal(Array.from({ length: 20 }, (_, i) => i));
+  });
+
+  it("frees the slot when a task fails", async () => {
+    const limit = createLimiter(1);
+    let error: unknown;
+    try {
+      await limit(() => Promise.reject(new Error("boom")));
+    } catch (e) {
+      error = e;
+    }
+    expect(error).to.be.instanceOf(Error);
+    expect(await limit(async () => "ok")).to.equal("ok");
   });
 });
 

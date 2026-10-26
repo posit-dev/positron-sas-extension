@@ -5,7 +5,12 @@
 // WorkspaceModel.ts (Apache-2.0).
 import { authentication } from "vscode";
 
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  isAxiosError,
+} from "axios";
 import { randomUUID } from "crypto";
 
 import { profileConfig } from "../commands/profile";
@@ -13,6 +18,8 @@ import { SASAuthProvider } from "../components/AuthProvider";
 import { ConnectionType } from "../components/profile";
 import { getActionToken, pollActionStatus } from "./actionStatus";
 import {
+  AUTHORIZATIONS,
+  PERMISSION_CONCURRENCY,
   REPOSITORY_FILES_CONTENT,
   REPOSITORY_ITEMS,
   REPOSITORY_ITEM_MEDIA_TYPE,
@@ -28,7 +35,14 @@ import type {
   RepositoryItem,
   ResourceCollection,
 } from "./types";
-import { buildChildrenUrl, buildIdFilter, collectPages } from "./utils";
+import {
+  ItemPermission,
+  buildChildrenUrl,
+  buildIdFilter,
+  collectPages,
+  createLimiter,
+  parseWritePermission,
+} from "./utils";
 
 /** The Viya endpoint of the active profile, or undefined for non-REST ones. */
 export function getActiveViyaEndpoint(): string | undefined {
@@ -53,6 +67,16 @@ export class RepositoryModel {
   private readonly etags = new Map<string, string>();
   // Identifies this client's batch actions to the action status service.
   private readonly clientId = randomUUID();
+  private readonly permissions = new Map<string, Promise<ItemPermission>>();
+  private readonly knownPermissions = new Map<string, ItemPermission>();
+  // Set when the permissions endpoint can't be used on this server; items
+  // are then treated as writable and the server enforces its own rules.
+  private permissionsUnavailable = false;
+  private readonly limitPermissionRequests = createLimiter(
+    PERMISSION_CONCURRENCY,
+  );
+
+  constructor(private readonly log: (message: string) => void = () => {}) {}
 
   /** Forget cached state, e.g. after the profile changed. */
   reset(): void {
@@ -62,6 +86,87 @@ export class RepositoryModel {
     this.rootId = undefined;
     this.currentUserId = undefined;
     this.etags.clear();
+    this.permissions.clear();
+    this.knownPermissions.clear();
+    this.permissionsUnavailable = false;
+  }
+
+  /** The user's permission on an item if it has been looked up already. */
+  getKnownPermission(id: string): ItemPermission | undefined {
+    return this.permissionsUnavailable
+      ? "write"
+      : this.knownPermissions.get(id);
+  }
+
+  /**
+   * Look up whether the signed-in user may change an item. Requests are
+   * cached per item and run a few at a time. If the endpoint can't be used,
+   * every item counts as writable (today's behaviour) and this is logged
+   * once.
+   */
+  loadPermission(id: string): Promise<ItemPermission> {
+    if (this.permissionsUnavailable) {
+      return Promise.resolve("write");
+    }
+    let pending = this.permissions.get(id);
+    if (!pending) {
+      pending = this.limitPermissionRequests(() =>
+        this.fetchPermission(id),
+      ).then(
+        (permission) => {
+          this.knownPermissions.set(id, permission);
+          return permission;
+        },
+        (error: unknown) => {
+          // E.g. not signed in yet: forget it so the next render retries.
+          this.permissions.delete(id);
+          throw error;
+        },
+      );
+      this.permissions.set(id, pending);
+    }
+    return pending;
+  }
+
+  private async fetchPermission(id: string): Promise<ItemPermission> {
+    if (this.permissionsUnavailable) {
+      return "write";
+    }
+    const connection = await this.getConnection();
+    try {
+      const { data } = await connection.get<unknown>(
+        `${AUTHORIZATIONS}/${encodeURIComponent(id)}/permissions`,
+      );
+      const canWrite = parseWritePermission(data);
+      if (canWrite === undefined) {
+        this.markPermissionsUnavailable(
+          `unrecognised response ${JSON.stringify(data).slice(0, 200)}`,
+        );
+        return "write";
+      }
+      return canWrite ? "write" : "read";
+    } catch (error) {
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      if (status === 403) {
+        // Not even allowed to read this item's permissions.
+        return "read";
+      }
+      this.markPermissionsUnavailable(
+        isAxiosError(error)
+          ? `HTTP ${status ?? "?"} ${error.message}`
+          : String(error),
+      );
+      return "write";
+    }
+  }
+
+  private markPermissionsUnavailable(reason: string): void {
+    if (!this.permissionsUnavailable) {
+      this.permissionsUnavailable = true;
+      this.log(
+        `Item permissions are unavailable (${reason}); showing all actions and leaving checks to the server.`,
+      );
+    }
   }
 
   private async getConnection(): Promise<AxiosInstance> {
