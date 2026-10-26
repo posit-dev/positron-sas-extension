@@ -1,9 +1,7 @@
 // Copyright © 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 import {
-  CancellationToken,
   CustomDocument,
-  CustomDocumentOpenContext,
   CustomReadonlyEditorProvider,
   ExtensionContext,
   Uri,
@@ -76,18 +74,13 @@ export class XptEditorProvider implements CustomReadonlyEditorProvider<XptDocume
     );
   }
 
-  async openCustomDocument(
-    uri: Uri,
-    _openContext: CustomDocumentOpenContext,
-    _token: CancellationToken,
-  ): Promise<XptDocument> {
+  async openCustomDocument(uri: Uri): Promise<XptDocument> {
     return new XptDocument(uri);
   }
 
   async resolveCustomEditor(
     document: XptDocument,
     webviewPanel: WebviewPanel,
-    _token: CancellationToken,
   ): Promise<void> {
     const filePath = document.uri.fsPath;
     const fileName = path.basename(filePath);
