@@ -24,17 +24,37 @@ const identity: SessionIdentity = {
 
 describe("getWorkbenchInfo", () => {
   it("is empty outside Posit Workbench", () => {
-    expect(getWorkbenchInfo({ RS_SESSION_ID: "x" })).to.deep.equal({});
+    expect(getWorkbenchInfo({ RS_SESSION_URL: "/s/abc/" })).to.deep.equal({});
   });
 
-  it("reads the server URL and the first session id variable that is set", () => {
+  it("reads the session id from the session URL", () => {
     expect(
       getWorkbenchInfo({
         RS_SERVER_URL: "https://wb.example.com/",
-        RSTUDIO_SESSION_ID: "s2",
-        POSIT_SESSION_ID: "s3",
+        RS_SESSION_URL: "/s/ab9926ae9dc1b7225e778/",
+        RSTUDIO_SESSION_SCOPE_PROJECT: "other",
+        RSTUDIO_SESSION_SCOPE_ID: "ids",
       }),
-    ).to.deep.equal({ serverUrl: "https://wb.example.com/", sessionId: "s2" });
+    ).to.deep.equal({
+      serverUrl: "https://wb.example.com/",
+      sessionId: "ab9926ae9dc1b7225e778",
+    });
+  });
+
+  it("falls back to the session scope variables", () => {
+    expect(
+      getWorkbenchInfo({
+        RS_SERVER_URL: "https://wb.example.com/",
+        RSTUDIO_SESSION_SCOPE_PROJECT: "ab9926ae9dc1b",
+        RSTUDIO_SESSION_SCOPE_ID: "7225e778",
+      }).sessionId,
+    ).to.equal("ab9926ae9dc1b7225e778");
+  });
+
+  it("leaves the session id unset when Workbench doesn't provide one", () => {
+    expect(
+      getWorkbenchInfo({ RS_SERVER_URL: "https://wb.example.com/" }).sessionId,
+    ).to.be.undefined;
   });
 });
 
@@ -42,7 +62,7 @@ describe("getSessionIdentity", () => {
   it("records the profile, connection type and Workbench session", () => {
     const id = getSessionIdentity("sas-1", "Viya", "rest", {
       RS_SERVER_URL: "https://wb.example.com/",
-      RS_SESSION_ID: "wb-42",
+      RS_SESSION_URL: "/s/wb-42/",
     });
     expect(id.positronSessionId).to.equal("sas-1");
     expect(id.profile).to.equal("Viya");

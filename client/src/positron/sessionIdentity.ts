@@ -23,14 +23,9 @@ export interface SessionIdentity {
 }
 
 // Posit Workbench sets RS_SERVER_URL in every session; Positron itself uses
-// it to detect Workbench. The session id variable differs between releases,
-// so take the first one that is set.
-const WORKBENCH_SESSION_ID_VARS = [
-  "RS_SESSION_ID",
-  "RSTUDIO_SESSION_ID",
-  "POSIT_SESSION_ID",
-];
-
+// it to detect Workbench. The session id is the one in the session URL
+// (RS_SESSION_URL=/s/<id>/), which also equals RSTUDIO_SESSION_SCOPE_PROJECT
+// followed by RSTUDIO_SESSION_SCOPE_ID.
 export function getWorkbenchInfo(env: NodeJS.ProcessEnv = process.env): {
   serverUrl?: string;
   sessionId?: string;
@@ -38,10 +33,14 @@ export function getWorkbenchInfo(env: NodeJS.ProcessEnv = process.env): {
   if (!env.RS_SERVER_URL) {
     return {};
   }
-  const idVar = WORKBENCH_SESSION_ID_VARS.find((name) => env[name]);
+  const fromUrl = /\/s\/([^/]+)/.exec(env.RS_SESSION_URL ?? "")?.[1];
+  const fromScope =
+    env.RSTUDIO_SESSION_SCOPE_PROJECT && env.RSTUDIO_SESSION_SCOPE_ID
+      ? env.RSTUDIO_SESSION_SCOPE_PROJECT + env.RSTUDIO_SESSION_SCOPE_ID
+      : undefined;
   return {
     serverUrl: env.RS_SERVER_URL,
-    sessionId: idVar ? env[idVar] : undefined,
+    sessionId: fromUrl ?? fromScope,
   };
 }
 
