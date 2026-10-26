@@ -10,8 +10,9 @@ import {
   buildWorkSubdirCode,
   detectTransportFormat,
   findSasErrors,
-  parseWorkPath,
+  quoteLocalPath,
   splitIntoChunks,
+  workPathLiteral,
 } from "../../src/positron/xptFormat";
 
 const header = (text: string) =>
@@ -55,7 +56,11 @@ describe("detectTransportFormat", () => {
 
 describe("buildTransportLoadCode", () => {
   it("copies an XPORT v5 file into a WORK subdirectory library", () => {
-    const code = buildTransportLoadCode("xport5", "/data/adae.xpt", "_FXPT1");
+    const code = buildTransportLoadCode(
+      "xport5",
+      quoteLocalPath("/data/adae.xpt"),
+      "_FXPT1",
+    );
     expect(code).to.include('dcreate("_fxpt1", pathname("work"))');
     expect(code).to.include(
       'libname _FXPT1 "%sysfunc(pathname(work))/_fxpt1";',
@@ -67,14 +72,22 @@ describe("buildTransportLoadCode", () => {
   });
 
   it("uses %xpt2loc for XPORT v8/9 files", () => {
-    const code = buildTransportLoadCode("xport8", "/data/adsl.xpt", "_FXPT2");
+    const code = buildTransportLoadCode(
+      "xport8",
+      quoteLocalPath("/data/adsl.xpt"),
+      "_FXPT2",
+    );
     expect(code).to.include(
       "%xpt2loc(libref=_FXPT2, filespec='/data/adsl.xpt')",
     );
   });
 
   it("uses PROC CIMPORT for CPORT files", () => {
-    const code = buildTransportLoadCode("cport", "/data/lib.xpt", "_FXPT3");
+    const code = buildTransportLoadCode(
+      "cport",
+      quoteLocalPath("/data/lib.xpt"),
+      "_FXPT3",
+    );
     expect(code).to.include("filename _XPTIN '/data/lib.xpt';");
     expect(code).to.include(
       "proc cimport infile=_XPTIN library=_FXPT3 memtype=data;",
@@ -84,7 +97,7 @@ describe("buildTransportLoadCode", () => {
   it("doubles single quotes in the path", () => {
     const code = buildTransportLoadCode(
       "xport5",
-      "/data/o'brien.xpt",
+      quoteLocalPath("/data/o'brien.xpt"),
       "_FXPT1",
     );
     expect(code).to.include("xport '/data/o''brien.xpt';");
@@ -103,6 +116,17 @@ describe("findSasErrors", () => {
     expect(findSasErrors(log)).to.deep.equal([
       "ERROR: File is not in transport format.",
       "ERROR 22-322: Syntax error.",
+    ]);
+  });
+
+  it("joins wrapped continuation lines", () => {
+    const log = [
+      "ERROR: Physical file does not exist,",
+      "       /opt/sas/viya/saswork/SAS_work1234/_fvw1/adlbc.sas7bdat.",
+      "NOTE: The SAS System stopped processing this step.",
+    ].join("\n");
+    expect(findSasErrors(log)).to.deep.equal([
+      "ERROR: Physical file does not exist, /opt/sas/viya/saswork/SAS_work1234/_fvw1/adlbc.sas7bdat.",
     ]);
   });
 
@@ -138,23 +162,22 @@ describe("TransportLibrefPool prefixes", () => {
 });
 
 describe("WORK path helpers", () => {
-  it("creates the subdirectory and prints WORK without echoing source", () => {
-    const code = buildWorkSubdirCode("_fvw1");
-    expect(code.startsWith("options nosource nonotes;")).to.be.true;
-    expect(code).to.include('dcreate("_fvw1", pathname("work"))');
-    expect(code).to.include("%put _POSIT_WORK_=%sysfunc(pathname(work));");
+  it("lets SAS resolve the WORK path instead of reading it from the log", () => {
+    expect(workPathLiteral("_fvw1")).to.equal(
+      '"%sysfunc(pathname(work))/_fvw1"',
+    );
+    expect(workPathLiteral("_fxptsrc", "_fxpt1.xpt")).to.equal(
+      '"%sysfunc(pathname(work))/_fxptsrc/_fxpt1.xpt"',
+    );
+    expect(buildWorkSubdirCode("_fvw1")).to.include(
+      'dcreate("_fvw1", pathname("work"))',
+    );
   });
 
-  it("reads the WORK path from the log, ignoring echoed source", () => {
-    const log = [
-      "12   %put _POSIT_WORK_=%sysfunc(pathname(work));",
-      "_POSIT_WORK_=/opt/sas/viya/saswork/SAS_work1234_sas-compute",
-      "NOTE: done",
-    ].join("\n");
-    expect(parseWorkPath(log)).to.equal(
-      "/opt/sas/viya/saswork/SAS_work1234_sas-compute",
-    );
-    expect(parseWorkPath("NOTE: nothing")).to.be.undefined;
+  it("rejects names that could break the literal", () => {
+    expect(() => workPathLiteral("_fvw1", 'a"b.sas7bdat')).to.throw();
+    expect(() => workPathLiteral("_fvw1", "a&b.sas7bdat")).to.throw();
+    expect(() => workPathLiteral("../x")).to.throw();
   });
 });
 
@@ -180,7 +203,7 @@ describe("base64 transfer to SAS", () => {
     const content = new Uint8Array(1000).map((_, i) => (i * 37) % 256);
     content.set([0x20, 0x20, 0x20], 997);
     const lines = dataLines(
-      buildBase64WriteCode("/w/a.sas7bdat", content, false),
+      buildBase64WriteCode('"/w/a.sas7bdat"', content, false),
     );
     for (const line of lines) {
       expect(line.length).to.be.at.most(76);
@@ -198,11 +221,12 @@ describe("base64 transfer to SAS", () => {
 
   it("creates the file on the first chunk and appends afterwards", () => {
     const one = new Uint8Array([1, 2, 3]);
-    expect(buildBase64WriteCode("/w/o'k.xpt", one, false)).to.include(
-      "file '/w/o''k.xpt' recfm=n;",
+    const file = workPathLiteral("_fxptsrc", "_fxpt1.xpt");
+    expect(buildBase64WriteCode(file, one, false)).to.include(
+      `file ${file} recfm=n;`,
     );
-    expect(buildBase64WriteCode("/w/a.xpt", one, true)).to.include(
-      "file '/w/a.xpt' recfm=n mod;",
+    expect(buildBase64WriteCode(file, one, true)).to.include(
+      `file ${file} recfm=n mod;`,
     );
   });
 
@@ -219,7 +243,7 @@ describe("base64 transfer to SAS", () => {
     expect(BYTES_PER_CHUNK % 57).to.equal(0);
     const rebuilt = decodeLines(
       chunks.flatMap((c, i) =>
-        dataLines(buildBase64WriteCode("/w/a", c, i > 0)),
+        dataLines(buildBase64WriteCode('"/w/a"', c, i > 0)),
       ),
     );
     expect(rebuilt).to.deep.equal(content);

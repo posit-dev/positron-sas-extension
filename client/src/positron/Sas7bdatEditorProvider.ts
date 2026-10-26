@@ -15,7 +15,12 @@ import {
   workspace,
 } from "vscode";
 import { getActiveSession } from "./index";
-import { TransportLibrefPool, findSasErrors } from "./xptFormat";
+import {
+  TransportLibrefPool,
+  findSasErrors,
+  quoteLocalPath,
+  workPathLiteral,
+} from "./xptFormat";
 
 /** Minimal document representing a .sas7bdat file. */
 class Sas7bdatDocument implements CustomDocument {
@@ -67,7 +72,7 @@ export class Sas7bdatEditorProvider
     const uri = document.uri;
     const local = uri.scheme === "file";
     const filePath = local ? uri.fsPath : uri.path;
-    let dir = path.dirname(filePath);
+    const dir = path.dirname(filePath);
     const ext = path.extname(filePath);
     const member = path.basename(filePath, ext).toUpperCase();
     let libname = "_FVIEW";
@@ -87,14 +92,15 @@ export class Sas7bdatEditorProvider
         // Not on a disk SAS can read: copy it into WORK first. SAS on UNIX
         // only finds datasets whose file names are lowercase.
         libname = this.uploadLibrefs.librefFor(uri.toString());
-        const serverPath = await session.uploadToWork(
+        await session.uploadToWork(
           libname.toLowerCase(),
           `${member.toLowerCase()}${ext.toLowerCase()}`,
           await workspace.fs.readFile(uri),
         );
-        dir = path.posix.dirname(serverPath);
       }
-      const code = `libname ${libname} '${dir.replace(/'/g, "''")}';`;
+      const code = `libname ${libname} ${
+        local ? quoteLocalPath(dir) : workPathLiteral(libname.toLowerCase())
+      };`;
       const errors = findSasErrors(await session.runSilent(code));
       if (errors.length > 0) {
         throw new Error(errors.join(" "));
@@ -102,7 +108,7 @@ export class Sas7bdatEditorProvider
       session.openDataExplorer(libname, member);
       webviewPanel.webview.html = this.getSuccessHtml(
         member,
-        local ? dir : path.dirname(filePath),
+        dir,
         libname,
       );
     } catch (error) {

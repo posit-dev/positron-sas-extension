@@ -20,6 +20,7 @@ import {
   buildTransportLoadCode,
   detectTransportFormat,
   findSasErrors,
+  quoteLocalPath,
 } from "./xptFormat";
 
 /** Minimal document representing a .xpt file. */
@@ -117,15 +118,15 @@ export class XptEditorProvider implements CustomReadonlyEditorProvider<XptDocume
       }
 
       const libref = this.librefs.librefFor(uri.toString());
-      const filePath = content
+      const file = content
         ? await session.uploadToWork(
             "_fxptsrc",
             `${libref.toLowerCase()}.xpt`,
             content,
           )
-        : uri.fsPath;
+        : quoteLocalPath(uri.fsPath);
       const log = await session.runSilent(
-        buildTransportLoadCode(format, filePath, libref),
+        buildTransportLoadCode(format, file, libref),
       );
       const errors = findSasErrors(log);
       if (errors.length > 0) {

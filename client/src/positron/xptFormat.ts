@@ -37,8 +37,25 @@ export function detectTransportFormat(
   return undefined;
 }
 
-function sasQuote(value: string): string {
+/** A local path as a SAS string literal; single quotes keep `&` and `%` inert. */
+export function quoteLocalPath(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
+}
+
+const PLAIN_NAME = /^[\w.-]+$/;
+
+/**
+ * A directory or file under WORK as a SAS string literal. SAS resolves the
+ * WORK path itself: reading it back from the log is unreliable, because
+ * %PUT output wraps at the line size and long WORK paths get cut.
+ */
+export function workPathLiteral(subdir: string, name?: string): string {
+  for (const part of [subdir, name ?? "x"]) {
+    if (!PLAIN_NAME.test(part)) {
+      throw new Error(`Unsupported file name for WORK: ${part}`);
+    }
+  }
+  return `"%sysfunc(pathname(work))/${subdir}${name ? `/${name}` : ""}"`;
 }
 
 /**
@@ -49,14 +66,13 @@ function sasQuote(value: string): string {
  */
 export function buildTransportLoadCode(
   format: TransportFormat,
-  filePath: string,
+  file: string,
   libref: string,
 ): string {
   const dir = libref.toLowerCase();
-  const file = sasQuote(filePath);
   const setup = [
-    `data _null_; length d $1024; d=dcreate("${dir}", pathname("work")); run;`,
-    `libname ${libref} "%sysfunc(pathname(work))/${dir}";`,
+    buildWorkSubdirCode(dir),
+    `libname ${libref} ${workPathLiteral(dir)};`,
     `proc datasets lib=${libref} kill nolist nowarn; quit;`,
   ];
   switch (format) {
@@ -81,12 +97,27 @@ export function buildTransportLoadCode(
   }
 }
 
-/** ERROR lines from a SAS log, e.g. "ERROR: ..." or "ERROR 22-322: ...". */
+/**
+ * ERROR messages from a SAS log, e.g. "ERROR: ..." or "ERROR 22-322: ...".
+ * SAS wraps long messages onto indented continuation lines; those are
+ * joined back on.
+ */
 export function findSasErrors(log: string): string[] {
-  return log
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => /^ERROR(\s+\d+-\d+)?:/.test(line));
+  const errors: string[] = [];
+  let current: string | undefined;
+  for (const raw of log.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (/^ERROR(\s+\d+-\d+)?:/.test(line)) {
+      current = line;
+      errors.push(current);
+    } else if (current !== undefined && /^\s+\S/.test(raw)) {
+      current = `${current} ${line}`;
+      errors[errors.length - 1] = current;
+    } else {
+      current = undefined;
+    }
+  }
+  return errors;
 }
 
 /**
@@ -113,30 +144,10 @@ export class TransportLibrefPool {
   }
 }
 
-/** Marker line used to read the WORK path back from the SAS log. */
-export const WORK_PATH_MARKER = "_POSIT_WORK_=";
-
-/**
- * SAS code that creates `subdir` under WORK and prints the WORK path on a
- * line of its own (source echo off, so only the %put output matches).
- */
+/** SAS code that creates `subdir` under WORK if it doesn't exist yet. */
 export function buildWorkSubdirCode(subdir: string): string {
-  return [
-    "options nosource nonotes;",
-    `data _null_; length d $1024; d=dcreate("${subdir}", pathname("work")); run;`,
-    `%put ${WORK_PATH_MARKER}%sysfunc(pathname(work));`,
-    "options notes source;",
-  ].join("\n");
-}
-
-/** The WORK path printed by {@link buildWorkSubdirCode}. */
-export function parseWorkPath(log: string): string | undefined {
-  const line = log
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .find((l) => l.startsWith(WORK_PATH_MARKER));
-  const value = line?.slice(WORK_PATH_MARKER.length).trim();
-  return value || undefined;
+  workPathLiteral(subdir);
+  return `data _null_; length d $1024; d=dcreate("${subdir}", pathname("work")); run;`;
 }
 
 // Files are sent to SAS as base64 in DATALINES: 57 bytes per 76-character
@@ -147,12 +158,13 @@ export const BYTES_PER_CHUNK = BYTES_PER_LINE * LINES_PER_CHUNK;
 
 /**
  * SAS code that decodes one chunk of base64 lines and writes the raw bytes
- * to `serverPath`. The first chunk creates the file; later ones append.
+ * to `file` (a SAS string literal). The first chunk creates the file; later
+ * ones append.
  * This only needs SAS to be able to write the target (WORK always is), so it
  * works on every connection type and when SAS runs in lockdown.
  */
 export function buildBase64WriteCode(
-  serverPath: string,
+  file: string,
   chunk: Uint8Array,
   append: boolean,
 ): string {
@@ -172,7 +184,7 @@ export function buildBase64WriteCode(
     "  infile datalines truncover;",
     "  input line $76.;",
     "  length raw $57;",
-    `  file ${sasQuote(serverPath)} recfm=n${append ? " mod" : ""};`,
+    `  file ${file} recfm=n${append ? " mod" : ""};`,
     "  n = length(line);",
     "  if n < 4 then return;",
     '  pad = (char(line, n) = "=") + (char(line, n - 1) = "=");',

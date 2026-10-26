@@ -34,8 +34,8 @@ import {
   buildBase64WriteCode,
   buildWorkSubdirCode,
   findSasErrors,
-  parseWorkPath,
   splitIntoChunks,
+  workPathLiteral,
 } from "./xptFormat";
 import { SasDataExplorer } from "./sasDataExplorer";
 import {
@@ -1161,28 +1161,23 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   /**
    * Copy a file into `subdir` under this session's WORK directory and return
-   * its path on the SAS server. Used for files that aren't on a disk SAS can
-   * read, e.g. ones opened from the Clinical Repository or SAS Content views.
-   * The bytes go through SAS itself (base64 DATALINES), because SAS can
-   * always write to WORK, even in lockdown, while server file APIs may not
-   * reach it.
+   * its location as a SAS string literal. Used for files that aren't on a
+   * disk SAS can read, e.g. ones opened from the Clinical Repository or SAS
+   * Content views. The bytes go through SAS itself (base64 DATALINES),
+   * because SAS can always write to WORK, even in lockdown, while server
+   * file APIs may not reach it.
    */
   async uploadToWork(
     subdir: string,
     name: string,
     content: Uint8Array,
   ): Promise<string> {
-    const workPath = parseWorkPath(
-      await this.runSilent(buildWorkSubdirCode(subdir)),
-    );
-    if (!workPath) {
-      throw new Error("Could not determine the SAS WORK directory.");
-    }
-    const serverPath = `${workPath}/${subdir}/${name}`;
+    const file = workPathLiteral(subdir, name);
     const chunks = splitIntoChunks(content);
     for (let i = 0; i < chunks.length; i++) {
+      const code = buildBase64WriteCode(file, chunks[i], i > 0);
       const errors = findSasErrors(
-        await this.runSilent(buildBase64WriteCode(serverPath, chunks[i], i > 0)),
+        await this.runSilent(i === 0 ? `${buildWorkSubdirCode(subdir)}\n${code}` : code),
       );
       if (errors.length > 0) {
         throw new Error(
@@ -1190,7 +1185,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         );
       }
     }
-    return serverPath;
+    return file;
   }
 
   /** Return the DATA/VIEW members of a library. */
