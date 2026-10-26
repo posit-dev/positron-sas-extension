@@ -1550,6 +1550,19 @@
           }
         ],
         "priority": "default"
+      },
+      {
+        "viewType": "sas.xptViewer",
+        "displayName": "SAS Transport File Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.xpt"
+          },
+          {
+            "filenamePattern": "*.XPT"
+          }
+        ],
+        "priority": "default"
       }
     ],
     "notebookRenderer": [

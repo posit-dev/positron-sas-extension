@@ -411,7 +411,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   }
 
   /** Open a Data Explorer comm for a dataset. */
-  openDataExplorer(lib: string, mem: string): void {
+  openDataExplorer(lib: string, mem: string, title = `${lib}.${mem}`): void {
     const explorer = new SasDataExplorer(this.getSasClient(), lib, mem);
     this._dataExplorers.set(explorer.id, explorer);
 
@@ -429,14 +429,14 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       this.fireCommMessage("comm_open", {
         comm_id: explorer.id,
         target_name: "positron.dataExplorer",
-        data: { title: `${lib}.${mem}` },
+        data: { title },
       });
     }).catch(() => {
       // Open anyway even if warm-up fails — Positron will retry on demand.
       this.fireCommMessage("comm_open", {
         comm_id: explorer.id,
         target_name: "positron.dataExplorer",
-        data: { title: `${lib}.${mem}` },
+        data: { title },
       });
     });
   }
@@ -1056,6 +1056,11 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    */
   runSilent(code: string): Promise<string> {
     return this.silentExecute(code);
+  }
+
+  /** Return the DATA/VIEW members of a library. */
+  listMembers(lib: string): Promise<Array<{ name: string; type: string }>> {
+    return this.getSasClient().getLibraryMembers(lib);
   }
 
   /** Return (or lazily create) the SasClient bound to this session's silentExecute. */
