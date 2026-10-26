@@ -178,8 +178,15 @@ describe("buildContextValue", () => {
   // Evaluate the package.json `when` clauses of the view's context menu
   // against real context values, so a typo in either place fails here.
   describe("package.json menus", () => {
+    // Walk up to the extension manifest: this runs both from client/test
+    // (ts-node) and from client/out/test (VS Code host), and client/ has its
+    // own package.json without contributions.
+    let dir = __dirname;
+    while (!fs.existsSync(path.join(dir, "package.nls.json"))) {
+      dir = path.dirname(dir);
+    }
     const pkg = JSON.parse(
-      fs.readFileSync(path.join(__dirname, "../../../package.json"), "utf8"),
+      fs.readFileSync(path.join(dir, "package.json"), "utf8"),
     );
     const menus: Array<{ command?: string; submenu?: string; when: string }> =
       pkg.contributes.menus["view/item/context"].filter(
