@@ -35,6 +35,8 @@ const BINARY_EXTENSIONS = new Set([
   "sas7bvew",
   "sas7bndx",
   "sas7bitm",
+  "xpt",
+  "cpt",
   "xlsx",
   "xls",
   "zip",

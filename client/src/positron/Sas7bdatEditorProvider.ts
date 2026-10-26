@@ -14,6 +14,7 @@ import {
   window,
 } from "vscode";
 import { getActiveSession } from "./index";
+import { findSasErrors } from "./xptFormat";
 
 /** Minimal document representing a .sas7bdat file. */
 class Sas7bdatDocument implements CustomDocument {
@@ -76,7 +77,10 @@ export class Sas7bdatEditorProvider
 
     try {
       const code = `libname ${libname} '${dir.replace(/'/g, "''")}';`;
-      await session.runSilent(code);
+      const errors = findSasErrors(await session.runSilent(code));
+      if (errors.length > 0) {
+        throw new Error(errors.join(" "));
+      }
       session.openDataExplorer(libname, member);
       webviewPanel.webview.html = this.getSuccessHtml(member, dir);
     } catch (error) {
