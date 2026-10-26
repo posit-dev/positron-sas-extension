@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Features
+
+- Traceability of SAS console code, including code run by Positron Assistant [#58](https://github.com/posit-dev/positron-sas-extension/issues/58):
+  - New setting `SAS.audit.logFile`: when set, every console submission (user, host, Positron and Posit Workbench session, profile, code) and its outcome are appended to that file as JSON Lines
+  - Each submission carries a `/* positron: user=… session=… exec=… */` comment, so it can be traced in the SAS log
+  - The macro variables `&POSIT_USER`, `&POSIT_SESSION` and `&POSIT_WORKBENCH_SESSION` are set at session start
+  - SAS Viya compute sessions are named `Positron SAS (<user>)` and carry the user and session ids as attributes. Each console job is named `positron-console`, and its description holds the user, session and execution ids
+
 ### Bug Fixes
 
 - Data Explorer: SAS transport files (`.xpt`, XPORT v5 and v8/9, and PROC CPORT files) now open in the Data Explorer instead of as text. A file that holds several datasets asks which ones to open [#64](https://github.com/posit-dev/positron-sas-extension/issues/64)

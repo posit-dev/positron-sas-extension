@@ -10,6 +10,7 @@ While the VS Code Extension for SAS is fully functional in Positron, the Extensi
 - Open sas7bdat and SAS transport (.xpt) files listed in the file browser directly in Data Explorer
 - LLM Integration with Posit(ron) Assistant for both coding assistance but also exploratory data analysis
 - Export and summarize LLM chat as quarto document with full code included.
+- Traceability of console code: every submission is tagged with the user and session in the SAS log (and on SAS Viya, in the compute session and job metadata). Set `SAS.audit.logFile` to also keep a local JSON Lines audit log
 
 Most of the functionality of the VS Code Extension for SAS is retained. In particular it is very important to define SAS Connection profiles.
 
