@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect } from "chai";
 
-import { toComputePath } from "../../src/positron/computeFiles";
 import {
+  BYTES_PER_CHUNK,
   TransportLibrefPool,
+  buildBase64WriteCode,
   buildTransportLoadCode,
   buildWorkSubdirCode,
   detectTransportFormat,
   findSasErrors,
   parseWorkPath,
+  splitIntoChunks,
 } from "../../src/positron/xptFormat";
 
 const header = (text: string) =>
@@ -156,10 +158,71 @@ describe("WORK path helpers", () => {
   });
 });
 
-describe("toComputePath", () => {
-  it("maps absolute server paths to the compute file API form", () => {
-    expect(toComputePath("/opt/saswork/_fvw1")).to.equal(
-      "~fs~opt~fs~saswork~fs~_fvw1",
+describe("base64 transfer to SAS", () => {
+  const decodeLines = (lines: string[]): Uint8Array => {
+    const parts = lines.map((l) => new Uint8Array(Buffer.from(l, "base64")));
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let offset = 0;
+    for (const part of parts) {
+      out.set(part, offset);
+      offset += part.length;
+    }
+    return out;
+  };
+
+  const dataLines = (code: string) => {
+    const lines = code.split("\n");
+    return lines.slice(lines.indexOf("datalines;") + 1, lines.lastIndexOf(";"));
+  };
+
+  it("writes decodable 76-character lines that round-trip the bytes", () => {
+    // Include NULs, high bytes and trailing blanks, as in a sas7bdat file.
+    const content = new Uint8Array(1000).map((_, i) => (i * 37) % 256);
+    content.set([0x20, 0x20, 0x20], 997);
+    const lines = dataLines(
+      buildBase64WriteCode("/w/a.sas7bdat", content, false),
     );
+    for (const line of lines) {
+      expect(line.length).to.be.at.most(76);
+      expect(line.length % 4).to.equal(0);
+      expect(line).to.match(/^[A-Za-z0-9+/]+=*$/);
+    }
+    expect(decodeLines(lines)).to.deep.equal(content);
+    // Mirror the DATA step's length arithmetic: n / 4 * 3 - padding.
+    const total = lines.reduce((sum, l) => {
+      const pad = (l.endsWith("=") ? 1 : 0) + (l.endsWith("==") ? 1 : 0);
+      return sum + (l.length / 4) * 3 - pad;
+    }, 0);
+    expect(total).to.equal(content.length);
+  });
+
+  it("creates the file on the first chunk and appends afterwards", () => {
+    const one = new Uint8Array([1, 2, 3]);
+    expect(buildBase64WriteCode("/w/o'k.xpt", one, false)).to.include(
+      "file '/w/o''k.xpt' recfm=n;",
+    );
+    expect(buildBase64WriteCode("/w/a.xpt", one, true)).to.include(
+      "file '/w/a.xpt' recfm=n mod;",
+    );
+  });
+
+  it("splits content on line boundaries and keeps every byte", () => {
+    const content = new Uint8Array(BYTES_PER_CHUNK * 2 + 10).map(
+      (_, i) => i % 251,
+    );
+    const chunks = splitIntoChunks(content);
+    expect(chunks.map((c) => c.length)).to.deep.equal([
+      BYTES_PER_CHUNK,
+      BYTES_PER_CHUNK,
+      10,
+    ]);
+    expect(BYTES_PER_CHUNK % 57).to.equal(0);
+    const rebuilt = decodeLines(
+      chunks.flatMap((c, i) =>
+        dataLines(buildBase64WriteCode("/w/a", c, i > 0)),
+      ),
+    );
+    expect(rebuilt).to.deep.equal(content);
+    expect(splitIntoChunks(new Uint8Array())).to.have.length(1);
   });
 });

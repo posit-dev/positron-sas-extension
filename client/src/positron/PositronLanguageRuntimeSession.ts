@@ -19,7 +19,6 @@ import { sasDiagnostic } from "../components/logViewer/sasDiagnostics";
 import { SASCodeDocument } from "../components/utils/SASCodeDocument";
 import { getCodeDocumentConstructionParameters } from "../components/utils/SASCodeDocumentHelper";
 import { AuditLog } from "./auditLog";
-import { writeComputeFile } from "./computeFiles";
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
 import {
   type SessionIdentity,
@@ -31,7 +30,13 @@ import {
   tagCode,
 } from "./sessionIdentity";
 import { SasConnection } from "./sasConnection";
-import { buildWorkSubdirCode, parseWorkPath } from "./xptFormat";
+import {
+  buildBase64WriteCode,
+  buildWorkSubdirCode,
+  findSasErrors,
+  parseWorkPath,
+  splitIntoChunks,
+} from "./xptFormat";
 import { SasDataExplorer } from "./sasDataExplorer";
 import {
   SasServerFilesConnection,
@@ -1158,26 +1163,34 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    * Copy a file into `subdir` under this session's WORK directory and return
    * its path on the SAS server. Used for files that aren't on a disk SAS can
    * read, e.g. ones opened from the Clinical Repository or SAS Content views.
-   * WORK is always readable, even when SAS runs in lockdown. SAS Viya only.
+   * The bytes go through SAS itself (base64 DATALINES), because SAS can
+   * always write to WORK, even in lockdown, while server file APIs may not
+   * reach it.
    */
   async uploadToWork(
     subdir: string,
     name: string,
     content: Uint8Array,
   ): Promise<string> {
-    const sessionId = this._sasSession?.sessionId?.();
-    if (this._identity?.connectionType !== ConnectionType.Rest || !sessionId) {
-      throw new Error(
-        "Files that are not on the local disk can only be opened with a SAS Viya session.",
-      );
-    }
     const workPath = parseWorkPath(
       await this.runSilent(buildWorkSubdirCode(subdir)),
     );
     if (!workPath) {
       throw new Error("Could not determine the SAS WORK directory.");
     }
-    return writeComputeFile(sessionId, `${workPath}/${subdir}`, name, content);
+    const serverPath = `${workPath}/${subdir}/${name}`;
+    const chunks = splitIntoChunks(content);
+    for (let i = 0; i < chunks.length; i++) {
+      const errors = findSasErrors(
+        await this.runSilent(buildBase64WriteCode(serverPath, chunks[i], i > 0)),
+      );
+      if (errors.length > 0) {
+        throw new Error(
+          `Copying ${name} to the SAS server failed: ${errors.join(" ")}`,
+        );
+      }
+    }
+    return serverPath;
   }
 
   /** Return the DATA/VIEW members of a library. */
