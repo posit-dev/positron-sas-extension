@@ -15,6 +15,7 @@
 
 - Data Explorer: SAS transport files (`.xpt`, XPORT v5 and v8/9, and PROC CPORT files) now open in the Data Explorer instead of as text. A file that holds several datasets asks which ones to open [#64](https://github.com/posit-dev/positron-sas-extension/issues/64)
 - Opening a `.sas7bdat` file now reports a failed LIBNAME (for example, a path the SAS server can't see) instead of an empty Data Explorer
+- `.sas7bdat` and `.xpt` files opened from the Clinical Repository or SAS Content views now load in the Data Explorer: they are copied into the session's WORK directory first, which also works when SAS runs in lockdown
 
 ## 0.2.1 - 2026-10-21
 
