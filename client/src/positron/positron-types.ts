@@ -62,9 +62,9 @@ export enum RuntimeExitReason {
 }
 
 export enum RuntimeClientType {
-  Variables = "variables",
-  Plot = "plot",
-  Ui = "ui",
+  Variables = "positron.variables",
+  Plot = "positron.plot",
+  Ui = "positron.ui",
   DataExplorer = "positron.dataExplorer",
   Connection = "positron.connection",
 }

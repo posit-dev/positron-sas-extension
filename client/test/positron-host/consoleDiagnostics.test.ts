@@ -39,7 +39,7 @@ describe("Positron console diagnostics", () => {
       // The same preamble/postamble shape execute() uses.
       preamble:
         "options source notes; /* positron: user=jdoe session=s exec=e */\n" +
-        "ods html5(id=vscode) style=HTMLBlue\n" +
+        "ods graphics / outputfmt=png; ods html5(id=vscode) style=HTMLBlue\n" +
         "  options(bitmap_mode='inline' svg_mode='inline')\n" +
         '  body="b.htm";',
       postamble: `;*';*";*/;run;quit;ods html5(id=vscode) close;`,

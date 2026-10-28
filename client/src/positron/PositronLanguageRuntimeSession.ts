@@ -33,6 +33,7 @@ import {
   stripSubmissionTag,
 } from "./consoleLog";
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
+import { extractPngImages, htmlToText, pngSize } from "./sasOutput";
 import {
   type SessionIdentity,
   buildIdentityMacroCode,
@@ -105,6 +106,26 @@ interface SortKey {
   ascending: boolean;
 }
 
+/** A SAS graph shown in the Plots pane. */
+interface SasPlot {
+  id: string;
+  name: string;
+  /** Base64 PNG data. */
+  data: string;
+  size: { width: number; height: number };
+  code: string;
+  executionId: string;
+}
+
+/** A plot as a positron.plot render result (also used as its pre_render). */
+function renderedPlot(plot: SasPlot) {
+  return {
+    data: plot.data,
+    mime_type: "image/png",
+    settings: { size: plot.size, pixel_ratio: 1, format: "png" },
+  };
+}
+
 // Console submissions are appended here when SAS.audit.logFile is set
 // (posit-dev/positron-sas-extension#58).
 const auditLog = new AuditLog(
@@ -156,6 +177,9 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   // Active data explorer comms (one per open dataset)
   private readonly _dataExplorers = new Map<string, SasDataExplorer>();
+  // Plots sent to the Plots pane as positron.plot comms (#74).
+  private readonly _plots = new Map<string, SasPlot>();
+  private _plotCount = 0;
   private readonly _dataExplorerListeners = new Map<string, Disposable[]>();
 
   // Event emitters
@@ -533,7 +557,80 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this._dataExplorers.delete(id);
   }
 
+  /**
+   * Send each PNG graph in `html` to the Plots pane as a positron.plot comm.
+   * The pre-rendered image is what positron.ai.getCurrentPlotUri() returns,
+   * which is how Posit Assistant sees plots. Returns the number of plots.
+   */
+  private openPlots(html: string, code: string, executionId: string): number {
+    let count = 0;
+    for (const data of extractPngImages(html)) {
+      const size = pngSize(data);
+      if (!size) {
+        continue;
+      }
+      const plot: SasPlot = {
+        id: uuidv4(),
+        name: `SAS plot ${++this._plotCount}`,
+        data,
+        size,
+        code,
+        executionId,
+      };
+      this._plots.set(plot.id, plot);
+      this.fireCommMessage("comm_open", {
+        comm_id: plot.id,
+        target_name: RuntimeClientType.Plot,
+        parent_id: executionId,
+        data: { pre_render: renderedPlot(plot) },
+      });
+      count++;
+    }
+    return count;
+  }
+
+  /** Answer Positron's RPCs on a plot comm. SAS can't re-render at a new size. */
+  private handlePlotMessage(
+    plot: SasPlot,
+    messageId: string,
+    message: Record<string, unknown>,
+  ): void {
+    let data: unknown;
+    switch (message.method) {
+      case "render":
+        data = { result: renderedPlot(plot) };
+        break;
+      case "get_intrinsic_size":
+        data = { result: { ...plot.size, unit: "pixels", source: "SAS" } };
+        break;
+      case "get_metadata":
+        data = {
+          result: {
+            name: plot.name,
+            kind: "SAS",
+            execution_id: plot.executionId,
+            code: plot.code,
+          },
+        };
+        break;
+      default:
+        data = {
+          error: { code: -32601, message: `Unknown method: ${String(message.method)}` },
+        };
+    }
+    this.fireCommMessage("comm_data", { comm_id: plot.id, parent_id: messageId, data });
+  }
+
+  private closePlot(id: string): void {
+    if (this._plots.delete(id)) {
+      this.fireCommMessage("comm_closed", { comm_id: id, data: {} });
+    }
+  }
+
   private closeAllClients(): void {
+    for (const id of [...this._plots.keys()]) {
+      this.closePlot(id);
+    }
     for (const id of [...this._dataExplorers.keys()]) {
       this.closeDataExplorer(id);
     }
@@ -761,8 +858,19 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
         if (result.html5 && result.html5.trim()) {
           this.emitOutputMessage(result.html5, "text/html", id);
-          // Also emit an execute_result so the assistant knows output was produced
-          this.emitExecuteResult("SAS output produced (displayed in Viewer pane)", id);
+          const plotCount = this.openPlots(result.html5, code, id);
+          // Posit Assistant reads only the text/plain result and Plots-pane
+          // plots, so the result carries the output as text (#74). The
+          // console shows the short text/html note instead.
+          const where =
+            plotCount > 0
+              ? `the Viewer pane, ${plotCount} plot(s) in the Plots pane`
+              : "the Viewer pane";
+          this.emitExecuteResult(
+            `SAS output (shown in ${where}):\n${htmlToText(result.html5)}`,
+            id,
+            `<span>SAS output shown in ${where}.</span>`,
+          );
         }
 
         // Update VS Code diagnostics (squiggles + "Fix with Assistant" / "Explain with Assistant")
@@ -947,6 +1055,9 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     for (const [id] of this._dataExplorers) {
       result[id] = RuntimeClientType.DataExplorer;
     }
+    for (const [id] of this._plots) {
+      result[id] = RuntimeClientType.Plot;
+    }
     return result;
   }
 
@@ -954,6 +1065,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     if (this._dataExplorers.has(id)) {
       this.closeDataExplorer(id);
     }
+    this.closePlot(id);
   }
 
   /**
@@ -979,6 +1091,10 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     if (explorer) {
       explorer.sendMessage(message_id, message);
       return;
+    }
+    const plot = this._plots.get(client_id);
+    if (plot) {
+      this.handlePlotMessage(plot, message_id, message);
     }
   }
 
@@ -1397,15 +1513,16 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   /**
    * Helper: Emit a "result" message (Positron protocol).
-   * This signals to the assistant that execution produced output.
+   * `text` is what callers of executeCode (e.g. Posit Assistant) read. When
+   * `html` is given, the console shows it instead of `text`.
    */
-  private emitExecuteResult(text: string, parent_id: string): void {
+  private emitExecuteResult(text: string, parent_id: string, html?: string): void {
     const message: LanguageRuntimeMessage = {
       id: uuidv4(),
       parent_id,
       when: new Date().toISOString(),
       type: "result",
-      data: { "text/plain": text },
+      data: html ? { "text/plain": text, "text/html": html } : { "text/plain": text },
     };
     this._onDidReceiveRuntimeMessage.fire(message);
   }
