@@ -62,9 +62,9 @@ export enum RuntimeExitReason {
 }
 
 export enum RuntimeClientType {
-  Variables = "variables",
-  Plot = "plot",
-  Ui = "ui",
+  Variables = "positron.variables",
+  Plot = "positron.plot",
+  Ui = "positron.ui",
   DataExplorer = "positron.dataExplorer",
   Connection = "positron.connection",
 }
@@ -298,6 +298,11 @@ export interface PositronApi {
   readonly window: WindowManager;
   /** Data Connections pane API; only present in Positron 2026.10 and later. */
   readonly dataConnections?: DataConnectionsManager;
+  /** AI features; only the parts the SAS extension uses. */
+  readonly ai?: {
+    /** Positron 2026.10 and later: add a folder of agent skills. */
+    registerAgentSkillRoot?(root: string): vscode.Disposable;
+  };
 }
 
 // Data Connections (Positron 2026.10+). Minimal subset of positron.d.ts used
@@ -436,6 +441,8 @@ export interface PreviewPanel {
   webview: {
     html: string;
   };
+  readonly visible: boolean;
+  readonly onDidChangeViewState: vscode.Event<unknown>;
 }
 
 export interface WindowManager {
@@ -446,4 +453,6 @@ export interface WindowManager {
     title: string,
     preserveFocus?: boolean,
   ): PreviewPanel;
+  /** Open an HTML file in the Viewer, served through positron-proxy. */
+  previewHtml(path: string): PreviewPanel;
 }

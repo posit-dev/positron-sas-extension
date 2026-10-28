@@ -11,12 +11,13 @@
 export const CONSOLE_OPTIONS = "options source notes;";
 
 /**
- * Open ODS HTML5 to `<bodyId>.htm`. Each line must be under 80 chars to avoid
- * SSH pty line-wrapping.
+ * Open ODS HTML5 to `<bodyId>.htm`, with graphs drawn as PNG so they can go
+ * to the Plots pane and Posit Assistant (#74). Each line must be under 80
+ * chars to avoid SSH pty line-wrapping.
  */
 export function odsOpenCode(bodyId: string): string {
   return [
-    `ods html5(id=vscode) style=HTMLBlue`,
+    `ods graphics / outputfmt=png; ods html5(id=vscode) style=HTMLBlue`,
     `  options(bitmap_mode='inline' svg_mode='inline')`,
     `  body="${bodyId}.htm";`,
   ].join("\n");
@@ -35,7 +36,7 @@ export function stripSubmissionTag(text: string): string {
 
 const WRAPPER_SOURCE: RegExp[] = [
   /^options source notes;$/i,
-  /^ods html5\(id=vscode\) style=HTMLBlue$/i,
+  /^ods graphics \/ outputfmt=png; ods html5\(id=vscode\) style=HTMLBlue$/i,
   /^options\(bitmap_mode='inline' svg_mode='inline'\)$/i,
   /^body="[0-9a-f-]+\.htm";$/i,
   /^;\*';\*";\*\/;run;quit;ods html5\(id=vscode\) close;$/i,

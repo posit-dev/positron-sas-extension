@@ -33,6 +33,8 @@ import {
   stripSubmissionTag,
 } from "./consoleLog";
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
+import { OutputFiles } from "./outputFiles";
+import { extractPngImages, htmlToText, pngSize } from "./sasOutput";
 import {
   type SessionIdentity,
   buildIdentityMacroCode,
@@ -76,6 +78,7 @@ import type {
   LanguageRuntimeSession,
   MetadataSchema,
   ObjectSchema,
+  PreviewPanel,
   RuntimeCodeExecutionMode,
   RuntimeErrorBehavior,
   RuntimeSessionMetadata,
@@ -103,6 +106,49 @@ interface RowFilter {
 interface SortKey {
   column_index: number;
   ascending: boolean;
+}
+
+/** A SAS graph shown in the Plots pane. */
+interface SasPlot {
+  id: string;
+  name: string;
+  /** Base64 PNG data. */
+  data: string;
+  size: { width: number; height: number };
+  code: string;
+  executionId: string;
+}
+
+/** A plot as a positron.plot render result (also used as its pre_render). */
+function renderedPlot(plot: SasPlot) {
+  return {
+    data: plot.data,
+    mime_type: "image/png",
+    settings: { size: plot.size, pixel_ratio: 1, format: "png" },
+  };
+}
+
+/**
+ * Resolve once a Viewer panel is visible, or after `timeoutMs`, whichever
+ * comes first: a slow or failed Viewer must not hold up the run.
+ */
+function waitUntilVisible(panel: PreviewPanel, timeoutMs = 3000): Promise<void> {
+  if (panel.visible) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      listener.dispose();
+      resolve();
+    };
+    const timer = setTimeout(done, timeoutMs);
+    const listener = panel.onDidChangeViewState(() => {
+      if (panel.visible) {
+        done();
+      }
+    });
+  });
 }
 
 // Console submissions are appended here when SAS.audit.logFile is set
@@ -156,6 +202,11 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   // Active data explorer comms (one per open dataset)
   private readonly _dataExplorers = new Map<string, SasDataExplorer>();
+  // HTML reports opened in the Viewer as files (#74).
+  private readonly _outputFiles = new OutputFiles();
+  // Plots sent to the Plots pane as positron.plot comms (#74).
+  private readonly _plots = new Map<string, SasPlot>();
+  private _plotCount = 0;
   private readonly _dataExplorerListeners = new Map<string, Disposable[]>();
 
   // Event emitters
@@ -533,7 +584,80 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this._dataExplorers.delete(id);
   }
 
+  /**
+   * Send each PNG graph in `html` to the Plots pane as a positron.plot comm.
+   * The pre-rendered image is what positron.ai.getCurrentPlotUri() returns,
+   * which is how Posit Assistant sees plots. Returns the number of plots.
+   */
+  private openPlots(html: string, code: string, executionId: string): number {
+    let count = 0;
+    for (const data of extractPngImages(html)) {
+      const size = pngSize(data);
+      if (!size) {
+        continue;
+      }
+      const plot: SasPlot = {
+        id: uuidv4(),
+        name: `SAS plot ${++this._plotCount}`,
+        data,
+        size,
+        code,
+        executionId,
+      };
+      this._plots.set(plot.id, plot);
+      this.fireCommMessage("comm_open", {
+        comm_id: plot.id,
+        target_name: RuntimeClientType.Plot,
+        parent_id: executionId,
+        data: { pre_render: renderedPlot(plot) },
+      });
+      count++;
+    }
+    return count;
+  }
+
+  /** Answer Positron's RPCs on a plot comm. SAS can't re-render at a new size. */
+  private handlePlotMessage(
+    plot: SasPlot,
+    messageId: string,
+    message: Record<string, unknown>,
+  ): void {
+    let data: unknown;
+    switch (message.method) {
+      case "render":
+        data = { result: renderedPlot(plot) };
+        break;
+      case "get_intrinsic_size":
+        data = { result: { ...plot.size, unit: "pixels", source: "SAS" } };
+        break;
+      case "get_metadata":
+        data = {
+          result: {
+            name: plot.name,
+            kind: "SAS",
+            execution_id: plot.executionId,
+            code: plot.code,
+          },
+        };
+        break;
+      default:
+        data = {
+          error: { code: -32601, message: `Unknown method: ${String(message.method)}` },
+        };
+    }
+    this.fireCommMessage("comm_data", { comm_id: plot.id, parent_id: messageId, data });
+  }
+
+  private closePlot(id: string): void {
+    if (this._plots.delete(id)) {
+      this.fireCommMessage("comm_closed", { comm_id: id, data: {} });
+    }
+  }
+
   private closeAllClients(): void {
+    for (const id of [...this._plots.keys()]) {
+      this.closePlot(id);
+    }
     for (const id of [...this._dataExplorers.keys()]) {
       this.closeDataExplorer(id);
     }
@@ -751,7 +875,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     };
 
     runWhenReady()
-      .then((result) => {
+      .then(async (result) => {
         console.log(`Execution completed. Full result object:`, result);
         console.log(`  - html5 length: ${result.html5?.length || 0}`);
         console.log(`  - html5 value: ${result.html5?.substring(0, 200) || 'empty'}`);
@@ -760,9 +884,23 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         auditComplete(this._execErrorCount > 0 ? "error" : "ok");
 
         if (result.html5 && result.html5.trim()) {
-          this.emitOutputMessage(result.html5, "text/html", id);
-          // Also emit an execute_result so the assistant knows output was produced
-          this.emitExecuteResult("SAS output produced (displayed in Viewer pane)", id);
+          // Open the report first and the plots after it, so a run with
+          // graphs ends with the Plots pane in front, as in R and Python.
+          // Both happen before idle, when Posit Assistant looks for a plot.
+          await this.emitOutputMessage(result.html5, "text/html", id);
+          const plotCount = this.openPlots(result.html5, code, id);
+          // Posit Assistant reads only the text/plain result and Plots-pane
+          // plots, so the result carries the output as text (#74). The
+          // console shows the short text/html note instead.
+          const where =
+            plotCount > 0
+              ? `the Viewer pane, ${plotCount} plot(s) in the Plots pane`
+              : "the Viewer pane";
+          this.emitExecuteResult(
+            `SAS output (shown in ${where}):\n${htmlToText(result.html5)}`,
+            id,
+            `<span>SAS output shown in ${where}.</span>`,
+          );
         }
 
         // Update VS Code diagnostics (squiggles + "Fix with Assistant" / "Explain with Assistant")
@@ -863,6 +1001,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    */
   async shutdown(exitReason: RuntimeExitReason): Promise<void> {
     this.closeAllClients();
+    void this._outputFiles.dispose();
     if (this.sessionMode !== LanguageRuntimeSessionMode.Background) {
       setActiveAssistantClient(undefined);
       setActiveSession(undefined);
@@ -947,6 +1086,9 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     for (const [id] of this._dataExplorers) {
       result[id] = RuntimeClientType.DataExplorer;
     }
+    for (const [id] of this._plots) {
+      result[id] = RuntimeClientType.Plot;
+    }
     return result;
   }
 
@@ -954,6 +1096,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     if (this._dataExplorers.has(id)) {
       this.closeDataExplorer(id);
     }
+    this.closePlot(id);
   }
 
   /**
@@ -979,6 +1122,10 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     if (explorer) {
       explorer.sendMessage(message_id, message);
       return;
+    }
+    const plot = this._plots.get(client_id);
+    if (plot) {
+      this.handlePlotMessage(plot, message_id, message);
     }
   }
 
@@ -1092,6 +1239,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    */
   dispose(): void {
     this.closeAllClients();
+    void this._outputFiles.dispose();
     this._disposables.forEach((d) => d.dispose());
     this._disposables = [];
     if (this._sasSession) {
@@ -1336,35 +1484,51 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   /**
    * Helper: Emit output message
    */
-  private emitOutputMessage(content: string, mimeType: string, parent_id: string = ""): void {
+  private emitOutputMessage(content: string, mimeType: string, parent_id: string = ""): Promise<void> {
     console.log(`emitOutputMessage called with parent_id: ${parent_id}, mime: ${mimeType}`);
 
     // If HTML output, send to Viewer pane (not console or editor split)
     if (mimeType.includes("html")) {
       console.log(`Sending HTML output to Viewer pane (${content.length} chars)`);
-      this.emitViewerOutput(content, parent_id);
-      return;
+      return this.emitViewerOutput(content, parent_id);
     }
 
     // For non-HTML output, send to console as before
     this.emitTextOutput(content, mimeType, parent_id);
+    return Promise.resolve();
   }
 
   /**
-   * Helper: Emit HTML output to Viewer pane using Positron's preview panel API.
+   * Helper: Emit HTML output to the Viewer pane. The report is opened as an
+   * HTML file, which Posit Assistant can read (#74), unlike a webview set to
+   * an HTML string. Falls back to that webview if the file can't be shown.
+   * Resolves once the report is showing (or after a timeout); never rejects.
    */
-  private emitViewerOutput(htmlContent: string, _parent_id: string = ""): void {
+  private async emitViewerOutput(htmlContent: string, _parent_id: string = ""): Promise<void> {
     const api = getPositronApi();
     if (!api) {
       return;
     }
 
-    const panel = api.window.createPreviewPanel(
-      "sas.output",
-      "SAS Output",
-      true, // preserveFocus — keep cursor in the console
-    );
-    panel.webview.html = htmlContent;
+    const showAsWebview = () => {
+      const panel = api.window.createPreviewPanel(
+        "sas.output",
+        "SAS Output",
+        true, // preserveFocus — keep cursor in the console
+      );
+      panel.webview.html = htmlContent;
+    };
+    if (typeof api.window.previewHtml !== "function") {
+      showAsWebview();
+      return;
+    }
+    try {
+      const file = await this._outputFiles.write(htmlContent);
+      await waitUntilVisible(api.window.previewHtml(file));
+    } catch (error) {
+      console.error("SAS output: cannot open the report file:", error);
+      showAsWebview();
+    }
   }
 
   /**
@@ -1397,15 +1561,16 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   /**
    * Helper: Emit a "result" message (Positron protocol).
-   * This signals to the assistant that execution produced output.
+   * `text` is what callers of executeCode (e.g. Posit Assistant) read. When
+   * `html` is given, the console shows it instead of `text`.
    */
-  private emitExecuteResult(text: string, parent_id: string): void {
+  private emitExecuteResult(text: string, parent_id: string, html?: string): void {
     const message: LanguageRuntimeMessage = {
       id: uuidv4(),
       parent_id,
       when: new Date().toISOString(),
       type: "result",
-      data: { "text/plain": text },
+      data: html ? { "text/plain": text, "text/html": html } : { "text/plain": text },
     };
     this._onDidReceiveRuntimeMessage.fire(message);
   }

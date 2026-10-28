@@ -189,6 +189,13 @@ export async function initializePositronIntegration(
   // Register Positron Assistant tools and session context provider.
   const assistant = registerAssistantIntegration(context, () => activeAssistantClient);
   assistantSessionProvider = assistant.sessionProvider;
+  // Teach Posit Assistant where SAS output goes, e.g. reading SAS reports
+  // in the Viewer (#74). Skill roots exist in Positron 2026.10 and later.
+  if (typeof api.ai?.registerAgentSkillRoot === "function") {
+    context.subscriptions.push(
+      api.ai.registerAgentSkillRoot(context.asAbsolutePath("assistant-skills")),
+    );
+  }
   // Initialize Data Viewer Provider for showing datasets
   dataViewerProvider = new PositronDataViewerProvider(api);
   context.subscriptions.push(dataViewerProvider);
