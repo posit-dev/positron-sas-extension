@@ -16,11 +16,22 @@ import { v4 as uuidv4 } from "uuid";
 import { profileConfig } from "../commands/profile";
 import { ConnectionType } from "../components/profile";
 import { type LogLine, getSession, setSessionTags } from "../connection";
+import {
+  appendSessionLogFn,
+  setFileName,
+} from "../components/logViewer";
 import { sasDiagnostic } from "../components/logViewer/sasDiagnostics";
 import { SASCodeDocument } from "../components/utils/SASCodeDocument";
 import { getCodeDocumentConstructionParameters } from "../components/utils/SASCodeDocumentHelper";
 import { AuditLog } from "./auditLog";
 import { locateCodeInDocument } from "./consoleDiagnostics";
+import {
+  CONSOLE_OPTIONS,
+  CONSOLE_POSTAMBLE,
+  isWrapperLogLine,
+  odsOpenCode,
+  stripSubmissionTag,
+} from "./consoleLog";
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
 import {
   type SessionIdentity,
@@ -581,14 +592,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     const hasOdsHtml = /\bods\s+html5?\b/i.test(code);
     // Generate a UUID body filename so the SSH session's extractOutputHtmlFileName
     // can detect it and retrieve the HTML output file after execution.
-    // Each line must be under 80 chars to avoid SSH pty line-wrapping.
-    const odsBodyId = uuidv4();
-    const odsOpen = [
-      `ods html5(id=vscode) style=HTMLBlue`,
-      `  options(bitmap_mode='inline' svg_mode='inline')`,
-      `  body="${odsBodyId}.htm";`,
-    ].join("\n");
-    const postamble = `;*';*";*/;run;quit;ods html5(id=vscode) close;`;
+    const odsOpen = odsOpenCode(uuidv4());
+    const postamble = CONSOLE_POSTAMBLE;
     // Traceability tag (#58): added to an existing line, never as a new one.
     const tag = buildSubmissionComment(this._identity, id);
 
@@ -611,7 +616,9 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
               document.positionAt(range.end),
             ),
           ],
-          preamble: hasOdsHtml ? tag : `options source notes; ${tag}\n${odsOpen}`,
+          preamble: hasOdsHtml
+            ? tag
+            : `${CONSOLE_OPTIONS} ${tag}\n${odsOpen}`,
           postamble: hasOdsHtml ? undefined : postamble,
         }),
         // ODS is opened by the preamble above, not by SASCodeDocument.
@@ -625,7 +632,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       wrappedCode: tagCode(
         hasOdsHtml
           ? code
-          : `options source notes;\n${odsOpen}\n${code}\n${postamble}`,
+          : `${CONSOLE_OPTIONS}\n${odsOpen}\n${code}\n${postamble}`,
         tag,
       ),
     };
@@ -719,11 +726,20 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       if (this._silentRunning && this._silentDonePromise) {
         await this._silentDonePromise;
       }
+      // Console runs append to the SAS Log channel without showing it, so
+      // the panel stays on the Console. The editor Run command sets its own
+      // file name before each run.
+      setFileName("Console");
       this._sasSession!.onExecutionLogFn = (logs) => {
         executionLogs.push(...logs);
-        logs.forEach((log) => {
+        // Show the user's log, without the lines our wrapper code produces.
+        const visible = logs
+          .filter((log) => !isWrapperLogLine(log.line))
+          .map((log) => ({ ...log, line: stripSubmissionTag(log.line) }));
+        visible.forEach((log) => {
           this.emitLogMessage(log.line, log.type, this._currentExecutionId);
         });
+        appendSessionLogFn(visible);
       };
       // Job tags are REST-only; ITC reads its second run() argument as a
       // skipPageHeaders flag, so don't pass anything there.
@@ -771,8 +787,6 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
             "warning",
             id,
           );
-        } else if (!result.html5 || !result.html5.trim()) {
-          this.emitLogMessage("✓ Done", "normal", id);
         }
 
         // Notify the Connections pane to refresh its tree.
@@ -1258,14 +1272,13 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   /**
    * Helper: Emit a log line to the console.
    *
-   * Filtering rules (based on SAS REST LogLineTypeEnum):
+   * Stream rules (based on SAS REST LogLineTypeEnum):
    *   "error"   → stderr stream, increment error counter
    *   "warning" → stderr stream, increment warning counter
-   *   "normal"  → stdout stream (used for summary messages from our own code)
-   *   everything else (source, note, title, byline…) → suppressed
+   *   everything else (source, note, normal…) → stdout stream
    *
-   * This keeps the console clean: only errors, warnings, and our own summary
-   * messages appear. The full SAS log is not shown line-by-line.
+   * Callers drop the lines produced by our wrapper code, so the console shows
+   * the user's SAS log line by line.
    */
   private emitLogMessage(text: string, type: string, parent_id: string = ""): void {
     // The SSH session may deliver all lines as type "normal" without
@@ -1280,9 +1293,6 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       this._execErrorLines.push(text);
     } else if (effective === "warning") {
       this._execWarningCount++;
-    } else if (effective !== "normal") {
-      // Suppress source echoes, notes, titles, bylines, etc.
-      return;
     }
 
     const streamName = (effective === "error" || effective === "warning") ? "stderr" : "stdout";
@@ -1318,11 +1328,6 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     }
     // Source echo: line number followed by spaces and code
     if (/^\d+\s/.test(trimmed)) {
-      return "source";
-    }
-    // Continuation lines (e.g. "!  ..." or just whitespace + code after a source line)
-    // Suppress internal markers and option echoes
-    if (/^%put\b|^options\b|^ods\b|^--vscode-sas-extension/i.test(trimmed)) {
       return "source";
     }
     return "normal";

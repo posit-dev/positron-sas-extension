@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- The SAS console now shows the full SAS log of the code you run: the source, NOTEs (including `%put NOTE: ...` output), warnings and errors. Lines from the code Positron wraps around yours are left out. The same lines are added to the "SAS Log" output channel, without switching the panel away from the Console
+
 ## 0.3.0 - 2026-10-26
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
