@@ -401,6 +401,17 @@ export interface RuntimeManager {
     sessionId: string,
   ): Thenable<BaseLanguageRuntimeSession | undefined>;
   getForegroundSession(): Thenable<BaseLanguageRuntimeSession | undefined>;
+  executeCode(
+    languageId: string,
+    code: string,
+    focus: boolean,
+    allowIncomplete?: boolean,
+    mode?: RuntimeCodeExecutionMode,
+    errorBehavior?: RuntimeErrorBehavior,
+    observer?: unknown,
+    sessionId?: string,
+    documentUri?: vscode.Uri,
+  ): Thenable<Record<string, unknown>>;
   startLanguageRuntime(
     runtimeId: string,
     sessionName: string,

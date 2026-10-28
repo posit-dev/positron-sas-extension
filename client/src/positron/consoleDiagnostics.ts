@@ -50,3 +50,16 @@ export function locateCodeInDocument(
   const before = starts.filter((s) => s + needle.length <= cursorOffset);
   return at(before.length > 0 ? before[before.length - 1] : starts[0]);
 }
+
+/**
+ * The code an editor Run sends to the console: the non-empty selections
+ * joined by newlines (as upstream's getSelectedCode does), or else the
+ * whole document.
+ */
+export function editorCodeToRun(
+  documentText: string,
+  selectedTexts: readonly string[],
+): string {
+  const selected = selectedTexts.filter((text) => text !== "");
+  return selected.length > 0 ? selected.join("\n") : documentText;
+}

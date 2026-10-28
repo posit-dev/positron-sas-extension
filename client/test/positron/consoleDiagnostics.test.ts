@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect } from "chai";
 
-import { locateCodeInDocument } from "../../src/positron/consoleDiagnostics";
+import {
+  editorCodeToRun,
+  locateCodeInDocument,
+} from "../../src/positron/consoleDiagnostics";
 
 describe("locateCodeInDocument", () => {
   const doc = [
@@ -46,5 +49,24 @@ describe("locateCodeInDocument", () => {
   it("gives up on code that isn't in the document", () => {
     expect(locateCodeInDocument(doc, "proc print; run;", 0)).to.be.undefined;
     expect(locateCodeInDocument(doc, "   \n", 0)).to.be.undefined;
+  });
+});
+
+describe("editorCodeToRun", () => {
+  const doc = "data a;\n  x = 1;\nrun;\n";
+
+  it("runs the whole document when nothing is selected", () => {
+    expect(editorCodeToRun(doc, [])).to.equal(doc);
+    expect(editorCodeToRun(doc, [""])).to.equal(doc);
+  });
+
+  it("runs a single selection", () => {
+    expect(editorCodeToRun(doc, ["  x = 1;"])).to.equal("  x = 1;");
+  });
+
+  it("joins several selections and skips empty ones", () => {
+    expect(editorCodeToRun(doc, ["data a;", "", "run;"])).to.equal(
+      "data a;\nrun;",
+    );
   });
 });
