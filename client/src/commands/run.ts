@@ -25,6 +25,8 @@ import { SASCodeDocument } from "../components/utils/SASCodeDocument";
 import { getCodeDocumentConstructionParameters } from "../components/utils/SASCodeDocumentHelper";
 import { isOutputHtmlEnabled } from "../components/utils/settings";
 import { ErrorRepresentation, getSession } from "../connection";
+import { isPositron } from "../positron";
+import { runEditorInConsole } from "../positron/runInConsole";
 import { useRunStore } from "../store";
 import { profileConfig, switchProfile } from "./profile";
 
@@ -145,6 +147,10 @@ async function runCode(selected?: boolean, uri?: Uri) {
 }
 
 const _run = async (selected = false, uri?: Uri) => {
+  // Positron: run SAS editor code in the SAS console (#77).
+  if (isPositron() && (await runEditorInConsole(selected, uri))) {
+    return;
+  }
   if (useRunStore.getState().isExecutingCode) {
     return;
   }

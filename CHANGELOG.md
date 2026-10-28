@@ -4,6 +4,7 @@
 
 ### Bug Fixes
 
+- Positron: Run, Run Selection and Run Region in a `.sas` file now run the code in the SAS console, as Positron does for R and Python. Results open in the Viewer pane instead of a Result tab that split the editor area, and the log shows in the console [#77](https://github.com/posit-dev/positron-sas-extension/issues/77)
 - The SAS console now shows the full SAS log of the code you run: the source, NOTEs (including `%put NOTE: ...` output), warnings and errors. Lines from the code Positron wraps around yours are left out. The same lines are added to the "SAS Log" output channel, without switching the panel away from the Console
 
 ## 0.3.0 - 2026-10-26
