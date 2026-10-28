@@ -446,4 +446,6 @@ export interface WindowManager {
     title: string,
     preserveFocus?: boolean,
   ): PreviewPanel;
+  /** Open an HTML file in the Viewer, served through positron-proxy. */
+  previewHtml(path: string): PreviewPanel;
 }

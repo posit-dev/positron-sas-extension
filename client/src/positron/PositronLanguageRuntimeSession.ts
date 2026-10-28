@@ -33,6 +33,7 @@ import {
   stripSubmissionTag,
 } from "./consoleLog";
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
+import { OutputFiles } from "./outputFiles";
 import { extractPngImages, htmlToText, pngSize } from "./sasOutput";
 import {
   type SessionIdentity,
@@ -177,6 +178,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   // Active data explorer comms (one per open dataset)
   private readonly _dataExplorers = new Map<string, SasDataExplorer>();
+  // HTML reports opened in the Viewer as files (#74).
+  private readonly _outputFiles = new OutputFiles();
   // Plots sent to the Plots pane as positron.plot comms (#74).
   private readonly _plots = new Map<string, SasPlot>();
   private _plotCount = 0;
@@ -971,6 +974,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    */
   async shutdown(exitReason: RuntimeExitReason): Promise<void> {
     this.closeAllClients();
+    void this._outputFiles.dispose();
     if (this.sessionMode !== LanguageRuntimeSessionMode.Background) {
       setActiveAssistantClient(undefined);
       setActiveSession(undefined);
@@ -1208,6 +1212,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    */
   dispose(): void {
     this.closeAllClients();
+    void this._outputFiles.dispose();
     this._disposables.forEach((d) => d.dispose());
     this._disposables = [];
     if (this._sasSession) {
@@ -1467,7 +1472,9 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   }
 
   /**
-   * Helper: Emit HTML output to Viewer pane using Positron's preview panel API.
+   * Helper: Emit HTML output to the Viewer pane. The report is opened as an
+   * HTML file, which Posit Assistant can read (#74), unlike a webview set to
+   * an HTML string. Falls back to that webview if the file can't be shown.
    */
   private emitViewerOutput(htmlContent: string, _parent_id: string = ""): void {
     const api = getPositronApi();
@@ -1475,12 +1482,25 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       return;
     }
 
-    const panel = api.window.createPreviewPanel(
-      "sas.output",
-      "SAS Output",
-      true, // preserveFocus — keep cursor in the console
-    );
-    panel.webview.html = htmlContent;
+    const showAsWebview = () => {
+      const panel = api.window.createPreviewPanel(
+        "sas.output",
+        "SAS Output",
+        true, // preserveFocus — keep cursor in the console
+      );
+      panel.webview.html = htmlContent;
+    };
+    if (typeof api.window.previewHtml !== "function") {
+      showAsWebview();
+      return;
+    }
+    this._outputFiles
+      .write(htmlContent)
+      .then((file) => api.window.previewHtml(file))
+      .catch((error) => {
+        console.error("SAS output: cannot open the report file:", error);
+        showAsWebview();
+      });
   }
 
   /**
