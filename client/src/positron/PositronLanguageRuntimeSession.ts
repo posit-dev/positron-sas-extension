@@ -78,6 +78,7 @@ import type {
   LanguageRuntimeSession,
   MetadataSchema,
   ObjectSchema,
+  PreviewPanel,
   RuntimeCodeExecutionMode,
   RuntimeErrorBehavior,
   RuntimeSessionMetadata,
@@ -125,6 +126,29 @@ function renderedPlot(plot: SasPlot) {
     mime_type: "image/png",
     settings: { size: plot.size, pixel_ratio: 1, format: "png" },
   };
+}
+
+/**
+ * Resolve once a Viewer panel is visible, or after `timeoutMs`, whichever
+ * comes first: a slow or failed Viewer must not hold up the run.
+ */
+function waitUntilVisible(panel: PreviewPanel, timeoutMs = 3000): Promise<void> {
+  if (panel.visible) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      listener.dispose();
+      resolve();
+    };
+    const timer = setTimeout(done, timeoutMs);
+    const listener = panel.onDidChangeViewState(() => {
+      if (panel.visible) {
+        done();
+      }
+    });
+  });
 }
 
 // Console submissions are appended here when SAS.audit.logFile is set
@@ -851,7 +875,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     };
 
     runWhenReady()
-      .then((result) => {
+      .then(async (result) => {
         console.log(`Execution completed. Full result object:`, result);
         console.log(`  - html5 length: ${result.html5?.length || 0}`);
         console.log(`  - html5 value: ${result.html5?.substring(0, 200) || 'empty'}`);
@@ -860,7 +884,10 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         auditComplete(this._execErrorCount > 0 ? "error" : "ok");
 
         if (result.html5 && result.html5.trim()) {
-          this.emitOutputMessage(result.html5, "text/html", id);
+          // Open the report first and the plots after it, so a run with
+          // graphs ends with the Plots pane in front, as in R and Python.
+          // Both happen before idle, when Posit Assistant looks for a plot.
+          await this.emitOutputMessage(result.html5, "text/html", id);
           const plotCount = this.openPlots(result.html5, code, id);
           // Posit Assistant reads only the text/plain result and Plots-pane
           // plots, so the result carries the output as text (#74). The
@@ -1457,26 +1484,27 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   /**
    * Helper: Emit output message
    */
-  private emitOutputMessage(content: string, mimeType: string, parent_id: string = ""): void {
+  private emitOutputMessage(content: string, mimeType: string, parent_id: string = ""): Promise<void> {
     console.log(`emitOutputMessage called with parent_id: ${parent_id}, mime: ${mimeType}`);
 
     // If HTML output, send to Viewer pane (not console or editor split)
     if (mimeType.includes("html")) {
       console.log(`Sending HTML output to Viewer pane (${content.length} chars)`);
-      this.emitViewerOutput(content, parent_id);
-      return;
+      return this.emitViewerOutput(content, parent_id);
     }
 
     // For non-HTML output, send to console as before
     this.emitTextOutput(content, mimeType, parent_id);
+    return Promise.resolve();
   }
 
   /**
    * Helper: Emit HTML output to the Viewer pane. The report is opened as an
    * HTML file, which Posit Assistant can read (#74), unlike a webview set to
    * an HTML string. Falls back to that webview if the file can't be shown.
+   * Resolves once the report is showing (or after a timeout); never rejects.
    */
-  private emitViewerOutput(htmlContent: string, _parent_id: string = ""): void {
+  private async emitViewerOutput(htmlContent: string, _parent_id: string = ""): Promise<void> {
     const api = getPositronApi();
     if (!api) {
       return;
@@ -1494,13 +1522,13 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       showAsWebview();
       return;
     }
-    this._outputFiles
-      .write(htmlContent)
-      .then((file) => api.window.previewHtml(file))
-      .catch((error) => {
-        console.error("SAS output: cannot open the report file:", error);
-        showAsWebview();
-      });
+    try {
+      const file = await this._outputFiles.write(htmlContent);
+      await waitUntilVisible(api.window.previewHtml(file));
+    } catch (error) {
+      console.error("SAS output: cannot open the report file:", error);
+      showAsWebview();
+    }
   }
 
   /**

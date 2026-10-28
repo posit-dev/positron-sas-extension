@@ -5,7 +5,7 @@
 ### Features
 
 - Posit Assistant can now see SAS results [#74](https://github.com/posit-dev/positron-sas-extension/issues/74):
-  - Graphs from console runs are drawn as PNG and also sent to the Plots pane, where the Assistant can look at them. The full HTML report still opens in the Viewer
+  - Graphs from console runs are drawn as PNG and also sent to the Plots pane, where the Assistant can look at them. A run with graphs ends with the Plots pane in front, as in R and Python; the full HTML report is in the Viewer
   - A plain-text copy of the output (titles and tables) goes to the Assistant with each run's result. The console only shows a short note
   - The HTML report now opens in the Viewer as a file, so the Assistant can read it and take screenshots of it, including for code you run yourself. Reading the Viewer needs Positron 2026.10 or later
   - A `sas-results` skill tells the Assistant where SAS output goes (log in the Console, reports in the Viewer, graphs in the Plots pane) and how to read it (Positron 2026.10 or later)

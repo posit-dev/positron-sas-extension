@@ -441,6 +441,8 @@ export interface PreviewPanel {
   webview: {
     html: string;
   };
+  readonly visible: boolean;
+  readonly onDidChangeViewState: vscode.Event<unknown>;
 }
 
 export interface WindowManager {
