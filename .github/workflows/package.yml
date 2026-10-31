@@ -31,6 +31,11 @@ jobs:
       - run: echo "vsixPath=positron-sas-${{ steps.package-json.outputs.version }}.vsix" >> "$GITHUB_OUTPUT"
         id: vsixPath
         if: steps.package-json.outputs.has-updated == 'true'
+      # Release notes are the version's CHANGELOG.md section, so every release
+      # reads like the changelog. Fails (before tagging) if the section is
+      # missing; the PR check enforces it for release PRs.
+      - run: node tools/changelog-section.mjs ${{ steps.package-json.outputs.version }} > release-notes.md
+        if: steps.package-json.outputs.has-updated == 'true'
       - run: |
           git tag -f v${{ steps.package-json.outputs.version }}
           git push -f origin v${{ steps.package-json.outputs.version }}
@@ -38,8 +43,9 @@ jobs:
       - run: |
           if gh release view v${{ steps.package-json.outputs.version }} > /dev/null 2>&1; then
             gh release upload v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --clobber
+            gh release edit v${{ steps.package-json.outputs.version }} --notes-file release-notes.md
           else
-            gh release create v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --generate-notes
+            gh release create v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --notes-file release-notes.md
           fi
         if: steps.package-json.outputs.has-updated == 'true'
         env:

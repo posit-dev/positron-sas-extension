@@ -14,6 +14,17 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "npm"
       - run: npm ci
+      # A release PR (a package.json version with no tag yet) must have the
+      # version's CHANGELOG.md section: it becomes the GitHub release notes.
+      - name: Check release notes
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
+            echo "v$version is already released; no release notes to check."
+          else
+            node tools/changelog-section.mjs "$version" > /dev/null
+            echo "CHANGELOG.md has release notes for $version."
+          fi
       # Non-blocking: reformatting files shared with the upstream
       # sassoftware/vscode-sas-extension fork would cause merge conflicts.
       # Issues are still reported in the log.
