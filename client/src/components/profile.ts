@@ -112,11 +112,7 @@ export interface StdioProfile extends BaseProfile {
 }
 
 export type Profile =
-  | ViyaProfile
-  | SSHProfile
-  | COMProfile
-  | IOMProfile
-  | StdioProfile;
+  ViyaProfile | SSHProfile | COMProfile | IOMProfile | StdioProfile;
 
 export enum AutoExecType {
   File = "file",
@@ -679,6 +675,8 @@ export class ProfileConfig {
         return activeProfile.host;
       case ConnectionType.Rest:
         return activeProfile.endpoint;
+      case ConnectionType.Stdio:
+        return "localhost";
     }
   }
 }

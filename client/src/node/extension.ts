@@ -254,9 +254,12 @@ function updateViewSettings(): void {
     profileConfig.getActiveProfile(),
   );
 
+  // SSH and stdio sessions only run code: no sign-in, library or server views.
+  const isCodeOnly =
+    activeProfile?.connectionType === ConnectionType.SSH ||
+    activeProfile?.connectionType === ConnectionType.Stdio;
   const settings = {
-    canSignIn:
-      !activeProfile || activeProfile.connectionType !== ConnectionType.SSH,
+    canSignIn: !isCodeOnly,
     librariesEnabled: false,
     contentEnabled: false,
     librariesDisplayed: false,
@@ -265,10 +268,8 @@ function updateViewSettings(): void {
     allowDownload: true,
   };
   if (activeProfile) {
-    settings.librariesEnabled =
-      activeProfile.connectionType !== ConnectionType.SSH;
-    settings.serverEnabled =
-      activeProfile.connectionType !== ConnectionType.SSH;
+    settings.librariesEnabled = !isCodeOnly;
+    settings.serverEnabled = !isCodeOnly;
     settings.contentEnabled =
       activeProfile.connectionType === ConnectionType.Rest;
   }

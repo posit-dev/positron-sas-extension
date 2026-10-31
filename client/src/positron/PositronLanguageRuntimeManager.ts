@@ -270,8 +270,8 @@ export class SASLanguageRuntimeManager implements LanguageRuntimeManager {
   private getSessionLocation(
     profile: Profile,
   ): LanguageRuntimeSessionLocation {
-    // SSH connections run on remote machine
-    if (profile.connectionType === "ssh") {
+    // SSH and stdio sessions are SAS processes on a machine (remote or this one)
+    if (profile.connectionType === "ssh" || profile.connectionType === "stdio") {
       return LanguageRuntimeSessionLocation.Machine;
     }
     // REST/Viya connections are workspace-based

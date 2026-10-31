@@ -143,6 +143,19 @@ function profileToSaspyConfig(name: string, profile: Profile): string {
       ];
       return lines.join("\n");
     }
+    case ConnectionType.Stdio: {
+      // saspy's STDIO access method starts the local SAS directly, like this profile.
+      const lines = [
+        `# saspy configuration for profile "${name}" (local SAS, STDIO)`,
+        `SAS_config_names = ['${name}']`,
+        ``,
+        `${name} = {`,
+        `    'saspath': '${profile.saspath}',`,
+        `    'encoding': 'utf-8',`,
+        `}`,
+      ];
+      return lines.join("\n");
+    }
     default:
       return `# Unknown connection type for profile "${name}"`;
   }
