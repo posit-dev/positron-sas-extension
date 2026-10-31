@@ -3,6 +3,7 @@
 import { expect } from "chai";
 import * as childProcess from "child_process";
 import { EventEmitter } from "events";
+import * as fs from "fs";
 import * as sinon from "sinon";
 
 import { StdioSession, getSession } from "../../../src/connection/stdio";
@@ -28,6 +29,8 @@ describe("stdio connection", () => {
     session.onExecutionLogFn = () => {
       return;
     };
+    // /path/to/sas does not exist; the session checks saspath before spawning.
+    sandbox.stub(fs, "accessSync");
   });
 
   afterEach(() => {
@@ -38,6 +41,19 @@ describe("stdio connection", () => {
   });
 
   describe("setup", () => {
+    it("rejects with the saspath when SAS is not executable", async () => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      (fs.accessSync as sinon.SinonStub).throws(new Error("ENOENT"));
+      const spawnStub = sandbox.stub(childProcess, "spawn");
+
+      await assertThrowsAsync(
+        async () => await session.setup(),
+        "/path/to/sas",
+      );
+
+      expect(spawnStub.called).to.be.false;
+    });
+
     it("spawns SAS process with correct params", async () => {
       const config = {
         saspath: "/path/to/sas",

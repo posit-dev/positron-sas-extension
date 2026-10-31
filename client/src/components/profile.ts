@@ -24,12 +24,15 @@ enum ConnectionOptions {
   SASViya = "SAS Viya",
 }
 
+// "SAS 9.4 (local)" is the Windows-only COM connection. Elsewhere it can never
+// start (EPIPE), and its label reads like the right pick for a local SAS, which
+// is stdio there, so it is only offered on Windows.
 const CONNECTION_PICK_OPTS: string[] = [
   ConnectionOptions.SASViya,
   ConnectionOptions.SAS9SSH,
   ConnectionOptions.SAS9Stdio,
   ConnectionOptions.SAS9IOM,
-  ConnectionOptions.SAS9COM,
+  ...(process.platform === "win32" ? [ConnectionOptions.SAS9COM] : []),
 ];
 
 /**

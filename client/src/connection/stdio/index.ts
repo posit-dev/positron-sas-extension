@@ -3,7 +3,7 @@
 import { l10n } from "vscode";
 
 import { ChildProcess, spawn } from "child_process";
-import { readFile } from "fs";
+import { accessSync, constants, readFile } from "fs";
 import { join } from "path";
 
 import { BaseConfig, RunResult } from "..";
@@ -56,6 +56,22 @@ export class StdioSession extends Session {
 
       if (this._process) {
         this._resolve?.({});
+        return;
+      }
+
+      // A missing executable would otherwise surface as a bare
+      // "spawn ... ENOENT" or EPIPE, so name the path instead.
+      try {
+        accessSync(this._config.saspath, constants.X_OK);
+      } catch {
+        this._reject?.(
+          new Error(
+            l10n.t(
+              "SAS executable not found or not executable: {saspath}. Check saspath in the connection profile (SAS Analytics Pro: /opt/sas/viya/home/SASFoundation/sas).",
+              { saspath: this._config.saspath },
+            ),
+          ),
+        );
         return;
       }
 
