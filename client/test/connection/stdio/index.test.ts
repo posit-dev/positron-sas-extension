@@ -1,14 +1,17 @@
 // Copyright © 2022-2024, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 import { expect } from "chai";
-import * as childProcess from "child_process";
 import { EventEmitter } from "events";
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import * as sinon from "sinon";
 
-import { StdioSession, getSession } from "../../../src/connection/stdio";
+import {
+  StdioSession,
+  getSession,
+  processLauncher,
+} from "../../../src/connection/stdio";
 import { assertThrowsAsync } from "../../utils";
 
 describe("stdio connection", () => {
@@ -58,7 +61,7 @@ describe("stdio connection", () => {
     it("rejects with the saspath when SAS is not executable", async () => {
       const missing = join(fakeSasDir, "no-such-sas");
       session = new StdioSession({ saspath: missing, sasOptions: [] });
-      const spawnStub = sandbox.stub(childProcess, "spawn");
+      const spawnStub = sandbox.stub(processLauncher, "spawn");
 
       await assertThrowsAsync(async () => await session.setup(), missing);
 
@@ -88,9 +91,9 @@ describe("stdio connection", () => {
       mockProcess.kill = sandbox.stub();
       mockProcess.killed = false;
 
-      // Stub child_process.spawn
+      // Stub the SAS process launch
       const spawnStub = sandbox
-        .stub(childProcess, "spawn")
+        .stub(processLauncher, "spawn")
         .returns(mockProcess);
 
       session = new StdioSession(config);
@@ -127,7 +130,7 @@ describe("stdio connection", () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      sandbox.stub(childProcess, "spawn").returns(mockProcess);
+      sandbox.stub(processLauncher, "spawn").returns(mockProcess);
 
       session = new StdioSession(config);
 
@@ -155,7 +158,7 @@ describe("stdio connection", () => {
       mockProcess.stderr = new EventEmitter();
       mockProcess.removeAllListeners = sandbox.stub();
 
-      sandbox.stub(childProcess, "spawn").returns(mockProcess);
+      sandbox.stub(processLauncher, "spawn").returns(mockProcess);
 
       session = new StdioSession(config);
 
@@ -198,7 +201,7 @@ describe("stdio connection", () => {
       mockProcess.kill = sandbox.stub();
       mockProcess.killed = false;
 
-      sandbox.stub(childProcess, "spawn").returns(mockProcess);
+      sandbox.stub(processLauncher, "spawn").returns(mockProcess);
 
       session = new StdioSession(config);
 
@@ -265,7 +268,7 @@ describe("stdio connection", () => {
       mockStdout.removeAllListeners = sandbox.stub().returnsThis();
       mockStderr.removeAllListeners = sandbox.stub().returnsThis();
 
-      sandbox.stub(childProcess, "spawn").returns(mockProcess);
+      sandbox.stub(processLauncher, "spawn").returns(mockProcess);
 
       session = new StdioSession(config);
 

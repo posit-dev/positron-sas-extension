@@ -13,6 +13,13 @@ import { extractOutputHtmlFileName } from "../util";
 import { WORK_DIR_END_TAG, WORK_DIR_START_TAG } from "./const";
 import { LineCodes } from "./types";
 
+/**
+ * How the session starts SAS. An object rather than a direct call so tests can
+ * stub it: child_process.spawn itself cannot be stubbed in the VS Code
+ * extension host (non-configurable property).
+ */
+export const processLauncher = { spawn };
+
 let sessionInstance: StdioSession;
 
 export interface Config extends BaseConfig {
@@ -94,10 +101,14 @@ export class StdioSession extends Session {
         };
 
         // Spawn the SAS process with stdio pipes
-        this._process = spawn(this._config.saspath, resolvedSasOpts, {
-          stdio: ["pipe", "pipe", "pipe"],
-          env,
-        });
+        this._process = processLauncher.spawn(
+          this._config.saspath,
+          resolvedSasOpts,
+          {
+            stdio: ["pipe", "pipe", "pipe"],
+            env,
+          },
+        );
 
         // Handle process errors
         this._process.on("error", this.onProcessError);
