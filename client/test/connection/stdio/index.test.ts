@@ -3,13 +3,29 @@
 import { expect } from "chai";
 import * as childProcess from "child_process";
 import { EventEmitter } from "events";
-import * as fs from "fs";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import * as sinon from "sinon";
 
 import { StdioSession, getSession } from "../../../src/connection/stdio";
 import { assertThrowsAsync } from "../../utils";
 
 describe("stdio connection", () => {
+  // The session checks that saspath is executable before spawning, so the tests
+  // use a real (never run, spawn is stubbed) executable file as SAS.
+  let fakeSasDir: string;
+  let fakeSas: string;
+  before(() => {
+    fakeSasDir = mkdtempSync(join(tmpdir(), "stdio-test-"));
+    fakeSas = join(fakeSasDir, "sas");
+    writeFileSync(fakeSas, "#!/bin/sh\n");
+    chmodSync(fakeSas, 0o755);
+  });
+  after(() => {
+    rmSync(fakeSasDir, { recursive: true, force: true });
+  });
+
   let sandbox: sinon.SinonSandbox;
   let session: StdioSession;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,7 +37,7 @@ describe("stdio connection", () => {
     });
 
     const config = {
-      saspath: "/path/to/sas",
+      saspath: fakeSas,
       sasOptions: [],
     };
 
@@ -29,8 +45,6 @@ describe("stdio connection", () => {
     session.onExecutionLogFn = () => {
       return;
     };
-    // /path/to/sas does not exist; the session checks saspath before spawning.
-    sandbox.stub(fs, "accessSync");
   });
 
   afterEach(() => {
@@ -42,21 +56,18 @@ describe("stdio connection", () => {
 
   describe("setup", () => {
     it("rejects with the saspath when SAS is not executable", async () => {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      (fs.accessSync as sinon.SinonStub).throws(new Error("ENOENT"));
+      const missing = join(fakeSasDir, "no-such-sas");
+      session = new StdioSession({ saspath: missing, sasOptions: [] });
       const spawnStub = sandbox.stub(childProcess, "spawn");
 
-      await assertThrowsAsync(
-        async () => await session.setup(),
-        "/path/to/sas",
-      );
+      await assertThrowsAsync(async () => await session.setup(), missing);
 
       expect(spawnStub.called).to.be.false;
     });
 
     it("spawns SAS process with correct params", async () => {
       const config = {
-        saspath: "/path/to/sas",
+        saspath: fakeSas,
         sasOptions: ["-memsize", "2G"],
       };
 
@@ -97,7 +108,7 @@ describe("stdio connection", () => {
       // Verify spawn was called correctly
       expect(spawnStub.calledOnce).to.be.true;
       const spawnArgs = spawnStub.firstCall.args;
-      expect(spawnArgs[0]).to.equal("/path/to/sas");
+      expect(spawnArgs[0]).to.equal(fakeSas);
       expect(spawnArgs[1]).to.include("-nodms");
       expect(spawnArgs[1]).to.include("-noterminal");
       expect(spawnArgs[1]).to.include("-memsize");
@@ -106,7 +117,7 @@ describe("stdio connection", () => {
 
     it("rejects on process error", async () => {
       const config = {
-        saspath: "/path/to/sas",
+        saspath: fakeSas,
         sasOptions: [],
       };
 
@@ -134,7 +145,7 @@ describe("stdio connection", () => {
 
     it("rejects when process closes before ready", async () => {
       const config = {
-        saspath: "/path/to/sas",
+        saspath: fakeSas,
         sasOptions: [],
       };
 
@@ -166,7 +177,7 @@ describe("stdio connection", () => {
   describe("run", () => {
     it("writes code to stdin and handles completion", async () => {
       const config = {
-        saspath: "/path/to/sas",
+        saspath: fakeSas,
         sasOptions: [],
       };
 
@@ -215,7 +226,7 @@ describe("stdio connection", () => {
 
     it("rejects if process is not running", async () => {
       const config = {
-        saspath: "/path/to/sas",
+        saspath: fakeSas,
         sasOptions: [],
       };
 
@@ -230,7 +241,7 @@ describe("stdio connection", () => {
   describe("close", () => {
     it("sends ENDSAS and closes stdin", async () => {
       const config = {
-        saspath: "/path/to/sas",
+        saspath: fakeSas,
         sasOptions: [],
       };
 
@@ -277,7 +288,7 @@ describe("stdio connection", () => {
   describe("getSession", () => {
     it("returns singleton session instance", () => {
       const config = {
-        saspath: "/path/to/sas",
+        saspath: fakeSas,
         sasOptions: [],
       };
 
