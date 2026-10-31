@@ -12,6 +12,7 @@ import {
   getSession,
   processLauncher,
 } from "../../../src/connection/stdio";
+import { LineCodes } from "../../../src/connection/stdio/types";
 import { assertThrowsAsync } from "../../utils";
 
 // setup() and run() attach the process handlers synchronously, so the tests emit
@@ -211,13 +212,14 @@ describe("stdio connection", () => {
       const runPromise = session.run("data test; x=1; run;");
 
       // Simulate completion marker
-      mockStdout.emit("data", Buffer.from("quit82938829"));
+      mockStdout.emit("data", Buffer.from(LineCodes.RunEndCode));
 
       await runPromise;
 
       // Verify code was written
       expect(writeStub.calledWith("data test; x=1; run;\n")).to.be.true;
-      expect(writeStub.calledWith("%put quit82938829;\n")).to.be.true;
+      expect(writeStub.calledWith(`%put ${LineCodes.RunEndCode};\n`)).to.be
+        .true;
     });
 
     it("rejects if process is not running", async () => {
