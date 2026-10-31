@@ -67,6 +67,7 @@ import {
 } from "../positron";
 import { ClinicalRepository } from "../clinical";
 import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
+import { addLocalSasProfile } from "../positron/localSasProfile";
 import { XptEditorProvider } from "../positron/XptEditorProvider";
 
 let client: LanguageClient;
@@ -240,6 +241,17 @@ export async function activate(context: ExtensionContext) {
 
   // Initialize Positron integration if running in Positron
   if (isPositron()) {
+    // Before the integration starts, so runtime discovery sees the profile.
+    const localProfile = await addLocalSasProfile(
+      profileConfig,
+      context.globalState,
+    );
+    if (localProfile) {
+      console.log(`Added connection profile "${localProfile}" for local SAS`);
+      triggerProfileUpdate();
+      updateViewSettings();
+    }
+
     console.log("Running in Positron - initializing Positron integration");
     await initializePositronIntegration(context);
   }
@@ -254,9 +266,12 @@ function updateViewSettings(): void {
     profileConfig.getActiveProfile(),
   );
 
+  // SSH and stdio sessions only run code: no sign-in, library or server views.
+  const isCodeOnly =
+    activeProfile?.connectionType === ConnectionType.SSH ||
+    activeProfile?.connectionType === ConnectionType.Stdio;
   const settings = {
-    canSignIn:
-      !activeProfile || activeProfile.connectionType !== ConnectionType.SSH,
+    canSignIn: !isCodeOnly,
     librariesEnabled: false,
     contentEnabled: false,
     librariesDisplayed: false,
@@ -265,10 +280,8 @@ function updateViewSettings(): void {
     allowDownload: true,
   };
   if (activeProfile) {
-    settings.librariesEnabled =
-      activeProfile.connectionType !== ConnectionType.SSH;
-    settings.serverEnabled =
-      activeProfile.connectionType !== ConnectionType.SSH;
+    settings.librariesEnabled = !isCodeOnly;
+    settings.serverEnabled = !isCodeOnly;
     settings.contentEnabled =
       activeProfile.connectionType === ConnectionType.Rest;
   }

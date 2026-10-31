@@ -280,7 +280,7 @@ export class SASLanguageRuntimeManager_Supervisor implements LanguageRuntimeMana
    * Helper: Get session location based on profile type
    */
   private getSessionLocation(profile: Profile): LanguageRuntimeSessionLocation {
-    if (profile.connectionType === "ssh") {
+    if (profile.connectionType === "ssh" || profile.connectionType === "stdio") {
       return LanguageRuntimeSessionLocation.Machine;
     }
     return LanguageRuntimeSessionLocation.Workspace;

@@ -20,14 +20,19 @@ enum ConnectionOptions {
   SAS9COM = "SAS 9.4 (local)",
   SAS9IOM = "SAS 9.4 (remote - IOM)",
   SAS9SSH = "SAS 9.4 (remote - SSH)",
+  SAS9Stdio = "SAS 9.4 (local - stdio)",
   SASViya = "SAS Viya",
 }
 
+// "SAS 9.4 (local)" is the Windows-only COM connection. Elsewhere it can never
+// start (EPIPE), and its label reads like the right pick for a local SAS, which
+// is stdio there, so it is only offered on Windows.
 const CONNECTION_PICK_OPTS: string[] = [
   ConnectionOptions.SASViya,
   ConnectionOptions.SAS9SSH,
+  ConnectionOptions.SAS9Stdio,
   ConnectionOptions.SAS9IOM,
-  ConnectionOptions.SAS9COM,
+  ...(process.platform === "win32" ? [ConnectionOptions.SAS9COM] : []),
 ];
 
 /**
@@ -60,6 +65,7 @@ export enum ConnectionType {
   IOM = "iom",
   Rest = "rest",
   SSH = "ssh",
+  Stdio = "stdio",
 }
 
 /**
@@ -103,7 +109,13 @@ export interface IOMProfile extends BaseProfile, ProfileWithFileRootOptions {
   port: number;
 }
 
-export type Profile = ViyaProfile | SSHProfile | COMProfile | IOMProfile;
+export interface StdioProfile extends BaseProfile {
+  connectionType: ConnectionType.Stdio;
+  saspath: string;
+}
+
+export type Profile =
+  ViyaProfile | SSHProfile | COMProfile | IOMProfile | StdioProfile;
 
 export enum AutoExecType {
   File = "file",
@@ -481,6 +493,11 @@ export class ProfileConfig {
         pv.error = l10n.t("Missing username in active profile.");
         return pv;
       }
+    } else if (profile.connectionType === ConnectionType.Stdio) {
+      if (!profile.saspath) {
+        pv.error = l10n.t("Missing sas path in active profile.");
+        return pv;
+      }
     }
 
     pv.profile = profileDetail.profile;
@@ -603,6 +620,16 @@ export class ProfileConfig {
       }
 
       await this.upsertProfile(name, profileClone);
+    } else if (profileClone.connectionType === ConnectionType.Stdio) {
+      profileClone.saspath = await createInputTextBox(
+        ProfilePromptType.SASPath,
+        profileClone.saspath,
+      );
+      if (profileClone.saspath === undefined) {
+        return;
+      }
+
+      await this.upsertProfile(name, profileClone);
     } else if (profileClone.connectionType === ConnectionType.COM) {
       profileClone.sasOptions = [];
       profileClone.host = "localhost"; //once remote support rolls out this should be set via prompting
@@ -651,6 +678,8 @@ export class ProfileConfig {
         return activeProfile.host;
       case ConnectionType.Rest:
         return activeProfile.endpoint;
+      case ConnectionType.Stdio:
+        return "localhost";
     }
   }
 }
@@ -840,6 +869,8 @@ function mapQuickPickToEnum(connectionTypePickInput: string): ConnectionType {
       return ConnectionType.Rest;
     case ConnectionOptions.SAS9SSH:
       return ConnectionType.SSH;
+    case ConnectionOptions.SAS9Stdio:
+      return ConnectionType.Stdio;
     case ConnectionOptions.SAS9COM:
       return ConnectionType.COM;
     case ConnectionOptions.SAS9IOM:
