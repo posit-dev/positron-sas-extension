@@ -20,6 +20,14 @@ Use the stdio connection type when:
 - The SAS executable must be accessible via a fully qualified path
 - Your operating system must be Linux (other OS were not tested)
 
+## Positron and Posit Workbench
+
+In Positron, when SAS is installed at `/opt/sas/viya/home/SASFoundation/sas` (the path in SAS Analytics Pro images), the extension adds a `local` stdio profile once, so SAS appears in the console's interpreter list without any setup. It becomes the active profile only if none is set. If you delete it, it is not added again.
+
+In a Posit Workbench session started from a SAS Analytics Pro image, Workbench licenses SAS for the session through the `SASV9_OPTIONS` environment variable. The stdio session inherits it, so no license options are needed in the profile.
+
+In Positron, a stdio session supports the SAS console, the Viewer and Plots panes, browsing libraries in the Connections pane, and the Data Explorer. The SAS Content and SAS Server views are not available. Use Positron's Explorer for local files.
+
 ## Profile Anatomy
 
 A SAS 9.4 (local - stdio) connection profile includes the following parameters:
@@ -115,6 +123,7 @@ The location of the SAS executable varies by installation. Common paths include:
 ```
 /opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8
 /usr/local/SASHome/SASFoundation/9.4/bin/sas_u8
+/opt/sas/viya/home/SASFoundation/sas    # SAS Analytics Pro
 ```
 
 Check with your SAS administrator or installation documentation for the exact path on your system.
@@ -154,3 +163,5 @@ If the SAS process fails to start, verify:
 - [Add New Connection Profile](./index.md#add-new-connection-profile)
 - [SAS 9.4 (remote - SSH) Connection Profile](./sas9ssh.md)
 - [Managing Connection Profiles](./index.md)
+
+The stdio connection type was contributed upstream by Andreas Menrath in [sassoftware/vscode-sas-extension#1771](https://github.com/sassoftware/vscode-sas-extension/pull/1771).

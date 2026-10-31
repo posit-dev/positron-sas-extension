@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- New `stdio` connection type for SAS installed on the same machine: the extension starts SAS directly, without SSH or SAS servers. Based on [sassoftware/vscode-sas-extension#1771](https://github.com/sassoftware/vscode-sas-extension/pull/1771) by Andreas Menrath
+- Positron: when SAS is installed at `/opt/sas/viya/home/SASFoundation/sas`, as in SAS Analytics Pro images, a `local` stdio profile is added once, so SAS shows up in the console without setup. In Posit Workbench, SAS is licensed by the session
+- Positron: stdio sessions get the Connections pane library browser and the Data Explorer, which run SAS code in the session
+
 ## 0.3.1 - 2026-10-28
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
