@@ -14,6 +14,9 @@ import {
 } from "../../../src/connection/stdio";
 import { assertThrowsAsync } from "../../utils";
 
+// setup() and run() attach the process handlers synchronously, so the tests emit
+// mock SAS output right after calling them. process.nextTick callbacks would not
+// run under the sandbox's fake timers, and the awaited promise would never settle.
 describe("stdio connection", () => {
   // The session checks that saspath is executable before spawning, so the tests
   // use a real (never run, spawn is stubbed) executable file as SAS.
@@ -102,9 +105,7 @@ describe("stdio connection", () => {
       const setupPromise = session.setup();
 
       // Simulate SAS ready prompt
-      process.nextTick(() => {
-        mockStdout.emit("data", Buffer.from("?"));
-      });
+      mockStdout.emit("data", Buffer.from("?"));
 
       await setupPromise;
 
@@ -137,9 +138,7 @@ describe("stdio connection", () => {
       const setupPromise = session.setup();
 
       // Simulate process error
-      process.nextTick(() => {
-        mockProcess.emit("error", new Error("SAS process failed to start"));
-      });
+      mockProcess.emit("error", new Error("SAS process failed to start"));
 
       await assertThrowsAsync(async () => {
         await setupPromise;
@@ -165,11 +164,9 @@ describe("stdio connection", () => {
       const setupPromise = session.setup();
 
       // Simulate process closing before ready
-      process.nextTick(() => {
-        mockProcess.stdout.removeAllListeners = sandbox.stub();
-        mockProcess.stderr.removeAllListeners = sandbox.stub();
-        mockProcess.emit("close", 1, null);
-      });
+      mockProcess.stdout.removeAllListeners = sandbox.stub();
+      mockProcess.stderr.removeAllListeners = sandbox.stub();
+      mockProcess.emit("close", 1, null);
 
       await assertThrowsAsync(async () => {
         await setupPromise;
@@ -207,18 +204,14 @@ describe("stdio connection", () => {
 
       // Setup session first
       const setupPromise = session.setup();
-      process.nextTick(() => {
-        mockStdout.emit("data", Buffer.from("?"));
-      });
+      mockStdout.emit("data", Buffer.from("?"));
       await setupPromise;
 
       // Now run some code
       const runPromise = session.run("data test; x=1; run;");
 
       // Simulate completion marker
-      process.nextTick(() => {
-        mockStdout.emit("data", Buffer.from("quit82938829"));
-      });
+      mockStdout.emit("data", Buffer.from("quit82938829"));
 
       await runPromise;
 
@@ -274,9 +267,7 @@ describe("stdio connection", () => {
 
       // Setup session
       const setupPromise = session.setup();
-      process.nextTick(() => {
-        mockStdout.emit("data", Buffer.from("?"));
-      });
+      mockStdout.emit("data", Buffer.from("?"));
       await setupPromise;
 
       // Close session
