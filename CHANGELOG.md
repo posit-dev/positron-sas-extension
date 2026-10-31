@@ -1,12 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-10-31
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+This release adds local SAS: Positron can run a SAS installed on the same machine, such as SAS Analytics Pro in a Posit Workbench session, with no SAS servers and no SSH ([#82](https://github.com/posit-dev/positron-sas-extension/pull/82)).
 
 ### Features
 
 - New `stdio` connection type for SAS installed on the same machine: the extension starts SAS directly, without SSH or SAS servers. Based on [sassoftware/vscode-sas-extension#1771](https://github.com/sassoftware/vscode-sas-extension/pull/1771) by Andreas Menrath
 - Positron: when SAS is installed at `/opt/sas/viya/home/SASFoundation/sas`, as in SAS Analytics Pro images, a `local` stdio profile is added once, so SAS shows up in the console without setup. In Posit Workbench, SAS is licensed by the session
 - Positron: stdio sessions get the Connections pane library browser and the Data Explorer, which run SAS code in the session
+
+### Bug Fixes
+
+- The connection type "SAS 9.4 (local)" is Windows-only (COM) and is now offered only on Windows. On other systems it could only fail with `write EPIPE`; choose "SAS 9.4 (local - stdio)" for a local SAS instead
+- A stdio profile whose `saspath` is missing or not executable now fails with an error that names the path
 
 ## 0.3.1 - 2026-10-28
 
