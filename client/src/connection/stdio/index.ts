@@ -33,6 +33,11 @@ export function getSession(c: Config): Session {
   return sessionInstance;
 }
 
+/** A new session with its own SAS process, separate from the shared one. */
+export function createSession(c: Config): Session {
+  return new StdioSession(c);
+}
+
 export class StdioSession extends Session {
   private _process: ChildProcess | undefined;
   private _config: Config;
@@ -187,7 +192,9 @@ export class StdioSession extends Session {
     this._reject = undefined;
     this._html5FileName = "";
     this._workDirectory = undefined;
-    sessionInstance = undefined;
+    if (sessionInstance === this) {
+      sessionInstance = undefined;
+    }
     updateStatusBarItem(false);
   };
 

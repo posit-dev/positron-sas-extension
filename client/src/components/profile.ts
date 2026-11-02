@@ -387,11 +387,19 @@ export class ProfileConfig {
    * @returns Optional ProfileDetail
    */
   getActiveProfileDetail(): ProfileDetail | undefined {
-    const activeProfileName = this.getActiveProfile();
+    return this.getProfileDetail(this.getActiveProfile());
+  }
 
+  /**
+   * Retrieves the {@link ProfileDetail} of the named profile.
+   *
+   * @param name {@link String} of the profile name
+   * @returns Optional ProfileDetail
+   */
+  getProfileDetail(name: string): ProfileDetail | undefined {
     const profileList = this.getAllProfiles();
-    if (activeProfileName in profileList) {
-      const profile = { ...profileList[activeProfileName] };
+    if (name in profileList) {
+      const profile = { ...profileList[name] };
       if (
         profile.connectionType === ConnectionType.Rest &&
         /\/$/.test(profile.endpoint)
@@ -399,7 +407,7 @@ export class ProfileConfig {
         profile.endpoint = profile.endpoint.replace(/\/$/, "");
       }
       const detail: ProfileDetail = {
-        name: activeProfileName,
+        name,
         profile,
       };
       return detail;

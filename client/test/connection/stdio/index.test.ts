@@ -9,6 +9,7 @@ import * as sinon from "sinon";
 
 import {
   StdioSession,
+  createSession,
   getSession,
   processLauncher,
 } from "../../../src/connection/stdio";
@@ -292,6 +293,28 @@ describe("stdio connection", () => {
       const session2 = getSession(config);
 
       expect(session1).to.equal(session2);
+    });
+  });
+
+  describe("createSession", () => {
+    const config = () => ({ saspath: fakeSas, sasOptions: [] });
+
+    it("returns a new session each time, separate from the shared one", () => {
+      const shared = getSession(config());
+      const session1 = createSession(config());
+      const session2 = createSession(config());
+
+      expect(session1).to.not.equal(session2);
+      expect(session1).to.not.equal(shared);
+      expect(session2).to.not.equal(shared);
+    });
+
+    it("closing a separate session keeps the shared one", async () => {
+      const shared = getSession(config());
+
+      await createSession(config()).close();
+
+      expect(getSession(config())).to.equal(shared);
     });
   });
 });

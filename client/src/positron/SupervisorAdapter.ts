@@ -9,9 +9,8 @@
  * - Our SAS session (REST/SSH/IOM/COM connections)
  */
 
-import { getSession } from "../connection";
+import { createSessionForProfile } from "../connection";
 import type { Session } from "../connection/session";
-import { ProfileConfig } from "../components/profile";
 
 /**
  * Types from positron-supervisor API
@@ -54,16 +53,9 @@ function createSASKernelStarter(profileName: string) {
     kernel.log(`Starting SAS kernel adapter for profile: ${profileName}...`);
 
     try {
-      // Set the active profile before getting the session
-      console.log(`[SupervisorAdapter] Setting active profile to: ${profileName}`);
-      const profileConfig = new ProfileConfig();
-      await profileConfig.updateActiveProfileSetting(profileName);
-      console.log(`[SupervisorAdapter] Active profile set successfully`);
-      kernel.log(`Active profile set to: ${profileName}`);
-
-      // Get our existing SAS session (will use the active profile we just set)
+      // A SAS session of this profile, separate from the shared one
       console.log(`[SupervisorAdapter] Getting SAS session...`);
-      const sasSession: Session = getSession();
+      const sasSession: Session = createSessionForProfile(profileName);
       console.log(`[SupervisorAdapter] SAS session obtained:`, !!sasSession);
       kernel.log("SAS session obtained");
 

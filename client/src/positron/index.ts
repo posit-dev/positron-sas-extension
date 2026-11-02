@@ -44,6 +44,10 @@ let activeAssistantClient: SasClient | undefined;
 // Holds the active SASLanguageRuntimeSession for direct operations.
 let activeSession: SASLanguageRuntimeSession | undefined;
 
+// Running SAS console sessions by session ID, so the active session can
+// follow the foreground console.
+const consoleSessions = new Map<string, SASLanguageRuntimeSession>();
+
 /**
  * Safely try to acquire the Positron API
  * This checks for the global acquirePositronApi function
@@ -152,7 +156,10 @@ export async function initializePositronIntegration(
     window.onDidChangeActiveTextEditor(() => {
       ensureSasConsoleSession().catch(() => {});
     }),
-    api.runtime.onDidChangeForegroundSession(() => {
+    api.runtime.onDidChangeForegroundSession((sessionId) => {
+      if (sessionId) {
+        consoleSessions.get(sessionId)?.activate();
+      }
       ensureSasConsoleSession().catch(() => {});
     }),
   );
@@ -245,6 +252,25 @@ export function setActiveAssistantClient(
  */
 export function setActiveSession(session: SASLanguageRuntimeSession | undefined): void {
   activeSession = session;
+}
+
+/** Called when a SAS console session starts. */
+export function registerConsoleSession(session: SASLanguageRuntimeSession): void {
+  consoleSessions.set(session.sessionId, session);
+}
+
+/**
+ * Called when a SAS console session stops. Clears the active session only if
+ * it is this one, so stopping one console leaves another console active.
+ */
+export function unregisterConsoleSession(session: SASLanguageRuntimeSession): void {
+  if (consoleSessions.get(session.sessionId) === session) {
+    consoleSessions.delete(session.sessionId);
+  }
+  if (activeSession === session) {
+    setActiveSession(undefined);
+    setActiveAssistantClient(undefined);
+  }
 }
 
 /**
