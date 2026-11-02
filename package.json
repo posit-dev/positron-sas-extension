@@ -368,6 +368,26 @@
                             "default": "",
                             "description": "%configuration.SAS.connectionProfiles.profiles.clientSecret%"
                           },
+                          "authentication": {
+                            "type": "string",
+                            "default": "auto",
+                            "enum": [
+                              "auto",
+                              "workbench",
+                              "sasLogon"
+                            ],
+                            "enumDescriptions": [
+                              "%configuration.SAS.connectionProfiles.profiles.authentication.auto%",
+                              "%configuration.SAS.connectionProfiles.profiles.authentication.workbench%",
+                              "%configuration.SAS.connectionProfiles.profiles.authentication.sasLogon%"
+                            ],
+                            "description": "%configuration.SAS.connectionProfiles.profiles.authentication%"
+                          },
+                          "workbenchIntegration": {
+                            "type": "string",
+                            "default": "",
+                            "description": "%configuration.SAS.connectionProfiles.profiles.workbenchIntegration%"
+                          },
                           "fileNavigationCustomRootPath": {
                             "type": "string",
                             "default": "",

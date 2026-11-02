@@ -7,6 +7,7 @@
 - Positron: the `local` stdio profile is now also added for SAS 9.4 installs. Besides the SAS Analytics Pro path, the extension looks in common SAS 9.4 Foundation locations (such as `/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8`) and for `sas` on `PATH`. For SAS 9.4 it uses the UTF-8 launcher `bin/sas_u8`, because the extension reads SAS output as UTF-8. The new `SAS.localSasPaths` machine setting lists extra launcher paths, checked first
 - stdio profiles now run their `autoExec` lines once, right after SAS starts ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
 - Posit Assistant: `sas_export_saspy_config` exports a SAS Viya profile as a saspy HTTP access method configuration (`url`, `context`, and an `authtoken` read from the `SAS_VIYA_TOKEN` environment variable) instead of an IOM configuration. The exported configuration never contains secrets, and profile names that are not Python identifiers are converted to valid configuration names ([#91](https://github.com/posit-dev/positron-sas-extension/issues/91))
+- SAS Viya: in Posit Workbench, a SAS Viya profile signs in with the SAS Viya token from a Posit Workbench OAuth integration configured by your administrator, so you do not sign in to SAS Viya a second time. New profile settings `authentication` (`"auto"`, the default, `"workbench"`, or `"sasLogon"`) and `workbenchIntegration`. Without a matching integration, the extension signs in with SAS Logon as before
 
 ### Bug Fixes
 

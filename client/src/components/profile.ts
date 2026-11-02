@@ -86,6 +86,10 @@ export interface ViyaProfile extends BaseProfile, ProfileWithFileRootOptions {
   clientSecret?: string;
   context?: string;
   serverId?: string;
+  /** How to sign in to SAS Viya; "auto" (default) prefers Posit Workbench. */
+  authentication?: "auto" | "workbench" | "sasLogon";
+  /** GUID of the Posit Workbench OAuth integration to use. */
+  workbenchIntegration?: string;
 }
 
 export interface SSHProfile extends BaseProfile {
