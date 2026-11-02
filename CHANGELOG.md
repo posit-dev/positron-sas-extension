@@ -2,15 +2,23 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-11-02
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+This release lets a SAS Viya profile sign in with the Posit Workbench OAuth token, so you sign in to SAS Viya once ([#93](https://github.com/posit-dev/positron-sas-extension/pull/93)). The `local` profile is now also added for SAS 9.4 installs ([#87](https://github.com/posit-dev/positron-sas-extension/pull/87)), and each SAS console starts the profile you picked, with its own SAS session ([#94](https://github.com/posit-dev/positron-sas-extension/pull/94)).
+
 ### Features
 
-- Positron: the `local` stdio profile is now also added for SAS 9.4 installs. Besides the SAS Analytics Pro path, the extension looks in common SAS 9.4 Foundation locations (such as `/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8`) and for `sas` on `PATH`. For SAS 9.4 it uses the UTF-8 launcher `bin/sas_u8`, because the extension reads SAS output as UTF-8. The new `SAS.localSasPaths` machine setting lists extra launcher paths, checked first
+- Positron: the `local` stdio profile is now also added for SAS 9.4 installs. Besides the SAS Analytics Pro path, the extension looks in common SAS 9.4 Foundation locations (such as `/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8`) and for `sas` on `PATH`. For SAS 9.4 it uses the UTF-8 launcher `bin/sas_u8`, because the extension reads SAS output as UTF-8. The new `SAS.localSasPaths` machine setting lists extra launcher paths, checked first ([#87](https://github.com/posit-dev/positron-sas-extension/pull/87))
 - stdio profiles now run their `autoExec` lines once, right after SAS starts ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
 - Posit Assistant: `sas_export_saspy_config` exports a SAS Viya profile as a saspy HTTP access method configuration (`url`, `context`, and an `authtoken` read from the `SAS_VIYA_TOKEN` environment variable) instead of an IOM configuration. The exported configuration never contains secrets, and profile names that are not Python identifiers are converted to valid configuration names ([#91](https://github.com/posit-dev/positron-sas-extension/issues/91))
-- SAS Viya: in Posit Workbench, a SAS Viya profile signs in with the SAS Viya token from a Posit Workbench OAuth integration configured by your administrator, so you do not sign in to SAS Viya a second time. New profile settings `authentication` (`"auto"`, the default, `"workbench"`, or `"sasLogon"`) and `workbenchIntegration`. Without a matching integration, the extension signs in with SAS Logon as before
+- SAS Viya: in Posit Workbench, a SAS Viya profile signs in with the SAS Viya token from a Posit Workbench OAuth integration configured by your administrator, so you do not sign in to SAS Viya a second time. New profile settings `authentication` (`"auto"`, the default, `"workbench"`, or `"sasLogon"`) and `workbenchIntegration`. Without a matching integration, the extension signs in with SAS Logon as before ([#93](https://github.com/posit-dev/positron-sas-extension/pull/93))
 
 ### Bug Fixes
 
+- Positron: starting the runtime "SAS (*profile*)" now connects with that profile, not with the active profile ([#88](https://github.com/posit-dev/positron-sas-extension/issues/88))
+- Positron: each SAS console has its own SAS session. Before, consoles of the same connection type shared one SAS process or compute session, and shutting one down closed it for the others ([#89](https://github.com/posit-dev/positron-sas-extension/issues/89))
 - Positron: interrupting an SSH or stdio session no longer marks the console idle while SAS keeps running the code. These connections cannot cancel a submission, so the console stays busy and a message offers to restart the session, which stops SAS. Restarting or reconnecting a stdio session now starts a new SAS process instead of reusing the one that is shutting down ([#90](https://github.com/posit-dev/positron-sas-extension/issues/90))
 - In VS Code (outside Positron), `.sas7bdat` and `.xpt` files open in the default editor instead of a viewer that needs a Positron SAS session ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
 - Removed the "SAS: View Data" command, which was declared but did nothing; the `repository` and `bugs` links now point to posit-dev/positron-sas-extension ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
