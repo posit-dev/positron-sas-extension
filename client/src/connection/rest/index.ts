@@ -32,7 +32,12 @@ class RestSession extends Session {
   private _computeSession: ComputeSession | undefined;
   private _cachedContext: Context | undefined;
 
-  constructor() {
+  /**
+   * @param _sharesSessionId whether this session saves its compute session id
+   * for reconnecting (SAS.sessionId). Only the shared session does, so a
+   * separate session never reconnects to, or clears, another one's.
+   */
+  constructor(private readonly _sharesSessionId = true) {
     super();
   }
 
@@ -179,7 +184,9 @@ class RestSession extends Session {
     await this.printSessionLog(this._computeSession);
 
     //Save the current sessionId
-    setContextValue("SAS.sessionId", this._computeSession.sessionId);
+    if (this._sharesSessionId) {
+      setContextValue("SAS.sessionId", this._computeSession.sessionId);
+    }
     updateStatusBarItem(true);
   };
 
@@ -246,7 +253,9 @@ class RestSession extends Session {
       this._computeSession = undefined;
 
       //Since the session is being closed, remove the cached session id
-      setContextValue("SAS.sessionId", undefined);
+      if (this._sharesSessionId) {
+        setContextValue("SAS.sessionId", undefined);
+      }
       updateStatusBarItem(false);
     }
   };
@@ -288,7 +297,7 @@ class RestSession extends Session {
   private reconnectComputeSession = async (): Promise<ComputeSession> => {
     let session: ComputeSession = undefined;
 
-    if (!this._config.reconnect) {
+    if (!this._config.reconnect || !this._sharesSessionId) {
       return undefined;
     }
 
@@ -373,4 +382,17 @@ export function getSession(c: Config): Session {
   sessionInstance.config = c;
 
   return sessionInstance;
+}
+
+/**
+ * A new session with its own compute session, separate from the shared one.
+ * The compute API configuration (endpoint, access token) is still global.
+ */
+export function createSession(c: Config): Session {
+  getApiConfig().basePath = c.endpoint + "/compute";
+
+  const session = new RestSession(false);
+  session.config = c;
+
+  return session;
 }

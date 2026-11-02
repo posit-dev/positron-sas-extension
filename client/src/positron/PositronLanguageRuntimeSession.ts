@@ -15,7 +15,11 @@ import { v4 as uuidv4 } from "uuid";
 
 import { profileConfig } from "../commands/profile";
 import { ConnectionType } from "../components/profile";
-import { type LogLine, getSession, setSessionTags } from "../connection";
+import {
+  type LogLine,
+  createSessionForProfile,
+  setSessionTags,
+} from "../connection";
 import {
   appendSessionLogFn,
   setFileName,
@@ -60,8 +64,10 @@ import {
 import {
   getDataConnectionsDriver,
   getPositronApi,
+  registerConsoleSession,
   setActiveAssistantClient,
   setActiveSession,
+  unregisterConsoleSession,
 } from "./index";
 import { Session } from "../connection/session";
 import type {
@@ -297,8 +303,9 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       this._identity = getSessionIdentity(this.sessionId, this._profileName, connectionType);
       setSessionTags(buildSessionTags(this._identity));
 
-      // Get the SAS session using existing connection logic
-      this._sasSession = getSession();
+      // A SAS session of this runtime's profile, owned by this console
+      // (#88, #89).
+      this._sasSession = createSessionForProfile(this._profileName);
       console.log("SAS session obtained:", !!this._sasSession);
 
       // Setup session with profile
@@ -355,9 +362,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       // start a Console session which then opens its own connection.
       if (this.sessionMode !== LanguageRuntimeSessionMode.Background) {
         setTimeout(() => this.openConnection(), 2000);
-        // Make this session's SasClient available to LM tools.
-        setActiveAssistantClient(this.getSasClient(), this._profileName);
-        setActiveSession(this);
+        registerConsoleSession(this);
+        this.activate();
       }
 
       return this._runtimeInfo;
@@ -365,6 +371,15 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       this.setState(RuntimeState.Exited);
       throw error;
     }
+  }
+
+  /**
+   * Make this the active SAS session: the one SAS editors and LM tools use.
+   */
+  activate(): void {
+    // Make this session's SasClient available to LM tools.
+    setActiveAssistantClient(this.getSasClient(), this._profileName);
+    setActiveSession(this);
   }
 
   /** The SAS-side account: the signed-in Viya user, or the profile username. */
@@ -1003,8 +1018,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this.closeAllClients();
     void this._outputFiles.dispose();
     if (this.sessionMode !== LanguageRuntimeSessionMode.Background) {
-      setActiveAssistantClient(undefined);
-      setActiveSession(undefined);
+      unregisterConsoleSession(this);
     }
     this._sasClient = undefined;
 

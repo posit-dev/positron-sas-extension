@@ -45,6 +45,12 @@ export function getSession(c: Config): Session {
   }
   return sessionInstance;
 }
+
+/** A new session with its own SSH connection, separate from the shared one. */
+export function createSession(c: Config): Session {
+  return new SSHSession(c, new Client());
+}
+
 export class SSHSession extends Session {
   private _conn: Client;
   private _stream: ClientChannel | undefined;
@@ -149,7 +155,9 @@ export class SSHSession extends Session {
     this._html5FileName = "";
     this._workDirectory = undefined;
     this.clearAuthState();
-    sessionInstance = undefined;
+    if (sessionInstance === this) {
+      sessionInstance = undefined;
+    }
     this._authsLeft = [];
   };
 

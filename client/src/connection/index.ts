@@ -6,20 +6,34 @@ import {
   AuthType,
   ConnectionType,
   ProfileConfig,
+  ProfileDetail,
   ViyaProfile,
   toAutoExecLines,
 } from "../components/profile";
-import { getSession as getITCSession } from "./itc";
+import {
+  createSession as createITCSession,
+  getSession as getITCSession,
+} from "./itc";
 import { ITCProtocol } from "./itc/types";
-import { Config as RestConfig, getSession as getRestSession } from "./rest";
+import {
+  Config as RestConfig,
+  createSession as createRestSession,
+  getSession as getRestSession,
+} from "./rest";
 import {
   Error2 as ComputeError,
   LogLine as ComputeLogLine,
   LogLineTypeEnum as ComputeLogLineTypeEnum,
 } from "./rest/api/compute";
 import { Session } from "./session";
-import { getSession as getSSHSession } from "./ssh";
-import { getSession as getStdioSession } from "./stdio";
+import {
+  createSession as createSSHSession,
+  getSession as getSSHSession,
+} from "./ssh";
+import {
+  createSession as createStdioSession,
+  getSession as getStdioSession,
+} from "./stdio";
 
 let profileConfig: ProfileConfig;
 
@@ -53,33 +67,67 @@ export function setSessionTags(tags: SessionTags | undefined): void {
   sessionTags = tags;
 }
 
-export function getSession(): Session {
+function getProfileConfig(): ProfileConfig {
   if (!profileConfig) {
     profileConfig = new ProfileConfig();
   }
-  // retrieve active & valid profile
-  const activeProfile = profileConfig.getActiveProfileDetail();
-  const validProfile = profileConfig.validateProfile(activeProfile);
+  return profileConfig;
+}
+
+function validate(detail: ProfileDetail | undefined) {
+  const validProfile = getProfileConfig().validateProfile(detail);
 
   if (validProfile.type === AuthType.Error) {
     throw new Error(validProfile.error);
   }
+  return validProfile.profile;
+}
 
-  switch (validProfile.profile?.connectionType) {
+function invalidConnectionType(): Error {
+  return new Error(l10n.t("Invalid connectionType. Check Profile settings."));
+}
+
+/** The shared session of the active profile. */
+export function getSession(): Session {
+  // retrieve active & valid profile
+  const profile = validate(getProfileConfig().getActiveProfileDetail());
+
+  switch (profile?.connectionType) {
     case ConnectionType.Rest:
-      return getRestSession(toRestConfig(validProfile.profile));
+      return getRestSession(toRestConfig(profile));
     case ConnectionType.SSH:
-      return getSSHSession(validProfile.profile);
+      return getSSHSession(profile);
     case ConnectionType.Stdio:
-      return getStdioSession(validProfile.profile);
+      return getStdioSession(profile);
     case ConnectionType.COM:
-      return getITCSession(validProfile.profile, ITCProtocol.COM);
+      return getITCSession(profile, ITCProtocol.COM);
     case ConnectionType.IOM:
-      return getITCSession(validProfile.profile, ITCProtocol.IOMBridge);
+      return getITCSession(profile, ITCProtocol.IOMBridge);
     default:
-      throw new Error(
-        l10n.t("Invalid connectionType. Check Profile settings."),
-      );
+      throw invalidConnectionType();
+  }
+}
+
+/**
+ * A new session of the named profile, separate from the shared session
+ * returned by {@link getSession}. The caller owns and closes it.
+ */
+export function createSessionForProfile(name: string): Session {
+  const profile = validate(getProfileConfig().getProfileDetail(name));
+
+  switch (profile?.connectionType) {
+    case ConnectionType.Rest:
+      return createRestSession(toRestConfig(profile));
+    case ConnectionType.SSH:
+      return createSSHSession(profile);
+    case ConnectionType.Stdio:
+      return createStdioSession(profile);
+    case ConnectionType.COM:
+      return createITCSession(profile, ITCProtocol.COM);
+    case ConnectionType.IOM:
+      return createITCSession(profile, ITCProtocol.IOMBridge);
+    default:
+      throw invalidConnectionType();
   }
 }
 

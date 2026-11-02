@@ -3,7 +3,11 @@ import * as sinon from "sinon";
 import { Client, ClientChannel } from "ssh2";
 import { StubbedInstance, stubInterface } from "ts-sinon";
 
-import { SSHSession, getSession } from "../../../src/connection/ssh";
+import {
+  SSHSession,
+  createSession,
+  getSession,
+} from "../../../src/connection/ssh";
 import { assertThrowsAsync } from "../../utils";
 
 describe("ssh connection", () => {
@@ -328,6 +332,19 @@ describe("ssh connection", () => {
       const session = getSession(config);
 
       expect(session).to.not.equal(undefined);
+    });
+
+    it("createSession returns sessions separate from the shared one", async () => {
+      const shared = getSession(config);
+      const session1 = createSession(config);
+      const session2 = createSession(config);
+
+      expect(session1).to.not.equal(session2);
+      expect(session1).to.not.equal(shared);
+
+      // Closing a separate session must not reset the shared one.
+      await session1.close();
+      expect(getSession(config)).to.equal(shared);
     });
   });
 });

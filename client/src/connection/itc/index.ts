@@ -618,3 +618,23 @@ export const getSession = (
   sessionInstance.config = { ...defaults, ...c };
   return sessionInstance;
 };
+
+/**
+ * Creates a SAS 9 session separate from the shared one.
+ * @param c Instance denoting configuration parameters for this connection profile.
+ * @returns  created COM session.
+ */
+export const createSession = (
+  c: Partial<Config>,
+  protocol: ITCProtocol,
+): Session => {
+  const session = new ITCSession();
+  session.config = {
+    host: "localhost",
+    port: 0,
+    username: "",
+    protocol,
+    ...c,
+  };
+  return session;
+};
