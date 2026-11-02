@@ -8,6 +8,7 @@ import { join } from "path";
 
 import { BaseConfig, RunResult } from "..";
 import { updateStatusBarItem } from "../../components/StatusBarItem";
+import { AutoExec, toAutoExecLines } from "../../components/profile";
 import { Session } from "../session";
 import { extractOutputHtmlFileName } from "../util";
 import { WORK_DIR_END_TAG, WORK_DIR_START_TAG } from "./const";
@@ -24,6 +25,7 @@ let sessionInstance: StdioSession;
 
 export interface Config extends BaseConfig {
   saspath: string;
+  autoExec?: AutoExec[];
 }
 
 export function getSession(c: Config): Session {
@@ -241,6 +243,13 @@ export class StdioSession extends Session {
   `;
     if (this._process?.stdin) {
       this._process.stdin.write(code);
+      // The profile's autoExec lines run once, right after SAS starts.
+      const autoExecLines = this._config.autoExec
+        ? toAutoExecLines(this._config.autoExec)
+        : [];
+      if (autoExecLines.length > 0) {
+        this._process.stdin.write(`${autoExecLines.join("\n")}\n`);
+      }
     }
   };
 

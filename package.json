@@ -962,11 +962,6 @@
         "category": "SAS"
       },
       {
-        "command": "SAS.viewDataInPositron",
-        "title": "View Data",
-        "category": "SAS"
-      },
-      {
         "command": "SAS.notebook.new",
         "shortTitle": "%commands.SAS.notebook.new.short%",
         "title": "%commands.SAS.notebook.new%",
@@ -1797,10 +1792,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/posit-dev/vscode-sas-extension"
+    "url": "https://github.com/posit-dev/positron-sas-extension"
   },
   "bugs": {
-    "url": "https://github.com/posit-dev/vscode-sas-extension/issues"
+    "url": "https://github.com/posit-dev/positron-sas-extension/issues"
   },
   "homepage": "https://www.sas.com",
   "scripts": {

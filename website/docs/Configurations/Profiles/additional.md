@@ -57,7 +57,7 @@ SAS system options can be set for each connection profile. Changes to the SAS sy
         "host": "hostname",
         "username": "username",
         "port": 22,
-        "sasPath": "/remote/path/to/sas_u8",
+        "saspath": "/remote/path/to/sas_u8",
         "sasOptions": ["-NONEWS", "-ECHOAUTO", "-PAGESIZE MAX"],
         "connectionType": "ssh"
       }
@@ -71,17 +71,19 @@ SAS system options can be set for each connection profile. Changes to the SAS sy
   {
     "profiles": {
       "SAS9stdio": {
-        "sasPath": "/remote/path/to/sas_u8",
-        "sasOptions": ["-NONEWS", "-ECHOAUTO", "-PAGESIZE MAX"],
+        "saspath": "/path/to/sas_u8",
+        "sasOptions": ["-NONEWS", "-ECHOAUTO", "-PAGESIZE", "MAX"],
         "connectionType": "stdio"
       }
     }
   }
   ```
 
+  The stdio connection passes each item to SAS as a separate program argument, without a shell, so put an option and its value in separate items.
+
 ## SAS Autoexec Settings
 
-For SAS Viya connection profiles, you can set up autoexec code that executes each time you start a new session. Changes to the autoexec code do not take effect until you close and restart your SAS session. The Autoexec option supports different modes for how to define the SAS lines that should run:
+For SAS Viya and SAS 9.4 (local - stdio) connection profiles, you can set up autoexec code that executes each time you start a new session. Changes to the autoexec code do not take effect until you close and restart your SAS session. The Autoexec option supports different modes for how to define the SAS lines that should run:
 
 - Line Mode: embed lines directly into the connection profile JSON. This mode is useful if only a few lines are needed to run on session startup. Note that standard JSON escaping rules apply.
 
