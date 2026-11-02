@@ -315,6 +315,47 @@ describe("stdio connection", () => {
       expect(writeStub.calledWith("endsas;\n")).to.be.true;
       expect(endStub.calledOnce).to.be.true;
     });
+
+    it("starts a new SAS process on the next setup and kills the old one", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const makeProcess = (): any => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const stdin: any = new EventEmitter();
+        stdin.write = sandbox.stub();
+        stdin.end = sandbox.stub();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const child: any = new EventEmitter();
+        child.stdin = stdin;
+        child.stdout = new EventEmitter();
+        child.stderr = new EventEmitter();
+        child.kill = sandbox.stub();
+        child.killed = false;
+        child.exitCode = null;
+        return child;
+      };
+      const first = makeProcess();
+      const second = makeProcess();
+      const spawnStub = sandbox.stub(processLauncher, "spawn");
+      spawnStub.onFirstCall().returns(first);
+      spawnStub.onSecondCall().returns(second);
+
+      session = new StdioSession({ saspath: fakeSas, sasOptions: [] });
+      let setupPromise = session.setup();
+      first.stdout.emit("data", Buffer.from("?"));
+      await setupPromise;
+
+      // SAS is still busy, so it does not exit on ENDSAS.
+      session.close();
+
+      setupPromise = session.setup();
+      second.stdout.emit("data", Buffer.from("?"));
+      await setupPromise;
+      expect(spawnStub.calledTwice).to.be.true;
+
+      sandbox.clock.tick(1000);
+      expect(first.kill.calledOnce).to.be.true;
+      expect(second.kill.called).to.be.false;
+    });
   });
 
   describe("getSession", () => {

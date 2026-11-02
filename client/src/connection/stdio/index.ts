@@ -162,15 +162,22 @@ export class StdioSession extends Session {
       return;
     }
 
-    if (this._process.stdin) {
-      this._process.stdin.write("endsas;\n");
-      this._process.stdin.end();
+    const child = this._process;
+    if (child.stdin) {
+      child.stdin.write("endsas;\n");
+      child.stdin.end();
     }
+
+    // Detach from the exiting process now, so a restart starts a new SAS
+    // instead of reusing this one while it shuts down. This also stops a
+    // submission that is still running (#90).
+    this.disposeResources();
+    child.on("error", () => {});
 
     // Give SAS a moment to shut down gracefully
     setTimeout(() => {
-      if (this._process && !this._process.killed) {
-        this._process.kill();
+      if (!child.killed && child.exitCode === null) {
+        child.kill();
       }
     }, 1000);
   };
@@ -194,6 +201,7 @@ export class StdioSession extends Session {
     this._reject = undefined;
     this._html5FileName = "";
     this._workDirectory = undefined;
+    this._sessionReady = false;
     if (sessionInstance === this) {
       sessionInstance = undefined;
     }

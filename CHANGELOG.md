@@ -10,7 +10,7 @@
 
 ### Bug Fixes
 
-- Positron: interrupting an SSH or stdio session no longer marks the console idle while SAS keeps running the code. These connections cannot cancel a submission, so the console stays busy and a message offers to restart the session, which stops SAS ([#90](https://github.com/posit-dev/positron-sas-extension/issues/90))
+- Positron: interrupting an SSH or stdio session no longer marks the console idle while SAS keeps running the code. These connections cannot cancel a submission, so the console stays busy and a message offers to restart the session, which stops SAS. Restarting or reconnecting a stdio session now starts a new SAS process instead of reusing the one that is shutting down ([#90](https://github.com/posit-dev/positron-sas-extension/issues/90))
 - In VS Code (outside Positron), `.sas7bdat` and `.xpt` files open in the default editor instead of a viewer that needs a Positron SAS session ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
 - Removed the "SAS: View Data" command, which was declared but did nothing; the `repository` and `bugs` links now point to posit-dev/positron-sas-extension ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
 - Docs: the stdio README and profile docs describe the actual SAS startup options and example file, `additional.md` uses the `saspath` key, and the capabilities matrix and connection type flowchart include SAS 9.4 (local - stdio) ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
