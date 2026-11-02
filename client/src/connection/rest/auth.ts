@@ -19,7 +19,7 @@ import { RootApi } from "./api/compute";
 import { Configuration } from "./api/configuration";
 
 let authLog: LogOutputChannel | undefined;
-const getAuthLog = () =>
+export const getAuthLog = () =>
   (authLog ??= window.createOutputChannel("SAS Authentication", { log: true }));
 
 /** Mask OAuth codes and PKCE values before logging a URI or query string. */
