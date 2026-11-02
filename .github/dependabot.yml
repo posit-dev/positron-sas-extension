@@ -22,6 +22,10 @@ updates:
       # eslint-plugin-react 7.x only supports eslint up to 9 (peer dependency)
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
+      # TypeScript 7 (the native compiler) is outside the typescript peer
+      # range of typescript-eslint 8.x; npm install fails with ERESOLVE
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "npm"
     directory: "/client"
     patterns: ["*"]
@@ -30,6 +34,9 @@ updates:
       # @types/vscode should match the engine version we're using
       # should not be upgraded on its own
       - dependency-name: "@types/vscode"
+      # marked-katex-extension 5.x needs katex >=0.16 <0.19 (peer dependency)
+      - dependency-name: "katex"
+        versions: [">=0.19"]
   - package-ecosystem: "npm"
     directory: "/server"
     patterns: ["*"]
