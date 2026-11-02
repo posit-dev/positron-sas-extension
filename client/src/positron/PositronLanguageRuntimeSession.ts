@@ -28,6 +28,7 @@ import { sasDiagnostic } from "../components/logViewer/sasDiagnostics";
 import { SASCodeDocument } from "../components/utils/SASCodeDocument";
 import { getCodeDocumentConstructionParameters } from "../components/utils/SASCodeDocumentHelper";
 import { AuditLog } from "./auditLog";
+import { interruptNotSupportedMessage } from "./interrupt";
 import { locateCodeInDocument } from "./consoleDiagnostics";
 import {
   CONSOLE_OPTIONS,
@@ -999,8 +1000,23 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   async interrupt(): Promise<void> {
     if (this._sasSession?.cancel) {
       await this._sasSession.cancel();
+      this.setState(RuntimeState.Idle);
+      return;
     }
-    this.setState(RuntimeState.Idle);
+    // SSH and stdio sessions cannot cancel a submission (#90). SAS keeps
+    // running it, so the state stays Busy; the run's completion sets Idle.
+    // Offer a restart, which ends the SAS process.
+    const restart = "Restart Session";
+    void window
+      .showWarningMessage(
+        interruptNotSupportedMessage(this._identity?.connectionType ?? ""),
+        restart,
+      )
+      .then((choice) => {
+        if (choice === restart) {
+          void getPositronApi()?.runtime.restartSession(this.sessionId);
+        }
+      });
   }
 
   /**
