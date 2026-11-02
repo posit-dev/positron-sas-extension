@@ -67,7 +67,10 @@ import {
 } from "../positron";
 import { ClinicalRepository } from "../clinical";
 import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
-import { addLocalSasProfile } from "../positron/localSasProfile";
+import {
+  addLocalSasProfile,
+  localSasCandidates,
+} from "../positron/localSasProfile";
 import { XptEditorProvider } from "../positron/XptEditorProvider";
 
 let client: LanguageClient;
@@ -245,6 +248,9 @@ export async function activate(context: ExtensionContext) {
     const localProfile = await addLocalSasProfile(
       profileConfig,
       context.globalState,
+      localSasCandidates(
+        workspace.getConfiguration("SAS").get<string[]>("localSasPaths") ?? [],
+      ),
     );
     if (localProfile) {
       console.log(`Added connection profile "${localProfile}" for local SAS`);
