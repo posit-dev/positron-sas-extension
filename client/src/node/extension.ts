@@ -21,7 +21,6 @@ import {
 
 import * as path from "path";
 
-import { ClinicalRepository } from "../clinical";
 import { checkProfileAndAuthorize } from "../commands/authorize";
 import { closeSession } from "../commands/closeSession";
 import { newSASFile, newSASNotebook } from "../commands/new";
@@ -61,17 +60,18 @@ import { SasTaskProvider } from "../components/tasks/SasTaskProvider";
 import { SAS_TASK_TYPE } from "../components/tasks/SasTasks";
 // Import Positron integration
 import {
+  isPositron,
   initializePositronIntegration,
   // getDataViewerProvider,
   // getRuntimeManager,
-  isPositron,
 } from "../positron";
+import { ClinicalRepository } from "../clinical";
 import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
-import { XptEditorProvider } from "../positron/XptEditorProvider";
 import {
   addLocalSasProfile,
   localSasCandidates,
 } from "../positron/localSasProfile";
+import { XptEditorProvider } from "../positron/XptEditorProvider";
 
 let client: LanguageClient;
 

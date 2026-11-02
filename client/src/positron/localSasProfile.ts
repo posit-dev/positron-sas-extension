@@ -14,12 +14,16 @@ import type {
 /** Where SAS Analytics Pro images install the SAS launcher. */
 export const DEFAULT_LOCAL_SAS_PATH = "/opt/sas/viya/home/SASFoundation/sas";
 
-/** Common SAS 9.4 Foundation install locations: the `sas` launcher script in SASFoundation/9.4. */
+/**
+ * Common SAS 9.4 Foundation install locations. These are the UTF-8 launcher
+ * `bin/sas_u8`, not the `sas` script (which may start a non-UTF-8 locale): the
+ * extension reads SAS output as UTF-8.
+ */
 export const SAS94_LOCAL_SAS_PATHS: readonly string[] = [
-  "/opt/sas/SASHome/SASFoundation/9.4/sas",
-  "/usr/local/SASHome/SASFoundation/9.4/sas",
-  "/opt/sasinside/SASHome/SASFoundation/9.4/sas",
-  "/opt/SASHome/SASFoundation/9.4/sas",
+  "/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8",
+  "/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8",
+  "/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8",
+  "/opt/SASHome/SASFoundation/9.4/bin/sas_u8",
 ];
 
 /** Name of the SAS launcher looked up on PATH when no known location has SAS. */

@@ -4,7 +4,7 @@
 
 ### Features
 
-- Positron: the `local` stdio profile is now also added for SAS 9.4 installs. Besides the SAS Analytics Pro path, the extension looks in common SAS 9.4 Foundation locations (such as `/usr/local/SASHome/SASFoundation/9.4/sas`) and for `sas` on `PATH`. The new `SAS.localSasPaths` machine setting lists extra launcher paths, checked first
+- Positron: the `local` stdio profile is now also added for SAS 9.4 installs. Besides the SAS Analytics Pro path, the extension looks in common SAS 9.4 Foundation locations (such as `/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8`) and for `sas` on `PATH`. For SAS 9.4 it uses the UTF-8 launcher `bin/sas_u8`, because the extension reads SAS output as UTF-8. The new `SAS.localSasPaths` machine setting lists extra launcher paths, checked first
 
 ## 0.4.0 - 2026-10-31
 

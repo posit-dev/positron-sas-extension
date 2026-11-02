@@ -196,7 +196,7 @@ describe("addLocalSasProfile", () => {
 
   it("finds a SAS 9.4 install", async () => {
     const store = new FakeStore();
-    const sas94 = "/usr/local/SASHome/SASFoundation/9.4/sas";
+    const sas94 = "/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8";
 
     await addLocalSasProfile(
       store,
@@ -246,6 +246,15 @@ describe("addLocalSasProfile", () => {
 });
 
 describe("localSasCandidates", () => {
+  it("uses the UTF-8 launcher bin/sas_u8 for SAS 9.4", () => {
+    expect(SAS94_LOCAL_SAS_PATHS).to.deep.equal([
+      "/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8",
+      "/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8",
+      "/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8",
+      "/opt/SASHome/SASFoundation/9.4/bin/sas_u8",
+    ]);
+  });
+
   it("lists extra paths, Analytics Pro, SAS 9.4, then PATH, in order", () => {
     const pathEnv = ["/usr/bin", "/opt/bin"].join(delimiter);
 
