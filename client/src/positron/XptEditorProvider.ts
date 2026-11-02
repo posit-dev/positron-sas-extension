@@ -13,6 +13,7 @@ import {
 import * as fs from "fs";
 import * as path from "path";
 
+import { reopenOutsidePositron } from "./dataFileEditorFallback";
 import { getActiveSession } from "./index";
 import {
   TRANSPORT_HEADER_BYTES,
@@ -85,6 +86,9 @@ export class XptEditorProvider implements CustomReadonlyEditorProvider<XptDocume
     webviewPanel: WebviewPanel,
   ): Promise<void> {
     const uri = document.uri;
+    if (await reopenOutsidePositron(uri, webviewPanel)) {
+      return;
+    }
     const local = uri.scheme === "file";
     const fileName = path.basename(local ? uri.fsPath : uri.path);
     const webview = webviewPanel.webview;

@@ -14,6 +14,7 @@ import {
   window,
   workspace,
 } from "vscode";
+import { reopenOutsidePositron } from "./dataFileEditorFallback";
 import { getActiveSession } from "./index";
 import {
   TransportLibrefPool,
@@ -70,6 +71,9 @@ export class Sas7bdatEditorProvider
     _token: CancellationToken,
   ): Promise<void> {
     const uri = document.uri;
+    if (await reopenOutsidePositron(uri, webviewPanel)) {
+      return;
+    }
     const local = uri.scheme === "file";
     const filePath = local ? uri.fsPath : uri.path;
     const dir = path.dirname(filePath);

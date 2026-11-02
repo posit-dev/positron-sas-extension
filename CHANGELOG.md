@@ -5,6 +5,15 @@
 ### Features
 
 - Positron: the `local` stdio profile is now also added for SAS 9.4 installs. Besides the SAS Analytics Pro path, the extension looks in common SAS 9.4 Foundation locations (such as `/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8`) and for `sas` on `PATH`. For SAS 9.4 it uses the UTF-8 launcher `bin/sas_u8`, because the extension reads SAS output as UTF-8. The new `SAS.localSasPaths` machine setting lists extra launcher paths, checked first
+- stdio profiles now run their `autoExec` lines once, right after SAS starts ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
+- Posit Assistant: `sas_export_saspy_config` exports a SAS Viya profile as a saspy HTTP access method configuration (`url`, `context`, and an `authtoken` read from the `SAS_VIYA_TOKEN` environment variable) instead of an IOM configuration. The exported configuration never contains secrets, and profile names that are not Python identifiers are converted to valid configuration names ([#91](https://github.com/posit-dev/positron-sas-extension/issues/91))
+
+### Bug Fixes
+
+- Positron: interrupting an SSH or stdio session no longer marks the console idle while SAS keeps running the code. These connections cannot cancel a submission, so the console stays busy and a message offers to restart the session, which stops SAS. Restarting or reconnecting a stdio session now starts a new SAS process instead of reusing the one that is shutting down ([#90](https://github.com/posit-dev/positron-sas-extension/issues/90))
+- In VS Code (outside Positron), `.sas7bdat` and `.xpt` files open in the default editor instead of a viewer that needs a Positron SAS session ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
+- Removed the "SAS: View Data" command, which was declared but did nothing; the `repository` and `bugs` links now point to posit-dev/positron-sas-extension ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
+- Docs: the stdio README and profile docs describe the actual SAS startup options and example file, `additional.md` uses the `saspath` key, and the capabilities matrix and connection type flowchart include SAS 9.4 (local - stdio) ([#92](https://github.com/posit-dev/positron-sas-extension/issues/92))
 
 ## 0.4.0 - 2026-10-31
 

@@ -151,3 +151,7 @@ Enter the password using the secure input prompt during each Session creation. T
 ### Keyboard Interactive
 
 Enter the response to each question using the secure input prompts during each Session creation.
+
+## Interrupting Running Code
+
+An SSH session cannot cancel code that is running. In Positron, when you interrupt the console, SAS keeps running the code and the console stays busy until it finishes. A message offers to restart the session instead, which ends the SAS session. Restarting loses the session's WORK tables, macro variables, and librefs.

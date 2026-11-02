@@ -45,7 +45,7 @@ VS Code Extension
   Interactive Session
 ```
 
-- Extension spawns local SAS with `-stdio` flag
+- Extension spawns local SAS with `-nodms -noterminal -nosyntaxcheck`, plus the profile's `sasOptions`
 - Code written to stdin
 - Logs/output stream back via stdout/stderr
 - Session persists across multiple submissions
@@ -76,4 +76,4 @@ User documentation: `/website/docs/Configurations/Profiles/sas9stdio.md`
 
 ## Example Configurations
 
-See: `/doc/profileExamples/stdio-profile-example.json`
+See: `/doc/profileExamples/stdio.json`

@@ -98,7 +98,7 @@ You can include SAS startup options in your profile:
 
 ### With AutoExec
 
-You can configure AutoExec lines to run automatically when the session starts:
+You can configure AutoExec lines to run automatically when the session starts. They run once, right after SAS starts and before any code you submit. See [SAS Autoexec Settings](./additional.md#sas-autoexec-settings):
 
 ```json
 {
@@ -134,6 +134,10 @@ The stdio connection type:
 4. Streams logs in real-time. Outputs are directly opened from filesystem
 
 This provides identical behavior to the SSH connection type, but without requiring a remote server or SSH authentication.
+
+## Interrupting Running Code
+
+A stdio session cannot cancel code that is running. In Positron, when you interrupt the console, SAS keeps running the code and the console stays busy until it finishes. A message offers to restart the session instead, which ends the SAS process. Restarting loses the session's WORK tables, macro variables, and librefs.
 
 ## Common SAS Executable Paths
 

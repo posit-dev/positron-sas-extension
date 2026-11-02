@@ -8,6 +8,7 @@ import { join } from "path";
 
 import { BaseConfig, RunResult } from "..";
 import { updateStatusBarItem } from "../../components/StatusBarItem";
+import { AutoExec, toAutoExecLines } from "../../components/profile";
 import { Session } from "../session";
 import { extractOutputHtmlFileName } from "../util";
 import { WORK_DIR_END_TAG, WORK_DIR_START_TAG } from "./const";
@@ -24,6 +25,7 @@ let sessionInstance: StdioSession;
 
 export interface Config extends BaseConfig {
   saspath: string;
+  autoExec?: AutoExec[];
 }
 
 export function getSession(c: Config): Session {
@@ -160,15 +162,22 @@ export class StdioSession extends Session {
       return;
     }
 
-    if (this._process.stdin) {
-      this._process.stdin.write("endsas;\n");
-      this._process.stdin.end();
+    const child = this._process;
+    if (child.stdin) {
+      child.stdin.write("endsas;\n");
+      child.stdin.end();
     }
+
+    // Detach from the exiting process now, so a restart starts a new SAS
+    // instead of reusing this one while it shuts down. This also stops a
+    // submission that is still running (#90).
+    this.disposeResources();
+    child.on("error", () => {});
 
     // Give SAS a moment to shut down gracefully
     setTimeout(() => {
-      if (this._process && !this._process.killed) {
-        this._process.kill();
+      if (!child.killed && child.exitCode === null) {
+        child.kill();
       }
     }, 1000);
   };
@@ -192,6 +201,7 @@ export class StdioSession extends Session {
     this._reject = undefined;
     this._html5FileName = "";
     this._workDirectory = undefined;
+    this._sessionReady = false;
     if (sessionInstance === this) {
       sessionInstance = undefined;
     }
@@ -241,6 +251,13 @@ export class StdioSession extends Session {
   `;
     if (this._process?.stdin) {
       this._process.stdin.write(code);
+      // The profile's autoExec lines run once, right after SAS starts.
+      const autoExecLines = this._config.autoExec
+        ? toAutoExecLines(this._config.autoExec)
+        : [];
+      if (autoExecLines.length > 0) {
+        this._process.stdin.write(`${autoExecLines.join("\n")}\n`);
+      }
     }
   };
 

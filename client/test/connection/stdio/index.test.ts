@@ -7,6 +7,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import * as sinon from "sinon";
 
+import { AutoExecType } from "../../../src/components/profile";
 import {
   StdioSession,
   createSession,
@@ -119,6 +120,40 @@ describe("stdio connection", () => {
       expect(spawnArgs[1]).to.include("-noterminal");
       expect(spawnArgs[1]).to.include("-memsize");
       expect(spawnArgs[1]).to.include("2G");
+    });
+
+    it("runs the profile's autoExec lines after SAS starts", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockStdin: any = new EventEmitter();
+      const writeStub = sandbox.stub();
+      mockStdin.write = writeStub;
+      mockStdin.end = sandbox.stub();
+      const mockStdout = new EventEmitter();
+
+      mockProcess = new EventEmitter();
+      mockProcess.stdin = mockStdin;
+      mockProcess.stdout = mockStdout;
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = sandbox.stub();
+      mockProcess.killed = false;
+      sandbox.stub(processLauncher, "spawn").returns(mockProcess);
+
+      session = new StdioSession({
+        saspath: fakeSas,
+        sasOptions: [],
+        autoExec: [
+          { type: AutoExecType.Line, line: "options pagesize=max;" },
+          { type: AutoExecType.Line, line: "%let x = 1;" },
+        ],
+      });
+
+      const setupPromise = session.setup();
+      expect(writeStub.called).to.be.false;
+      mockStdout.emit("data", Buffer.from("?"));
+      await setupPromise;
+
+      expect(writeStub.calledWith("options pagesize=max;\n%let x = 1;\n")).to.be
+        .true;
     });
 
     it("rejects on process error", async () => {
@@ -279,6 +314,47 @@ describe("stdio connection", () => {
       // Verify ENDSAS was written
       expect(writeStub.calledWith("endsas;\n")).to.be.true;
       expect(endStub.calledOnce).to.be.true;
+    });
+
+    it("starts a new SAS process on the next setup and kills the old one", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const makeProcess = (): any => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const stdin: any = new EventEmitter();
+        stdin.write = sandbox.stub();
+        stdin.end = sandbox.stub();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const child: any = new EventEmitter();
+        child.stdin = stdin;
+        child.stdout = new EventEmitter();
+        child.stderr = new EventEmitter();
+        child.kill = sandbox.stub();
+        child.killed = false;
+        child.exitCode = null;
+        return child;
+      };
+      const first = makeProcess();
+      const second = makeProcess();
+      const spawnStub = sandbox.stub(processLauncher, "spawn");
+      spawnStub.onFirstCall().returns(first);
+      spawnStub.onSecondCall().returns(second);
+
+      session = new StdioSession({ saspath: fakeSas, sasOptions: [] });
+      let setupPromise = session.setup();
+      first.stdout.emit("data", Buffer.from("?"));
+      await setupPromise;
+
+      // SAS is still busy, so it does not exit on ENDSAS.
+      session.close();
+
+      setupPromise = session.setup();
+      second.stdout.emit("data", Buffer.from("?"));
+      await setupPromise;
+      expect(spawnStub.calledTwice).to.be.true;
+
+      sandbox.clock.tick(1000);
+      expect(first.kill.calledOnce).to.be.true;
+      expect(second.kill.called).to.be.false;
     });
   });
 

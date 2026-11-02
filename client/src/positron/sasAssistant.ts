@@ -9,8 +9,9 @@ import type {
 } from "vscode";
 import { EventEmitter } from "vscode";
 
-import { ConnectionType, ProfileConfig, type Profile } from "../components/profile";
+import { ConnectionType, ProfileConfig } from "../components/profile";
 import type { SasClient } from "./sasClient";
+import { SASPY_TOKEN_ENV, profileToSaspyConfig } from "./saspyConfig";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,90 +78,6 @@ async function describeTable(
   );
 }
 
-// ─── saspy config generation ──────────────────────────────────────────────────
-
-function profileToSaspyConfig(name: string, profile: Profile): string {
-  switch (profile.connectionType) {
-    case ConnectionType.Rest: {
-      const lines = [
-        `# saspy configuration for profile "${name}" (SAS Viya)`,
-        `SAS_config_names = ['${name}']`,
-        ``,
-        `${name} = {`,
-        `    'java': '/usr/bin/java',  # adjust path to your Java installation`,
-        `    'iomhost': '${new URL(profile.endpoint).hostname}',`,
-        `    'iomport': 8591,`,
-        `    'encoding': 'utf-8',`,
-        `}`,
-        ``,
-        `# Note: SAS Viya connections typically use the HTTP access method.`,
-        `# Alternative using HTTP transport:`,
-        `# ${name} = {`,
-        `#     'url': '${profile.endpoint}',`,
-        `#     'context': '${profile.context || "SAS Job Execution compute context"}',`,
-        `# }`,
-      ];
-      return lines.join("\n");
-    }
-    case ConnectionType.SSH: {
-      const lines = [
-        `# saspy configuration for profile "${name}" (SSH)`,
-        `SAS_config_names = ['${name}']`,
-        ``,
-        `${name} = {`,
-        `    'saspath': '${profile.saspath}',`,
-        `    'ssh': '/usr/bin/ssh',`,
-        `    'host': '${profile.host}',`,
-        `    'port': ${profile.port},`,
-        `    'encoding': 'utf-8',`,
-        `}`,
-      ];
-      return lines.join("\n");
-    }
-    case ConnectionType.IOM: {
-      const lines = [
-        `# saspy configuration for profile "${name}" (IOM)`,
-        `SAS_config_names = ['${name}']`,
-        ``,
-        `${name} = {`,
-        `    'java': '/usr/bin/java',  # adjust path to your Java installation`,
-        `    'iomhost': '${profile.host}',`,
-        `    'iomport': ${profile.port},`,
-        `    'encoding': 'utf-8',`,
-        `}`,
-      ];
-      return lines.join("\n");
-    }
-    case ConnectionType.COM: {
-      const lines = [
-        `# saspy configuration for profile "${name}" (COM / local Windows)`,
-        `SAS_config_names = ['${name}']`,
-        ``,
-        `${name} = {`,
-        `    'provider': 'sas.workspace',`,
-        `    'host': '${profile.host || "localhost"}',`,
-        `}`,
-      ];
-      return lines.join("\n");
-    }
-    case ConnectionType.Stdio: {
-      // saspy's STDIO access method starts the local SAS directly, like this profile.
-      const lines = [
-        `# saspy configuration for profile "${name}" (local SAS, STDIO)`,
-        `SAS_config_names = ['${name}']`,
-        ``,
-        `${name} = {`,
-        `    'saspath': '${profile.saspath}',`,
-        `    'encoding': 'utf-8',`,
-        `}`,
-      ];
-      return lines.join("\n");
-    }
-    default:
-      return `# Unknown connection type for profile "${name}"`;
-  }
-}
-
 function exportSaspyConfig(): vscode.LanguageModelToolResult {
   const profileConfig = new ProfileConfig();
   const activeProfileName = profileConfig.getActiveProfile();
@@ -189,6 +106,12 @@ function exportSaspyConfig(): vscode.LanguageModelToolResult {
     `3. Save the above config as \`sascfg_personal.py\` in the working directory`,
     `   (alongside the .qmd file, so it can be deployed to Posit Connect)`,
   ];
+  if (profile.connectionType === ConnectionType.Rest) {
+    output.push(
+      `4. Set the ${SASPY_TOKEN_ENV} environment variable to a SAS Viya access token`,
+      `   (see the comment in the config). Never write the token into a file`,
+    );
+  }
 
   return textResult(output.join("\n"));
 }
