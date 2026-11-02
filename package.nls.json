@@ -69,6 +69,7 @@
   "configuration.SAS.log.showOnExecutionStart": "Show SAS Log when code execution starts",
   "configuration.SAS.notebook.export.includeLog": "Include SAS log in exported notebook",
   "configuration.SAS.audit.logFile": "Positron only: file that records every SAS console submission (user, session, code and outcome) as JSON Lines, for audit and traceability. `~` expands to the home directory. Leave empty to turn auditing off.",
+  "configuration.SAS.localSasPaths": "Positron only: extra locations of a local SAS launcher (fully qualified paths), checked before the built-in SAS Analytics Pro and SAS 9.4 locations and `sas` on `PATH`. The first executable one becomes the `local` stdio connection profile, which is added once when no stdio profile exists.",
   "configuration.SAS.problems.log.enabled": "Show problems from SAS log",
   "configuration.SAS.results.html.custom.style": "Specifies which SAS style to use for the light, dark, highContrast, or highContrastLight themes. This option takes effect when `#SAS.results.html.style#` is set to `(auto)`.",
   "configuration.SAS.results.html.custom.style.dark": "Style to use for dark theme",

@@ -22,7 +22,26 @@ Use the stdio connection type when:
 
 ## Positron and Posit Workbench
 
-In Positron, when SAS is installed at `/opt/sas/viya/home/SASFoundation/sas` (the path in SAS Analytics Pro images), the extension adds a `local` stdio profile once, so SAS appears in the console's interpreter list without any setup. It becomes the active profile only if none is set. If you delete it, it is not added again.
+In Positron, when SAS is installed locally, the extension adds a `local` stdio profile once, so SAS appears in the console's interpreter list without any setup. It looks for the SAS launcher in these places, in order, and uses the first executable one:
+
+1. The paths in the `SAS.localSasPaths` setting, if any
+2. `/opt/sas/viya/home/SASFoundation/sas` (SAS Analytics Pro images)
+3. Common SAS 9.4 Foundation locations:
+   - `/opt/sas/SASHome/SASFoundation/9.4/sas`
+   - `/usr/local/SASHome/SASFoundation/9.4/sas`
+   - `/opt/sasinside/SASHome/SASFoundation/9.4/sas`
+   - `/opt/SASHome/SASFoundation/9.4/sas`
+4. `sas` on `PATH`
+
+If SAS is installed elsewhere, list its launcher in `SAS.localSasPaths` (a machine setting, fully qualified paths):
+
+```json
+{
+  "SAS.localSasPaths": ["/data/SASHome/SASFoundation/9.4/sas"]
+}
+```
+
+The profile is not added if a stdio profile already exists. It becomes the active profile only if none is set. If you delete it, it is not added again.
 
 In a Posit Workbench session started from a SAS Analytics Pro image, Workbench licenses SAS for the session through the `SASV9_OPTIONS` environment variable. The stdio session inherits it, so no license options are needed in the profile.
 
