@@ -23,6 +23,8 @@ sidebar_position: 2
 | [Snippets](./Features/sasCodeEditing.md#snippets)                                             | :heavy_check_mark: |              :heavy_check_mark:              |   :heavy_check_mark:    |   :heavy_check_mark:   |
 | Able to cancel a running program                                                              | :heavy_check_mark: |              :heavy_check_mark:              |           :x:           |          :x:           | Interrupting a SAS 9.4 (local - stdio) or (remote - SSH) session in Positron offers to restart it.                    |
 
+For the features that Positron adds for each connection type, such as the Data Explorer and Posit Assistant, see [Features by Connection Type](./Features/positron.md#features-by-connection-type) in the Positron features. For how to run SAS in Posit Workbench, see [SAS with Posit Workbench](./Workbench/index.md).
+
 # Choose Connection Type
 
 ```mermaid

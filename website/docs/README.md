@@ -17,6 +17,8 @@ While the VS Code Extension for SAS is fully functional in Positron, the Extensi
 - Traceability of console code: every submission is tagged with the user and session in the SAS log (and on SAS Viya, in the compute session and job metadata). Set `SAS.audit.logFile` to also keep a local JSON Lines audit log
 - SAS Clinical Acceleration Repository: when the active SAS Viya server has SAS Clinical Acceleration, a Clinical Repository view appears in the SAS sidebar. You can browse and open files, create folders, rename, upload (optionally expanding a zip), download, copy paths, and check items out to or back from your Clinical Acceleration workspace. It uses the same SAS Viya sign-in and needs no extra setup. To check files back in, use SAS Clinical Acceleration or its VS Code extension
 
+To run SAS in Posit Workbench, see [SAS with Posit Workbench](./Workbench/index.md). It covers running SAS in a Workbench session, on SAS Viya or a SAS server, and from R and Python code. The [Positron SAS Extension Features](./Features/positron.md) page describes the console, the Viewer, the Data Explorer, Posit Assistant, and the other Positron features in detail.
+
 Most of the functionality of the VS Code Extension for SAS is retained. In particular it is very important to define SAS Connection profiles.
 
 The SAS Extension for VS Code includes the following features:
