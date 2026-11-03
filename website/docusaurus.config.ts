@@ -15,8 +15,8 @@ const config: Config = {
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: "sassoftware", // Usually your GitHub org/user name.
-  projectName: "vscode-sas-extension", // Usually your repo name.
+  organizationName: "posit-dev", // Usually your GitHub org/user name.
+  projectName: "positron-sas-extension", // Usually your repo name.
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "throw",
@@ -37,7 +37,7 @@ const config: Config = {
           routeBasePath: "/",
           // Remove this to remove the "edit this page" links.
           editUrl:
-            "https://github.com/sassoftware/vscode-sas-extension/tree/main/website/",
+            "https://github.com/posit-dev/positron-sas-extension/tree/main/website/",
         },
         blog: false,
         theme: {
@@ -61,7 +61,7 @@ const config: Config = {
       },
       items: [
         {
-          href: "https://github.com/sassoftware/vscode-sas-extension",
+          href: "https://github.com/posit-dev/positron-sas-extension",
           className: "header-github-link",
           title: "GitHub repository",
           position: "right",
@@ -84,7 +84,7 @@ const config: Config = {
             },
             {
               label: "GitHub Repository",
-              href: "https://github.com/sassoftware/vscode-sas-extension",
+              href: "https://github.com/posit-dev/positron-sas-extension",
             },
           ],
         },
