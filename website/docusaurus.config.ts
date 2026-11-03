@@ -4,7 +4,7 @@ import type { Config } from "@docusaurus/types";
 import { themes as prismThemes } from "prism-react-renderer";
 
 const config: Config = {
-  title: "SAS Extension for Visual Studio Code Documentation",
+  title: "SAS Extension for Positron Documentation",
   favicon: "images/sas.png",
 
   // Set the production url of your site here
@@ -15,8 +15,8 @@ const config: Config = {
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: "sassoftware", // Usually your GitHub org/user name.
-  projectName: "vscode-sas-extension", // Usually your repo name.
+  organizationName: "posit-dev", // Usually your GitHub org/user name.
+  projectName: "positron-sas-extension", // Usually your repo name.
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "throw",
@@ -37,7 +37,7 @@ const config: Config = {
           routeBasePath: "/",
           // Remove this to remove the "edit this page" links.
           editUrl:
-            "https://github.com/sassoftware/vscode-sas-extension/tree/main/website/",
+            "https://github.com/posit-dev/positron-sas-extension/tree/main/website/",
         },
         blog: false,
         theme: {
@@ -54,14 +54,14 @@ const config: Config = {
       },
     },
     navbar: {
-      title: "SAS Extension for Visual Studio Code Documentation",
+      title: "SAS Extension for Positron Documentation",
       logo: {
         alt: "SAS",
         src: "images/sas.png",
       },
       items: [
         {
-          href: "https://github.com/sassoftware/vscode-sas-extension",
+          href: "https://github.com/posit-dev/positron-sas-extension",
           className: "header-github-link",
           title: "GitHub repository",
           position: "right",
@@ -84,12 +84,12 @@ const config: Config = {
             },
             {
               label: "GitHub Repository",
-              href: "https://github.com/sassoftware/vscode-sas-extension",
+              href: "https://github.com/posit-dev/positron-sas-extension",
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()}, SAS Institute Inc., Cary, NC, USA. All Rights Reserved. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()}, SAS Institute Inc., Cary, NC, USA. All Rights Reserved. Built with Docusaurus.<br/>© ${new Date().getFullYear()}, Posit Solutions Engineering, Posit PBC (for the Positron specific parts)`,
     },
     prism: {
       theme: prismThemes.github,

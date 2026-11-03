@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Bug Fixes
+
+- Docs: new section "SAS with Posit Workbench" (SAS within Positron: local SAS, SAS over SSH, and SAS Viya with sign-in through Workbench; SAS in R and Python code with saspy and sasquatch) and a "Positron SAS Extension Features" page, with screenshots. The existing documentation of the SAS Extension for Visual Studio Code is unchanged and linked from the new pages
+
 ## 0.5.0 - 2026-11-02
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
