@@ -2,9 +2,18 @@
 
 ## Unreleased
 
+## 0.5.1 - 2026-11-03
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+This release is mostly documentation: the site is now "SAS Extension for Positron Documentation" and covers running SAS in Posit Workbench ([#99](https://github.com/posit-dev/positron-sas-extension/pull/99)). The only change to the extension is an updated dependency.
+
 ### Bug Fixes
 
-- Docs: new section "SAS with Posit Workbench" (SAS within Positron: local SAS, SAS over SSH, and SAS Viya with sign-in through Workbench; SAS in R and Python code with saspy and sasquatch) and a "Positron SAS Extension Features" page, with screenshots. The existing documentation of the SAS Extension for Visual Studio Code is unchanged and linked from the new pages
+- Updated the katex dependency from 0.17 to 0.18.10 ([#97](https://github.com/posit-dev/positron-sas-extension/pull/97))
+- Docs: new section "SAS with Posit Workbench" (SAS within Positron: local SAS, SAS over SSH, and SAS Viya with sign-in through Workbench; SAS in R and Python code with saspy and sasquatch) and a "Positron SAS Extension Features" page, with screenshots. The documentation of the SAS Extension for Visual Studio Code is kept and linked from the new pages
+- Docs: the installation page describes installing the extension from the VSIX file of a GitHub release, in Positron and in Posit Workbench, and keeps the instructions for the SAS Extension for Visual Studio Code
+- Docs: the site is renamed "SAS Extension for Positron Documentation", its GitHub and edit links point to posit-dev/positron-sas-extension, and the footer has the Posit copyright line for the Positron specific parts
 
 ## 0.5.0 - 2026-11-02
 
