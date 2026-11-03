@@ -4,7 +4,7 @@ import type { Config } from "@docusaurus/types";
 import { themes as prismThemes } from "prism-react-renderer";
 
 const config: Config = {
-  title: "SAS Extension for Visual Studio Code Documentation",
+  title: "SAS Extension for Positron Documentation",
   favicon: "images/sas.png",
 
   // Set the production url of your site here
@@ -54,7 +54,7 @@ const config: Config = {
       },
     },
     navbar: {
-      title: "SAS Extension for Visual Studio Code Documentation",
+      title: "SAS Extension for Positron Documentation",
       logo: {
         alt: "SAS",
         src: "images/sas.png",

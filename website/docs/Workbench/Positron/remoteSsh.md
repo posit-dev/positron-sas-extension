@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 3
 ---
 
 # Remote SAS over SSH
@@ -50,13 +50,3 @@ For SAS Analytics Pro, `saspath` is `/opt/sas/viya/home/SASFoundation/sas`. Then
 
 - The SAS server's file system and libraries are browsed through SAS code, not as files in Positron's Explorer.
 - The console cannot interrupt a running submission. It stays busy until the code finishes, and a message offers to restart the session, which stops SAS on the server.
-
-## Why Not the SAS Compute Server REST Endpoint
-
-SAS Analytics Pro also runs a SAS Compute Server with a REST API on port 8592. The VS Code that ships in SAS Analytics Pro connects to it with a REST profile on `localhost`. Posit does not recommend this endpoint for Positron:
-
-- The Compute Server only runs when the full SAS Analytics Pro startup runs, as in SAS Studio sessions. It needs root and SAS services, which Positron sessions do not start.
-- The endpoint has no authentication. Anyone who can reach the port runs SAS code as the account of the Compute Server, so it must not be exposed on a network.
-- Workbench does not publish the port, so other sessions cannot reach it.
-
-Use SSH for a remote SAS Analytics Pro server, and the local connection for SAS in the session.

@@ -15,12 +15,6 @@ This section builds on the rest of this documentation. The [Features](../Feature
 
 For what each scenario needs, see [Requirements by Scenario](./requirements.md). For the shared setup underneath all of them, such as single sign-on and shared home directories with SAS Viya, see [Across All Scenarios](./foundations.md).
 
-:::note Not covered here
-
-Workbench can also offer SAS Studio as a session type. SAS Studio sessions do not use the SAS extension, so this documentation does not cover them.
-
-:::
-
 ## Which Scenario Fits
 
 - **SAS programmers who want a modern editor:** SAS within Positron runs SAS with the same console, output, and data tools as R and Python, and with Posit Assistant. Start with [Positron SAS Extension Features](../Features/positron.md).
@@ -36,7 +30,6 @@ Where SAS runs decides which connection profile you use and which features are a
 | --- | --- | --- |
 | On SAS Viya | A SAS Viya (`rest`) profile, with sign-in through Workbench | [Remote SAS Viya](./Positron/remoteViya.md) |
 | On a SAS 9.4 or SAS Analytics Pro server | An SSH profile | [Remote SAS over SSH](./Positron/remoteSsh.md) |
-| In the Workbench session, from the unmodified SAS Analytics Pro image | The automatic `local` stdio profile | [Local SAS: SAS Analytics Pro Container](./Positron/localContainer.md) |
 | Installed on the Workbench host or in the session image | The automatic `local` stdio profile | [Local SAS: SAS Installed with Workbench](./Positron/localInstalled.md) |
 
 The [Capabilities by Connection Type](../matrix.md) table lists which features each connection type supports in VS Code. For Positron, see [Features by Connection Type](../Features/positron.md#features-by-connection-type).

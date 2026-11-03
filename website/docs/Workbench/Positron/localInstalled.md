@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # Local SAS: SAS Installed with Workbench
@@ -48,7 +48,17 @@ The extension adds the profile once: a deleted profile stays deleted, and an exi
 }
 ```
 
-Then choose **SAS (local)** in the interpreter picker. For all profile settings, see the [stdio connection profile](../../Configurations/Profiles/sas9stdio.md).
+Then choose **SAS (local)** in the interpreter picker, or open a `.sas` file to start the SAS console. For all profile settings, see the [stdio connection profile](../../Configurations/Profiles/sas9stdio.md).
+
+![The Positron Start New Console Session picker with three entries: Python 3.12.15, SAS (local), and Python 3.9.25.](/images/workbench/interpreter-picker-sas-local.png)
+
+*The Start New Console Session picker in Positron, listing SAS (local) next to the Python interpreters.*
+
+The SAS console runs your code. Positron shows the rendered output in the Viewer pane.
+
+![Positron with the SAS console at the bottom, showing the PROC PRINT listing and log for sashelp.class, and the Viewer pane on the right showing a scatter plot of weight against height above an HTML table of the same data.](/images/workbench/sas-console.png)
+
+*A SAS console in Positron after running PROC SGPLOT and PROC PRINT on sashelp.class. The log and listing appear in the console. The scatter plot and the formatted table appear in the Viewer pane.*
 
 ## Limitations
 

@@ -20,7 +20,7 @@ With these in place, users sign in once in the browser, and files move between S
 
 Posit Assistant in Positron works with SAS through the SAS extension: it lists libraries and tables, reads SAS output and graphs, and can create a saspy configuration. See [Positron SAS Extension Features](../Features/positron.md#posit-assistant).
 
-The Assistant needs access to a language model. In the reference deployment, Workbench sessions use Amazon Bedrock through AWS Identity and Access Management (IAM) roles for service accounts. Sessions that start as root for SAS (the unmodified SAS Analytics Pro container) must set root on the container, not the pod, or the session cannot read the IAM role's token. See [Local SAS: SAS Analytics Pro Container](./Positron/localContainer.md).
+The Assistant needs access to a language model. In the reference deployment, Workbench sessions use Amazon Bedrock through AWS Identity and Access Management (IAM) roles for service accounts.
 
 ## Governance and Traceability
 

@@ -19,7 +19,7 @@ For the libraries and the overall pattern, see [Scenario 3: SAS in Your R and Py
 - Linux. saspy STDIO does not work with SAS on Windows.
 - SAS installed in one of these places:
   - On the Workbench host, for sessions that run there
-  - In the session image, for Workbench with Kubernetes or Slurm, such as the unmodified SAS Analytics Pro image
+  - In the session image, for Workbench with Kubernetes or Slurm
   - On the Connect host, or in the content image when Connect runs content off-host
 - A SAS license that is valid where SAS runs
 - saspy in the Python environment, and sasquatch for R users
@@ -37,7 +37,7 @@ local = {'saspath': '/opt/sas/viya/home/SASFoundation/sas',
          'options': ['-fullstimer']}
 ```
 
-`/opt/sas/viya/home/SASFoundation/sas` is the SAS path in the unmodified SAS Analytics Pro image. A SAS 9.4 installation usually uses a path such as `/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8`.
+`/opt/sas/viya/home/SASFoundation/sas` is the SAS path in SAS Analytics Pro and SAS Viya-based installations. A SAS 9.4 installation usually uses a path such as `/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8`.
 
 `options` takes a Python list of SAS startup options. The optional `autoexec` key takes a string of SAS code that saspy submits after SAS starts, for example a `libname` statement.
 
@@ -54,8 +54,7 @@ sasquatch::configure_saspy()
 
 SAS checks its license at startup, wherever it runs. Running SAS on Connect for viewers can need a different license from running it in Workbench sessions. Confirm with SAS that your license covers each place SAS runs.
 
-- Workbench sessions from the unmodified SAS Analytics Pro image: with `ide-session-license=1`, Workbench sets `SASV9_OPTIONS` in Positron and VS Code sessions. SAS processes that saspy starts inherit it. See [Local SAS: SAS Analytics Pro Container](../Positron/localContainer.md).
-- Other sessions, hosts, and images: license SAS in the installation, or pass the license file at startup.
+License SAS in the installation, or pass the license file at startup.
 
 For SAS Analytics Pro, a definition can pass the license file as a startup option:
 
@@ -63,12 +62,6 @@ For SAS Analytics Pro, a definition can pass the license file as a startup optio
 local = {'saspath': '/opt/sas/viya/home/SASFoundation/sas',
          'options': ['-licensefile', '/opt/sas/license/license.jwt']}
 ```
-
-:::warning
-
-Do not replace `SASV9_OPTIONS` in a shell profile. SAS then loses the license that Workbench provides and fails with a SETINIT expiration error. Append to the variable instead.
-
-:::
 
 ### Prepare Connect
 
@@ -111,7 +104,7 @@ cars_df = sas.sd2df("cars", libref="sashelp")
 sas.endsas()
 ```
 
-The following screenshot shows this Python code in a Positron console in a session on the unmodified SAS Analytics Pro image. saspy starts SAS from the image as a child process, `print(cars.means())` shows the `PROC MEANS` result, and `cars_df` appears in the Variables pane as a pandas data frame.
+The following screenshot shows this Python code in a Positron console in a Workbench session. saspy starts SAS as a child process, `print(cars.means())` shows the `PROC MEANS` result, and `cars_df` appears in the Variables pane as a pandas data frame.
 
 ![Positron with a Python console on the left and the Variables pane on the right. The console shows import saspy, a SAS connection established message, the table of means for sashelp.cars, and the SAS connection terminated message. The Variables pane lists cars_df as a pandas DataFrame with 428 rows and 15 columns.](/images/workbench/local-saspy-console.png)
 
