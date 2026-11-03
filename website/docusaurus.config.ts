@@ -89,7 +89,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()}, SAS Institute Inc., Cary, NC, USA. All Rights Reserved. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()}, SAS Institute Inc., Cary, NC, USA. All Rights Reserved. Built with Docusaurus.<br/>© ${new Date().getFullYear()}, Posit Solutions Engineering, Posit PBC (for the Positron specific parts)`,
     },
     prism: {
       theme: prismThemes.github,
