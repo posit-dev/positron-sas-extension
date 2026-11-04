@@ -187,6 +187,12 @@ export class RepositoryModel {
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
           await this.updateAccessToken(connection);
+          // The failed request still carries the old Authorization header,
+          // which overrides the refreshed default, so replay it with the new one.
+          originalRequest.headers = {
+            ...originalRequest.headers,
+            Authorization: connection.defaults.headers.common.Authorization,
+          };
           return connection(originalRequest);
         }
         return Promise.reject(error);
