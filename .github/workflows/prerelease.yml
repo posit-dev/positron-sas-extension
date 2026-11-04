@@ -1,0 +1,133 @@
+# Builds the VSIX on every push to main and publishes it as a numbered
+# pre-release (for example v0.5.1-dev.12), keeping the most recent ones, so
+# that changes can be tested before the next release. Fork-only: the upstream
+# sassoftware/vscode-sas-extension has no such workflow.
+#
+# main carries the version of the last release (a version bump on main
+# releases it, see package.yml), so a development build is named after that
+# release. The VSIX inside keeps the package.json version: only the file name,
+# the tag and the release title carry the "-dev.N" suffix.
+#
+# A push that changes the package.json version is a release. package.yml
+# publishes it, so no development build is made for it.
+#
+# Run it by hand (Actions > Pre-release > Run workflow) to build a branch, for
+# example to test a pull request. The workflow file must be on main first.
+name: Pre-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  KEEP_PRERELEASES: 5
+
+jobs:
+  check:
+    name: Check whether to build
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: check
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          build=true
+          if [ "$GITHUB_EVENT_NAME" = push ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            now="$(node -p 'require("./package.json").version')"
+            before="$(git show "$BEFORE:package.json" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
+            if [ "$now" != "$before" ]; then
+              echo "package.json changed from $before to $now: a release, published by package.yml."
+              build=false
+            fi
+          fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
+  prerelease:
+    name: Build and publish pre-release
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          # the history and tags, to list the changes since the last release
+          fetch-depth: 0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - run: npm ci
+
+      # The same unit tests as the pull request check. Unit tests run
+      # transpile-only: the test tsconfigs lack mocha/node types, and Node 22+
+      # needs --no-experimental-strip-types for ts-node.
+      - name: Test
+        run: |
+          npm run test-server
+          npm run test-positron
+        env:
+          TS_NODE_TRANSPILE_ONLY: "true"
+          NODE_OPTIONS: --no-experimental-strip-types
+
+      - name: Build VSIX
+        run: npx @vscode/vsce package
+
+      - name: Publish pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base="$(node -p 'require("./package.json").version')"
+          version="${base}-dev.${GITHUB_RUN_NUMBER}"
+          short="${GITHUB_SHA::7}"
+          vsix="positron-sas-${version}.vsix"
+          mv "positron-sas-${base}.vsix" "$vsix"
+          last="$(gh release view --json tagName --jq .tagName 2>/dev/null || true)"
+          {
+            echo "Development build of [\`${short}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}) on \`${GITHUB_REF_NAME}\`, after ${last:-the last release}."
+            echo
+            echo "Install it in Positron with **Extensions: Install from VSIX...**. It can contain unreleased or unfinished changes."
+            echo
+            echo "## Unreleased changes"
+            echo
+            node tools/changelog-section.mjs Unreleased 2>/dev/null || echo "The changelog lists none."
+            echo
+            echo "## Commits since ${last:-the last release}"
+            echo
+            if [ -n "$last" ]; then
+              git log --no-merges --format='- %s' "${last}..${GITHUB_SHA}" || true
+            fi
+          } > notes.md
+          gh release create "v${version}" "$vsix" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Positron SAS ${version} (${short})" \
+            --notes-file notes.md
+
+      - name: Remove older pre-releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Only the development builds: older pre-releases, such as
+          # v1.19.2-positron.1, are history to keep.
+          gh release list --limit 100 --json tagName,isPrerelease,createdAt \
+            --jq "[.[] | select(.isPrerelease and (.tagName | test(\"-dev\\\\.[0-9]+$\")))] | sort_by(.createdAt) | reverse | .[${KEEP_PRERELEASES}:] | .[].tagName" |
+            while read -r tag; do
+              gh release delete "$tag" --cleanup-tag --yes
+            done
