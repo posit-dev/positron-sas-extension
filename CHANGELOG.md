@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Bug Fixes
+
+- Clinical Repository: after the sign-in token expires, the first request no longer fails with a 401. The request that triggers the refresh is now replayed with the new token instead of the old one ([#101](https://github.com/posit-dev/positron-sas-extension/pull/101))
+
 ## 0.5.1 - 2026-11-03
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
