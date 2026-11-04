@@ -10,7 +10,7 @@ import {
   Uri,
 } from "vscode";
 
-import { CLINICAL_SCHEME } from "./const";
+import { CLINICAL_SCHEME, WORKSPACE_SCHEME } from "./const";
 import { Messages } from "./messages";
 import type { CheckoutState } from "./types";
 
@@ -39,7 +39,7 @@ export class RepositoryDecorator implements FileDecorationProvider {
   }
 
   provideFileDecoration(uri: Uri): FileDecoration | undefined {
-    if (uri.scheme !== CLINICAL_SCHEME) {
+    if (uri.scheme !== CLINICAL_SCHEME && uri.scheme !== WORKSPACE_SCHEME) {
       return undefined;
     }
     const entry = this.states.get(uri.toString());

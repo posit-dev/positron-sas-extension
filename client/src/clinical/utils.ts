@@ -11,14 +11,27 @@ import {
   CHILDREN_PAGE_LIMIT,
   MAX_CHILDREN_PAGES,
   REPOSITORY_ITEMS,
+  WORKSPACE_FOLDERS,
+  WORKSPACE_ITEMS,
 } from "./const";
 import type {
+  CheckInBody,
   CheckoutState,
+  ItemPrivileges,
   Link,
   ObjectType,
   RepositoryItem,
   ResourceCollection,
+  SynchronizationItem,
+  VersionHistoryItem,
+  VersionRow,
+  WorkspaceItem,
 } from "./types";
+
+/** Tells a version in the Version History view from a repository item. */
+export const isVersionRow = (
+  source: RepositoryItem | VersionRow | WorkspaceItem,
+): source is VersionRow => "fileId" in source;
 
 export const isContainer = (item: RepositoryItem): boolean =>
   item.primaryType === "CONTEXT" || item.primaryType === "FOLDER";
@@ -120,10 +133,6 @@ const CHECKOUT_TOKENS: Record<CheckoutState, string> = {
   other: "coOther",
 };
 
-/**
- * Tree item context value, matched by the `viewItem =~ /;token;/` clauses
- * in package.json. Tokens are delimited so one can't match inside another.
- */
 /** Whether the signed-in user may change an item, as far as we know yet. */
 export type ItemPermission = "write" | "read" | "unknown";
 
@@ -134,11 +143,11 @@ const PERMISSION_TOKENS: Record<ItemPermission, string> = {
 };
 
 /**
- * Whether an effective-permissions response grants WRITE. Accepts the shapes
- * the service may use (an array of names, a delimited string, or an object
- * holding such a list); undefined if the response isn't recognisable.
+ * The names in an authorizations response. Accepts the shapes the service may
+ * use (an array of names, a delimited string, or an object holding such a
+ * list), upper-cased; undefined if the response isn't recognisable.
  */
-export function parseWritePermission(data: unknown): boolean | undefined {
+export function parsePermissionNames(data: unknown): string[] | undefined {
   let names: unknown = data;
   if (data && typeof data === "object" && !Array.isArray(data)) {
     names =
@@ -154,7 +163,22 @@ export function parseWritePermission(data: unknown): boolean | undefined {
   if (!Array.isArray(names)) {
     return undefined;
   }
-  return names.some((n) => String(n).toUpperCase() === "WRITE");
+  return names.map((n) => String(n).toUpperCase());
+}
+
+/** Whether an effective-permissions response grants WRITE. */
+export const parseWritePermission = (data: unknown): boolean | undefined =>
+  parsePermissionNames(data)?.includes("WRITE");
+
+/** The versioning privileges in a privileges response, if recognisable. */
+export function parsePrivileges(data: unknown): ItemPrivileges | undefined {
+  const names = parsePermissionNames(data);
+  return (
+    names && {
+      enableVersioning: names.includes("PRIVILEGE_ENABLE_VERSIONING"),
+      manageVersioning: names.includes("PRIVILEGE_MANAGE_VERSIONING"),
+    }
+  );
 }
 
 /** Run at most `limit` of the given tasks at a time. */
@@ -183,6 +207,10 @@ export function createLimiter(
   };
 }
 
+/**
+ * Tree item context value, matched by the `viewItem =~ /;token;/` clauses
+ * in package.json. Tokens are delimited so one can't match inside another.
+ */
 export function buildContextValue(
   item: RepositoryItem,
   type: ObjectType | undefined,
@@ -193,21 +221,70 @@ export function buildContextValue(
   if (isContainer(item)) {
     tokens.push("container", "canCreate");
   } else {
-    tokens.push("file", CHECKOUT_TOKENS[getCheckoutState(item, currentUserId)]);
+    tokens.push(
+      "file",
+      CHECKOUT_TOKENS[getCheckoutState(item, currentUserId)],
+      item.versioned ? "versioned" : "unversioned",
+    );
   }
   if (!isTopLevelContext(item, type)) {
     tokens.push("canRename");
   }
+  // Contexts (organizations, studies) are only removed by administrators.
+  if (item.primaryType !== "CONTEXT") {
+    tokens.push("canDelete");
+  }
   return `;${tokens.join(";")};`;
 }
+
+export function buildVersionsUrl(itemId: string): string {
+  return `${REPOSITORY_ITEMS}/${encodeURIComponent(itemId)}/versions`;
+}
+
+/** Order versions newest first: "10.0" is newer than "9.1". */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pb[i] ?? 0) - (pa[i] ?? 0);
+    if (diff) {
+      return diff;
+    }
+  }
+  return 0;
+}
+
+export const sortVersions = <T extends VersionHistoryItem>(
+  versions: T[],
+): T[] =>
+  [...versions].sort((a, b) => compareVersions(a.fileVersion, b.fileVersion));
+
+/** File name of one version, e.g. `adsl.sas` version 2.0 is `adsl-v2.0.sas`. */
+export function versionFileName(name: string, version: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot > 0
+    ? `${name.slice(0, dot)}-v${version}${name.slice(dot)}`
+    : `${name}-v${version}`;
+}
+
+/** Whether `path` is `folder` itself or lies inside it. */
+export const isSameOrUnder = (path: string, folder: string): boolean =>
+  path === folder ||
+  path.startsWith(folder.endsWith("/") ? folder : `${folder}/`);
 
 /** RQL filter selecting items by id, e.g. `in(id,'a','b')`. */
 export const buildIdFilter = (ids: string[]): string =>
   `in(id,${ids.map((id) => `'${id.replace(/'/g, "''")}'`).join(",")})`;
 
 /** Name of the downloaded file: containers and multi-selections are zips. */
-export function downloadFileName(items: RepositoryItem[]): string {
-  if (items.length === 1 && !isContainer(items[0])) {
+export function downloadFileName(
+  items: Array<{ name: string; primaryType: string }>,
+): string {
+  if (
+    items.length === 1 &&
+    items[0].primaryType !== "CONTEXT" &&
+    items[0].primaryType !== "FOLDER"
+  ) {
     return items[0].name;
   }
   return `${items[0].name}.zip`;
@@ -287,7 +364,8 @@ export function extractSingleZipEntry(
 const FILE_REGEX = /^([^/<>;\\{}?#]+)\.\w+$/;
 const NAME_REGEX =
   /[^\u0022\u0024\u002A\u002F\u003A\u003C\u003E\u003F\u005C\u007C\u007F-\u00A0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2008\u2009\u200A\u200B\u2028\u2029\u205F\u3000]/g;
-const VERSION_REGEX = /^(\d+)\.(\d+)$/;
+// A number such as 2.3, or MAJOR / MINOR to bump an already versioned file.
+const VERSION_REGEX = /^(\d+\.\d+|MAJOR|MINOR)$/i;
 
 export type ValidationError =
   | "fileName"
@@ -329,3 +407,186 @@ export const validateComment = (value: string): ValidationError | undefined =>
 
 export const validateVersion = (value: string): ValidationError | undefined =>
   value !== "" && !VERSION_REGEX.test(value) ? "versionFormat" : undefined;
+
+// --- Workspace ---
+
+/** Encode a path for a URL, keeping its slashes. */
+export const encodePath = (path: string): string =>
+  encodeURIComponent(path).replace(/%2F/g, "/");
+
+const withSlash = (path: string): string =>
+  path.startsWith("/") ? path : `/${path}`;
+
+/** `items` URL of a workspace path; the root is the empty path. */
+export function buildWorkspaceItemsUrl(
+  path: string | undefined,
+  query: Record<string, string | boolean> = {},
+): string {
+  const root = !path || path === "/";
+  const params = new URLSearchParams(
+    Object.entries(query).map(([k, v]) => [k, String(v)]),
+  ).toString();
+  return `${WORKSPACE_ITEMS}${root ? "" : encodePath(withSlash(path))}${params ? `?${params}` : ""}`;
+}
+
+/** URL to create a folder in `parentPath`. */
+export function buildWorkspaceFolderUrl(
+  parentPath: string,
+  name: string,
+): string {
+  const root = !parentPath || parentPath === "/";
+  return `${WORKSPACE_FOLDERS}${root ? "" : encodePath(withSlash(parentPath))}?name=${encodeURIComponent(name)}`;
+}
+
+/** Path of `name` inside the workspace folder `parentPath`. */
+export const joinWorkspacePath = (parentPath: string, name: string): string =>
+  `${parentPath === "/" ? "" : parentPath.replace(/\/$/, "")}/${name}`;
+
+export const isWorkspaceFolder = (item: WorkspaceItem): boolean =>
+  item.type === "FOLDER";
+
+/** Tells a workspace item from a repository item or a version. */
+export const isWorkspaceItem = (
+  source: RepositoryItem | VersionRow | WorkspaceItem,
+): source is WorkspaceItem => !("primaryType" in source) && "type" in source;
+
+export function getWorkspaceCheckoutState(
+  item: WorkspaceItem,
+  currentUserId: string | undefined,
+): CheckoutState {
+  const info = item.synchronizationInfo;
+  if (isWorkspaceFolder(item) || !info?.checkedOut) {
+    return "none";
+  }
+  return currentUserId && info.checkedOutBy === currentUserId
+    ? "self"
+    : "other";
+}
+
+/**
+ * Context value of a workspace tree item (see `buildContextValue`). Check-in
+ * is offered for folders and for files nobody else has checked out; undoing a
+ * check-out for folders and for your own check-outs.
+ */
+export function buildWorkspaceContextValue(
+  item: WorkspaceItem,
+  currentUserId: string | undefined,
+): string {
+  const tokens = ["workspace"];
+  if (isWorkspaceFolder(item)) {
+    tokens.push("container", "canCheckIn", "canUndo");
+  } else {
+    const state = getWorkspaceCheckoutState(item, currentUserId);
+    tokens.push("file", CHECKOUT_TOKENS[state]);
+    if (state !== "other") {
+      tokens.push("canCheckIn");
+    }
+    if (state === "self") {
+      tokens.push("canUndo");
+    }
+  }
+  return `;${tokens.join(";")};`;
+}
+
+// Icons of the Clinical Acceleration file types, by extension.
+const WORKSPACE_ICONS: Record<string, string> = {
+  sas: "sasProgramFile",
+  sas7bdat: "sasDataSet",
+  sas7bcat: "sasCatalog",
+  sas7bvew: "dataSetView",
+  xpt: "sasTransportFile",
+  cjob: "clinicalJobFile",
+  cmnf: "clinicalJobManifest",
+  job: "jobTemplate",
+  log: "log",
+  lst: "log",
+};
+
+/** Name of the extension's icon for a file, if it has one. */
+export const workspaceIconName = (fileName: string): string | undefined =>
+  WORKSPACE_ICONS[fileName.split(".").pop()?.toLowerCase() ?? ""];
+
+// --- Check in ---
+
+const isVersionedInfo = (version: string | undefined): boolean =>
+  !!version && version !== "-";
+
+export interface CheckInPlan {
+  /** Not checked out: new to the repository. */
+  newFiles: SynchronizationItem[];
+  /** Checked out and versioned: get the next version. */
+  versioned: SynchronizationItem[];
+  /** Checked out, without versioning. */
+  unversioned: SynchronizationItem[];
+}
+
+/** Sort the check-in candidates by what has to be asked about them. */
+export function planCheckIn(items: SynchronizationItem[]): CheckInPlan {
+  const plan: CheckInPlan = { newFiles: [], versioned: [], unversioned: [] };
+  for (const item of items) {
+    const info = item.synchronizationInfo;
+    if (!info?.checkedOut) {
+      plan.newFiles.push(item);
+    } else if (isVersionedInfo(info.fileVersion)) {
+      plan.versioned.push(item);
+    } else {
+      plan.unversioned.push(item);
+    }
+  }
+  return plan;
+}
+
+/** The next major ("2.3" -> "3.0") or minor ("2.3" -> "2.4") version. */
+export function getNextVersion(
+  type: "major" | "minor",
+  version?: string,
+): string {
+  const current = version && isVersionedInfo(version) ? version : "0.0";
+  if (!current.includes(".")) {
+    throw new Error(`${version} is not a valid version.`);
+  }
+  const [major, minor] = current.split(".");
+  return type === "major"
+    ? `${Number(major) + 1}.0`
+    : `${major}.${Number(minor) + 1}`;
+}
+
+export interface CheckInAnswers {
+  /** Version for new files; none leaves them unversioned. */
+  newFileVersion?: string;
+  /** Version for files that are checked out but unversioned. */
+  unversionedVersion?: string;
+  /** Which part of the version of versioned files to raise. */
+  bump?: "major" | "minor";
+  comment: string;
+}
+
+/** The `CHECK_IN` request body for a plan and the user's answers. */
+export function buildCheckInBody(
+  plan: CheckInPlan,
+  answers: CheckInAnswers,
+): CheckInBody {
+  const spec = (
+    item: SynchronizationItem,
+    fileVersion: string | undefined,
+  ) => ({
+    path: item.path,
+    ...(fileVersion ? { fileVersion: fileVersion.toUpperCase() } : {}),
+    type: "FILE" as const,
+  });
+  return {
+    fileSpecifications: [
+      ...plan.newFiles.map((i) => spec(i, answers.newFileVersion)),
+      ...plan.unversioned.map((i) => spec(i, answers.unversionedVersion)),
+      ...plan.versioned.map((i) =>
+        spec(
+          i,
+          answers.bump &&
+            getNextVersion(answers.bump, i.synchronizationInfo.fileVersion),
+        ),
+      ),
+    ],
+    comment: answers.comment,
+    includeNewFiles: true,
+  };
+}

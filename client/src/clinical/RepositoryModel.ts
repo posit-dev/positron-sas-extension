@@ -21,7 +21,9 @@ import {
   AUTHORIZATIONS,
   PERMISSION_CONCURRENCY,
   REPOSITORY_FILES_CONTENT,
+  REPOSITORY_FILE_MEDIA_TYPE,
   REPOSITORY_ITEMS,
+  REPOSITORY_ITEMS_BATCH,
   REPOSITORY_ITEM_MEDIA_TYPE,
   REPOSITORY_PATHS,
   ROOT_ITEM_ID,
@@ -31,16 +33,21 @@ import {
 import type {
   ActionStatus,
   CheckoutAction,
+  ItemPrivileges,
   ObjectType,
   RepositoryItem,
   ResourceCollection,
+  VersionHistoryItem,
+  VersioningAction,
 } from "./types";
 import {
   ItemPermission,
   buildChildrenUrl,
   buildIdFilter,
+  buildVersionsUrl,
   collectPages,
   createLimiter,
+  parsePrivileges,
   parseWritePermission,
 } from "./utils";
 
@@ -169,7 +176,7 @@ export class RepositoryModel {
     }
   }
 
-  private async getConnection(): Promise<AxiosInstance> {
+  async getConnection(): Promise<AxiosInstance> {
     const endpoint = getActiveViyaEndpoint();
     if (!endpoint) {
       throw new Error("The active SAS profile is not a SAS Viya profile.");
@@ -340,44 +347,186 @@ export class RepositoryModel {
     if (comment) {
       url += `&comment=${encodeURIComponent(comment)}`;
     }
+    // Versioning needs a privilege most users lack, so only send a version
+    // when one was asked for. MAJOR and MINOR are keywords for the server.
     if (version) {
-      url += `&fileVersion=${encodeURIComponent(version)}`;
+      url += `&fileVersion=${encodeURIComponent(version.toUpperCase())}`;
     }
-    const response = await connection.put<RepositoryItem>(url, content, {
-      headers: {
-        "Content-Type": "application/octet-stream",
-        Accept: REPOSITORY_ITEM_MEDIA_TYPE,
-      },
+    // The API takes multipart/form-data with a single `file` part whose own
+    // filename becomes the stored name (see the putRepositoryItemContent spec).
+    // axios sets the Content-Type, including the boundary, for FormData.
+    const body = new FormData();
+    // slice() hands Blob a plain ArrayBuffer-backed copy.
+    body.append("file", new Blob([content.slice()]), name);
+    const response = await connection.put<RepositoryItem>(url, body, {
+      headers: { Accept: REPOSITORY_ITEM_MEDIA_TYPE },
     });
     return response.data;
   }
 
   /**
-   * Check items out to (or revert them from) the user's Clinical Acceleration
-   * workspace, and wait for the server to finish.
+   * Start a batch action on `batchUrl` (the repository or the workspace batch
+   * endpoint) and return the id of its action status. The action runs
+   * asynchronously: poll it with `waitForAction`.
    */
-  async runCheckoutAction(
-    action: CheckoutAction,
-    items: RepositoryItem[],
-    copyContent: boolean,
-    isCancelled: () => boolean,
-  ): Promise<ActionStatus> {
+  async startBatchAction(
+    batchUrl: string,
+    action: string,
+    body: unknown,
+  ): Promise<string> {
     const connection = await this.getConnection();
-    const paths = items.map((item) => item.path);
-    const body =
-      action === "REPOSITORY_CHECK_OUT" ? { paths, copyContent } : paths;
     const response = await connection.post(
-      `${WORKSPACE_ITEMS_BATCH}?action=${action}&clientId=${this.clientId}`,
+      `${batchUrl}?action=${action}&clientId=${this.clientId}`,
       body,
     );
     const token = getActionToken(response.headers.location);
     if (!token) {
       throw new Error("The server did not return an action status.");
     }
+    return token;
+  }
+
+  /** Wait until the server reports an action as ended. */
+  async waitForAction(
+    token: string,
+    isCancelled: () => boolean,
+  ): Promise<ActionStatus> {
+    const connection = await this.getConnection();
     return pollActionStatus(
       (url, config) => connection.get<ActionStatus>(url, config),
       token,
       { isCancelled },
+    );
+  }
+
+  /** Start a batch action and wait for the server to finish it. */
+  async runBatchAction(
+    batchUrl: string,
+    action: string,
+    body: unknown,
+    isCancelled: () => boolean,
+  ): Promise<ActionStatus> {
+    const token = await this.startBatchAction(batchUrl, action, body);
+    return this.waitForAction(token, isCancelled);
+  }
+
+  /**
+   * Check items out to (or revert them from) the user's Clinical Acceleration
+   * workspace, and wait for the server to finish.
+   */
+  runCheckoutAction(
+    action: CheckoutAction,
+    items: RepositoryItem[],
+    copyContent: boolean,
+    isCancelled: () => boolean,
+  ): Promise<ActionStatus> {
+    const paths = items.map((item) => item.path);
+    const body =
+      action === "REPOSITORY_CHECK_OUT" ? { paths, copyContent } : paths;
+    return this.runBatchAction(
+      WORKSPACE_ITEMS_BATCH,
+      action,
+      body,
+      isCancelled,
+    );
+  }
+
+  /**
+   * Delete an item. This is a soft delete: the item goes to the recycle bin
+   * of the Clinical Repository and can be restored there.
+   */
+  async delete(item: RepositoryItem): Promise<void> {
+    const connection = await this.getConnection();
+    await connection.delete(
+      `${REPOSITORY_ITEMS}/${encodeURIComponent(item.id)}?permanent=false`,
+    );
+  }
+
+  /** All versions of a versioned file, in the order the server lists them. */
+  async getVersions(
+    item: RepositoryItem,
+    onTruncated?: (reason: string) => void,
+  ): Promise<VersionHistoryItem[]> {
+    const connection = await this.getConnection();
+    return collectPages<VersionHistoryItem>(
+      async (url) =>
+        (await connection.get<ResourceCollection<VersionHistoryItem>>(url))
+          .data,
+      buildVersionsUrl(item.id),
+      onTruncated,
+    );
+  }
+
+  /** Details (author, date, size) of one version of a file. */
+  async getVersion(id: string, version: string): Promise<VersionHistoryItem> {
+    const connection = await this.getConnection();
+    const response = await connection.get<VersionHistoryItem>(
+      `${buildVersionsUrl(id)}/${encodeURIComponent(version)}`,
+      { headers: { Accept: REPOSITORY_FILE_MEDIA_TYPE } },
+    );
+    return response.data;
+  }
+
+  async getVersionContent(id: string, version: string): Promise<Uint8Array> {
+    const connection = await this.getConnection();
+    const response = await connection.get<ArrayBuffer>(
+      `${buildVersionsUrl(id)}/${encodeURIComponent(version)}/content`,
+      { responseType: "arraybuffer" },
+    );
+    return new Uint8Array(response.data);
+  }
+
+  /**
+   * The versioning privileges of the signed-in user, or undefined when they
+   * can't be determined (the endpoint isn't in the public API, so callers
+   * must not block on that: the server enforces the privileges anyway).
+   */
+  async getPrivileges(id: string): Promise<ItemPrivileges | undefined> {
+    try {
+      const connection = await this.getConnection();
+      const { data } = await connection.get<unknown>(
+        `${AUTHORIZATIONS}/${encodeURIComponent(id)}/privileges`,
+      );
+      const privileges = parsePrivileges(data);
+      if (!privileges) {
+        this.log(
+          `Unrecognised privileges response ${JSON.stringify(data).slice(0, 200)}`,
+        );
+      }
+      return privileges;
+    } catch (error) {
+      this.log(
+        `Privileges are unavailable (${isAxiosError(error) ? `HTTP ${error.response?.status ?? "?"}` : String(error)}).`,
+      );
+      return undefined;
+    }
+  }
+
+  /** Turn versioning on or off for one file, and wait for the server. */
+  runVersioningAction(
+    action: VersioningAction,
+    item: RepositoryItem,
+    comment: string,
+    version: string | undefined,
+    isCancelled: () => boolean,
+  ): Promise<ActionStatus> {
+    const body =
+      action === "ENABLE_VERSIONING"
+        ? {
+            comment,
+            fileSpecifications: [
+              {
+                path: item.path,
+                ...(version ? { fileVersion: version.toUpperCase() } : {}),
+              },
+            ],
+          }
+        : { comment, paths: [item.path] };
+    return this.runBatchAction(
+      REPOSITORY_ITEMS_BATCH,
+      action,
+      body,
+      isCancelled,
     );
   }
 }

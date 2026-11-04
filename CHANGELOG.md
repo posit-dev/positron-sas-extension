@@ -2,9 +2,21 @@
 
 ## Unreleased
 
+### Features
+
+- SAS Clinical Acceleration: new **Clinical Workspace** view with your own workspace on the server. Files open for editing and are saved to the workspace when you save the editor. You can create, rename, delete, upload (optionally expanding a zip), and download files and folders, copy paths, and compare files with repository files and versions. Verified against the SAS Clinical Acceleration extension's requests and unit tests, not yet against a server with write access
+- SAS Clinical Acceleration: **Check In** from the workspace asks only what applies to the selected files (whether to version new and unversioned files, **Major** or **Minor** for versioned files, and a comment). **Undo Check out** is available in the workspace too
+- SAS Clinical Acceleration: **Copy to Workspace** copies the latest version of a file or folder, or the structure of a folder, from the repository to the workspace. **Copy to Workspace** in the **Clinical Version History** view copies one version. `.sas` files in the workspace run as usual, and `.sas7bdat` and `.xpt` files open in the Data Explorer
+- Posit Assistant: the new `sas-clinical-acceleration` skill describes the Clinical Acceleration views and the check-out and check-in workflow
+- Docs: new page "SAS Clinical Acceleration"; README and the Features page no longer say that you need another tool to check files in
+- Clinical Repository: new **Clinical Repository Properties** and **Clinical Version History** views show the details and the versions of the selected item. A version opens read-only and can be downloaded
+- Clinical Repository: **Delete** (moves items to the recycle bin of the Clinical Repository), **Enable Versioning...** and **Disable Versioning...** for files, and **Select for Compare**, **Compare with Selected** and **Compare Selected** for repository files and file versions. Delete, versioning and compare are verified against the SAS Clinical Acceleration extension's requests and unit tests, not yet against a server with write access
+
 ### Bug Fixes
 
+- Clinical Repository: Upload and Upload and Expand now send the file as `multipart/form-data`, as the Clinical Repository API specifies, and no longer version the upload by default. The version prompt is empty unless you enter a version (such as `1.0`, `MAJOR` or `MINOR`), because versioning needs a privilege that normal users often lack ([#73](https://github.com/posit-dev/positron-sas-extension/issues/73)). Verified against the API specification and unit tests, not yet against a server with write access
 - Clinical Repository: after the sign-in token expires, the first request no longer fails with a 401. The request that triggers the refresh is now replayed with the new token instead of the old one ([#101](https://github.com/posit-dev/positron-sas-extension/pull/101))
+
 
 ## 0.5.1 - 2026-11-03
 

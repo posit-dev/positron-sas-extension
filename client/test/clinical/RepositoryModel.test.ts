@@ -198,13 +198,43 @@ describe("Clinical RepositoryModel", () => {
       "first load",
       "1.0",
     );
-    const [url, , config] = connection.put.firstCall.args;
+    const [url, body, config] = connection.put.firstCall.args;
     expect(url).to.equal(
       "/clinicalRepository/repository/items/10/content?name=a%20b.zip&expand=true&comment=first%20load&fileVersion=1.0",
     );
-    expect(config?.headers?.["Content-Type"]).to.equal(
-      "application/octet-stream",
+    // multipart/form-data with one `file` part named after the upload; axios
+    // adds the Content-Type and boundary itself, so none is set here.
+    expect(body).to.be.instanceOf(FormData);
+    const form = body instanceof FormData ? body : new FormData();
+    const part = form.get("file");
+    expect(part).to.be.instanceOf(File);
+    expect(part).to.have.property("name", "a b.zip");
+    expect(part).to.have.property("size", 1);
+    expect([...form.keys()]).to.deep.equal(["file"]);
+    expect(config?.headers?.["Content-Type"]).to.be.undefined;
+  });
+
+  it("does not version an upload unless asked to", async () => {
+    connection.put.resolves({ data: file });
+    await model.upload(folder, "a.sas", new Uint8Array([1]), false);
+    expect(connection.put.firstCall.args[0]).to.equal(
+      "/clinicalRepository/repository/items/10/content?name=a.sas&expand=false",
     );
+    await model.upload(folder, "a.sas", new Uint8Array([1]), false, "", "");
+    expect(connection.put.secondCall.args[0]).to.not.include("fileVersion");
+  });
+
+  it("sends version keywords in upper case", async () => {
+    connection.put.resolves({ data: file });
+    await model.upload(
+      folder,
+      "a.sas",
+      new Uint8Array([1]),
+      false,
+      "",
+      "major",
+    );
+    expect(connection.put.firstCall.args[0]).to.include("&fileVersion=MAJOR");
   });
 
   it("downloads one item or several by id filter", async () => {
@@ -251,6 +281,39 @@ describe("Clinical RepositoryModel", () => {
     expect(body).to.deep.equal({ paths: [file.path], copyContent: true });
   });
 
+  it("runs any batch action on the endpoint it is given", async () => {
+    connection.post.resolves({
+      headers: { location: "/clinicalActionStatus/actionstatus/act-3" },
+    });
+    connection.get
+      .withArgs("/clinicalActionStatus/actionstatus/act-3")
+      .resolves({
+        data: { summary: { endTimeStamp: "2026-10-26T12:00:00Z" } },
+      });
+    await model.runBatchAction(
+      "/clinicalRepository/repository/items/batch",
+      "ENABLE_VERSIONING",
+      { comment: "c" },
+      () => false,
+    );
+    const [url, body] = connection.post.firstCall.args;
+    expect(url).to.match(
+      /^\/clinicalRepository\/repository\/items\/batch\?action=ENABLE_VERSIONING&clientId=[0-9a-f-]{36}$/,
+    );
+    expect(body).to.deep.equal({ comment: "c" });
+  });
+
+  it("fails when a batch action returns no status to poll", async () => {
+    connection.post.resolves({ headers: {} });
+    let message = "";
+    try {
+      await model.runBatchAction("/b", "X", [], () => false);
+    } catch (error) {
+      message = error instanceof Error ? error.message : "";
+    }
+    expect(message).to.equal("The server did not return an action status.");
+  });
+
   it("sends a plain path list to undo a check out", async () => {
     connection.post.resolves({
       headers: { location: "/clinicalActionStatus/actionstatus/act-2" },
@@ -263,6 +326,142 @@ describe("Clinical RepositoryModel", () => {
       "action=UNDO_CHECKOUT",
     );
     expect(connection.post.firstCall.args[1]).to.deep.equal([file.path]);
+  });
+
+  it("deletes softly, to the recycle bin", async () => {
+    connection.delete.resolves({});
+    await model.delete(file);
+    expect(connection.delete.firstCall.args[0]).to.equal(
+      "/clinicalRepository/repository/items/11?permanent=false",
+    );
+  });
+
+  describe("versions", () => {
+    const versionsUrl = "/clinicalRepository/repository/items/11/versions";
+
+    it("lists every version, following next links", async () => {
+      connection.get.withArgs(versionsUrl).resolves({
+        data: {
+          items: [{ fileId: "11", fileVersion: "1.0" }],
+          links: [{ rel: "next", href: "/versions-2" }],
+        },
+      });
+      connection.get.withArgs("/versions-2").resolves({
+        data: { items: [{ fileId: "11", fileVersion: "2.0" }] },
+      });
+      const versions = await model.getVersions(file);
+      expect(versions.map((v) => v.fileVersion)).to.deep.equal(["1.0", "2.0"]);
+    });
+
+    it("reads the details of one version as a repository file", async () => {
+      connection.get.resolves({
+        data: { fileId: "11", fileVersion: "2.0", fileSize: 7 },
+      });
+      const version = await model.getVersion("11", "2.0");
+      expect(version.fileSize).to.equal(7);
+      const [url, config] = connection.get.firstCall.args;
+      expect(url).to.equal(`${versionsUrl}/2.0`);
+      expect(config?.headers?.Accept).to.equal(
+        "application/vnd.sas.clinical.repository.file+json",
+      );
+    });
+
+    it("reads the content of a version as bytes", async () => {
+      connection.get.resolves({ data: new Uint8Array([1, 2, 255]).buffer });
+      expect(await model.getVersionContent("11", "2.0")).to.deep.equal(
+        new Uint8Array([1, 2, 255]),
+      );
+      const [url, config] = connection.get.firstCall.args;
+      expect(url).to.equal(`${versionsUrl}/2.0/content`);
+      expect(config?.responseType).to.equal("arraybuffer");
+    });
+  });
+
+  describe("versioning", () => {
+    const batchUrl =
+      /^\/clinicalRepository\/repository\/items\/batch\?action=(\w+)&clientId=[0-9a-f-]{36}$/;
+    const finish = () => {
+      connection.post.resolves({
+        headers: { location: "/clinicalActionStatus/actionstatus/act-v" },
+      });
+      connection.get
+        .withArgs("/clinicalActionStatus/actionstatus/act-v")
+        .resolves({
+          data: { summary: { endTimeStamp: "2026-10-26T12:00:00Z" } },
+        });
+    };
+
+    it("enables versioning with the file's path and first version", async () => {
+      finish();
+      await model.runVersioningAction(
+        "ENABLE_VERSIONING",
+        file,
+        "start",
+        "1.0",
+        () => false,
+      );
+      const [url, body] = connection.post.firstCall.args;
+      expect(url).to.match(batchUrl);
+      expect(String(url)).to.include("action=ENABLE_VERSIONING");
+      expect(body).to.deep.equal({
+        comment: "start",
+        fileSpecifications: [{ path: file.path, fileVersion: "1.0" }],
+      });
+    });
+
+    it("leaves the version out when none was entered", async () => {
+      finish();
+      await model.runVersioningAction(
+        "ENABLE_VERSIONING",
+        file,
+        "",
+        undefined,
+        () => false,
+      );
+      expect(connection.post.firstCall.args[1]).to.deep.equal({
+        comment: "",
+        fileSpecifications: [{ path: file.path }],
+      });
+    });
+
+    it("disables versioning with a path list", async () => {
+      finish();
+      await model.runVersioningAction(
+        "DISABLE_VERSIONING",
+        file,
+        "done",
+        undefined,
+        () => false,
+      );
+      const [url, body] = connection.post.firstCall.args;
+      expect(String(url)).to.include("action=DISABLE_VERSIONING");
+      expect(body).to.deep.equal({ comment: "done", paths: [file.path] });
+    });
+
+    it("reads the versioning privileges of the user", async () => {
+      connection.get
+        .withArgs("/clinicalRepository/authorizations/11/privileges")
+        .resolves({ data: ["PRIVILEGE_MANAGE_VERSIONING"] });
+      expect(await model.getPrivileges("11")).to.deep.equal({
+        enableVersioning: false,
+        manageVersioning: true,
+      });
+    });
+
+    it("can't tell the privileges if the lookup fails, and does not throw", async () => {
+      const log = sinon.stub();
+      model = new RepositoryModel(log);
+      connection.get.rejects(
+        Object.assign(new Error("404"), {
+          isAxiosError: true,
+          response: { status: 404 },
+        }),
+      );
+      expect(await model.getPrivileges("11")).to.be.undefined;
+      expect(log.calledOnce).to.be.true;
+      connection.get.resolves({ data: 42 });
+      expect(await model.getPrivileges("11")).to.be.undefined;
+    });
   });
 
   describe("permissions", () => {

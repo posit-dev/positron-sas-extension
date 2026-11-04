@@ -11,7 +11,7 @@ While the VS Code Extension for SAS is fully functional in Positron, the Extensi
 - LLM Integration with Posit(ron) Assistant for both coding assistance but also exploratory data analysis
 - Export and summarize LLM chat as quarto document with full code included.
 - Traceability of console code: every submission is tagged with the user and session in the SAS log (and on SAS Viya, in the compute session and job metadata). Set `SAS.audit.logFile` to also keep a local JSON Lines audit log
-- SAS Clinical Acceleration Repository: when the active SAS Viya server has SAS Clinical Acceleration, a Clinical Repository view appears in the SAS sidebar. You can browse and open files, create folders, rename, upload (optionally expanding a zip), download, copy paths, and check items out to or back from your Clinical Acceleration workspace. It uses the same SAS Viya sign-in and needs no extra setup. To check files back in, use SAS Clinical Acceleration or its VS Code extension
+- SAS Clinical Acceleration: when the active SAS Viya server has SAS Clinical Acceleration, the SAS sidebar shows Clinical Repository, Clinical Workspace, Clinical Repository Properties, and Clinical Version History views. You can browse and open repository files, edit files in your own workspace, check files out and in, copy files to the workspace, delete, upload (optionally expanding a zip), download, enable versioning, browse and open versions, and compare files and versions. It uses the same SAS Viya sign-in and needs no extra setup
 
 Most of the functionality of the VS Code Extension for SAS is retained. In particular it is very important to define SAS Connection profiles.
 

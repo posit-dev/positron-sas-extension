@@ -26,6 +26,16 @@ In a Positron Pro session in Posit Workbench, you install the extension the same
 
 For the ways to run SAS in Workbench, see [SAS with Posit Workbench](./Workbench/index.md).
 
+### Install a development build
+
+The repository builds the extension after every change that reaches the main branch, and publishes each build as a pre-release. Use a development build to try a change before the next release. A development build can contain unfinished changes.
+
+1. Open the [Releases](https://github.com/posit-dev/positron-sas-extension/releases) page and find the newest entry marked **Pre-release**. Its name is `Positron SAS <version>-dev.<number>`, where `<version>` is the last release.
+
+2. Download the VSIX file from **Assets**, and install it as described above.
+
+The notes of a pre-release list the unreleased changes and the commits since the last release. The VSIX file keeps the version number of the last release, so Positron shows the same version for a development build and for the release before it. To return to a released version, install the VSIX file of the latest release. The repository keeps the five newest development builds.
+
 ## Install the SAS Extension for Visual Studio Code
 
 The SAS Extension for Positron builds on the SAS Extension for Visual Studio Code, whose documentation is in the other sections of this site. To use SAS's own extension in Visual Studio Code, install the latest version of Visual Studio Code (version 1.89 or later), and then:
