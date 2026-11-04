@@ -23,6 +23,30 @@ export function getActionToken(
   return token || undefined;
 }
 
+export interface ActionOutcome {
+  level: "info" | "warn" | "error";
+  /** Every per-item detail, one per line, for the output channel. */
+  details: string;
+  /** The first per-item message, short enough for a toast. */
+  firstMessage: string;
+}
+
+/** Reduce a finished action's status to what the UI reports. */
+export function summarizeActionStatus(status: ActionStatus): ActionOutcome {
+  const details = (status.details ?? [])
+    .map((d) => `\n\t${d.itemName} - ${d.message}`)
+    .join("");
+  const firstMessage = status.details?.[0]?.message ?? "";
+  switch (status.summary.completionStatus) {
+    case "WARN":
+      return { level: "warn", details, firstMessage };
+    case "ERROR":
+      return { level: "error", details, firstMessage };
+    default:
+      return { level: "info", details, firstMessage };
+  }
+}
+
 /**
  * Poll a Clinical Acceleration action until the server reports that it has
  * ended, and return its final status. The caller inspects
