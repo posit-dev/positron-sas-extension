@@ -2,7 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { authentication } from "vscode";
 
-import axios, { AxiosInstance, HeadersDefaults } from "axios";
+import axios, {
+  AxiosError,
+  AxiosHeaders,
+  AxiosInstance,
+  HeadersDefaults,
+} from "axios";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { StubbedInstance, stubInterface } from "ts-sinon";
@@ -31,10 +36,12 @@ describe("Clinical RepositoryModel", () => {
   let sandbox: sinon.SinonSandbox;
   let connection: StubbedInstance<AxiosInstance>;
   let model: RepositoryModel;
+  let getSession: sinon.SinonStub;
+  let createConnection: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    sandbox.stub(authentication, "getSession").resolves({
+    getSession = sandbox.stub(authentication, "getSession").resolves({
       accessToken: "token-1",
       account: { id: "me", label: "Me" },
       id: "session",
@@ -66,7 +73,7 @@ describe("Clinical RepositoryModel", () => {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       headers: headers as AxiosInstance["defaults"]["headers"],
     };
-    sandbox.stub(axios, "create").returns(connection);
+    createConnection = sandbox.stub(axios, "create").returns(connection);
     model = new RepositoryModel();
   });
 
@@ -76,6 +83,62 @@ describe("Clinical RepositoryModel", () => {
     expect(await model.getCurrentUserId()).to.equal("me");
     expect(connection.defaults.headers.common.Authorization).to.equal(
       "Bearer token-1",
+    );
+  });
+
+  it("replays a 401 request with the refreshed token", async () => {
+    // Capture the response interceptor that the model installs on its connection.
+    let onRejected: ((error: AxiosError) => Promise<unknown>) | undefined;
+    const replay = sandbox.stub().resolves({ status: 200 });
+    const replayConnection = Object.assign(replay, {
+      defaults: connection.defaults,
+      interceptors: {
+        response: {
+          use: (
+            _onFulfilled: unknown,
+            rejected: (error: AxiosError) => Promise<unknown>,
+          ) => {
+            onRejected = rejected;
+            return 0;
+          },
+          eject: () => undefined,
+          clear: () => undefined,
+        },
+      },
+    });
+    createConnection.returns(replayConnection);
+    getSession.onSecondCall().resolves({
+      accessToken: "token-2",
+      account: { id: "me", label: "Me" },
+      id: "session",
+      scopes: [],
+    });
+
+    await model.getCurrentUserId();
+    expect(connection.defaults.headers.common.Authorization).to.equal(
+      "Bearer token-1",
+    );
+
+    // The failed request already carries the old token in its own headers.
+    const config = {
+      headers: AxiosHeaders.from({ Authorization: "Bearer token-1" }),
+    };
+    const failure = new AxiosError("Unauthorized", "ERR_BAD_REQUEST", config);
+    failure.response = {
+      status: 401,
+      statusText: "Unauthorized",
+      data: "",
+      headers: {},
+      config,
+    };
+    await onRejected?.(failure);
+
+    expect(connection.defaults.headers.common.Authorization).to.equal(
+      "Bearer token-2",
+    );
+    expect(replay.calledOnce).to.equal(true);
+    expect(replay.firstCall.args[0].headers.Authorization).to.equal(
+      "Bearer token-2",
     );
   });
 

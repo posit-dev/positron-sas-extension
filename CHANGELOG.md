@@ -15,6 +15,8 @@
 ### Bug Fixes
 
 - Clinical Repository: Upload and Upload and Expand now send the file as `multipart/form-data`, as the Clinical Repository API specifies, and no longer version the upload by default. The version prompt is empty unless you enter a version (such as `1.0`, `MAJOR` or `MINOR`), because versioning needs a privilege that normal users often lack ([#73](https://github.com/posit-dev/positron-sas-extension/issues/73)). Verified against the API specification and unit tests, not yet against a server with write access
+- Clinical Repository: after the sign-in token expires, the first request no longer fails with a 401. The request that triggers the refresh is now replayed with the new token instead of the old one ([#101](https://github.com/posit-dev/positron-sas-extension/pull/101))
+
 
 ## 0.5.1 - 2026-11-03
 
