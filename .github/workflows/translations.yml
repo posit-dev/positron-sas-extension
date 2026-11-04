@@ -8,6 +8,10 @@ on:
 
 jobs:
   check-translations:
+    # Upstream's signal for its localization team. The fork has no translators
+    # and shares the locale files with upstream, so the check only runs there,
+    # or when started by hand (Actions > Translation Check > Run workflow).
+    if: github.repository == 'sassoftware/vscode-sas-extension' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
