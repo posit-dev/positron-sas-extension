@@ -8,7 +8,9 @@ import {
   ActionTimeoutError,
   getActionToken,
   pollActionStatus,
+  summarizeActionStatus,
 } from "../../src/clinical/actionStatus";
+import type { ActionStatus } from "../../src/clinical/types";
 
 const running = { data: { summary: {} } };
 const done = (completionStatus: string) => ({
@@ -18,6 +20,45 @@ const done = (completionStatus: string) => ({
   },
 });
 const noSleep = () => Promise.resolve();
+
+describe("summarizeActionStatus", () => {
+  const status = (
+    completionStatus: "INFO" | "WARN" | "ERROR" | undefined,
+  ): ActionStatus => ({
+    summary: { endTimeStamp: "2026-10-26T12:00:00Z", completionStatus },
+    details: [
+      { itemName: "a.sas", message: "first problem" },
+      { itemName: "b.sas", message: "second problem" },
+    ],
+  });
+
+  it("maps the completion status to a level", () => {
+    expect(summarizeActionStatus(status("INFO")).level).to.equal("info");
+    expect(summarizeActionStatus(status("WARN")).level).to.equal("warn");
+    expect(summarizeActionStatus(status("ERROR")).level).to.equal("error");
+    // A missing status counts as success, as before.
+    expect(summarizeActionStatus(status(undefined)).level).to.equal("info");
+  });
+
+  it("lists every detail and keeps the first one for toasts", () => {
+    const outcome = summarizeActionStatus(status("ERROR"));
+    expect(outcome.details).to.equal(
+      "\n\ta.sas - first problem\n\tb.sas - second problem",
+    );
+    expect(outcome.firstMessage).to.equal("first problem");
+  });
+
+  it("copes with a status without details", () => {
+    const outcome = summarizeActionStatus({
+      summary: { completionStatus: "WARN" },
+    });
+    expect(outcome).to.deep.equal({
+      level: "warn",
+      details: "",
+      firstMessage: "",
+    });
+  });
+});
 
 describe("getActionToken", () => {
   it("takes the last path segment of the Location header", () => {

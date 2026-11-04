@@ -1069,6 +1069,131 @@
         "command": "SAS.clinical.uploadAndExpand",
         "title": "%clinical.commands.uploadAndExpand%",
         "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.refreshDetails",
+        "title": "%commands.SAS.refresh%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.clinical.delete",
+        "title": "%commands.SAS.deleteResource%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.enableVersioning",
+        "title": "%clinical.commands.enableVersioning%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.disableVersioning",
+        "title": "%clinical.commands.disableVersioning%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.downloadVersion",
+        "title": "%clinical.commands.download%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.selectForCompare",
+        "title": "%clinical.commands.selectForCompare%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.compareWithSelected",
+        "title": "%clinical.commands.compareWithSelected%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.compareSelected",
+        "title": "%clinical.commands.compareSelected%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.copyLatestVersion",
+        "title": "%clinical.commands.copyLatestVersion%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.copyFolder",
+        "title": "%clinical.commands.copyFolder%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.copyFolderStructure",
+        "title": "%clinical.commands.copyFolderStructure%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.copySpecificVersion",
+        "title": "%clinical.commands.copyToWorkspace%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.workspace.refresh",
+        "title": "%commands.SAS.refresh%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.clinical.workspace.collapseAll",
+        "title": "%commands.SAS.collapseAll%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(collapse-all)"
+      },
+      {
+        "command": "SAS.clinical.workspace.newFile",
+        "title": "%clinical.commands.newFile%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "SAS.clinical.workspace.newFolder",
+        "title": "%commands.SAS.addFolderResource%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "SAS.clinical.workspace.rename",
+        "title": "%commands.SAS.renameResource%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.workspace.delete",
+        "title": "%commands.SAS.deleteResource%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.workspace.copyPath",
+        "title": "%commands.SAS.copyPath%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.workspace.download",
+        "title": "%clinical.commands.download%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.workspace.upload",
+        "title": "%clinical.commands.upload%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.workspace.uploadAndExpand",
+        "title": "%clinical.commands.uploadAndExpand%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.workspace.checkIn",
+        "title": "%clinical.commands.checkIn%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.workspace.undoCheckout",
+        "title": "%clinical.commands.undoCheckOut%",
+        "category": "SAS Clinical Acceleration"
       }
     ],
     "keybindings": [
@@ -1103,6 +1228,10 @@
       {
         "id": "SAS.clinical.checkOutSubmenu",
         "label": "%clinical.commands.checkOutToWorkspace%"
+      },
+      {
+        "id": "SAS.clinical.copyToWorkspaceSubmenu",
+        "label": "%clinical.commands.copyToWorkspace%"
       }
     ],
     "menus": {
@@ -1152,6 +1281,31 @@
           "command": "SAS.clinical.collapseAll",
           "when": "view == clinicalrepositorydataprovider",
           "group": "navigation@1"
+        },
+        {
+          "command": "SAS.clinical.refreshDetails",
+          "when": "view == clinicalpropertyprovider || view == clinicalversionhistoryprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.clinical.workspace.newFile",
+          "when": "view == clinicalworkspaceprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.clinical.workspace.newFolder",
+          "when": "view == clinicalworkspaceprovider",
+          "group": "navigation@1"
+        },
+        {
+          "command": "SAS.clinical.workspace.refresh",
+          "when": "view == clinicalworkspaceprovider",
+          "group": "navigation@2"
+        },
+        {
+          "command": "SAS.clinical.workspace.collapseAll",
+          "when": "view == clinicalworkspaceprovider",
+          "group": "navigation@3"
         }
       ],
       "explorer/context": [
@@ -1356,6 +1510,131 @@
           "command": "SAS.clinical.uploadAndExpand",
           "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "5_transfer@2"
+        },
+        {
+          "command": "SAS.clinical.delete",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;canDelete;/ && viewItem =~ /;canWrite;/",
+          "group": "4_modify@1"
+        },
+        {
+          "command": "SAS.clinical.enableVersioning",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;unversioned;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
+          "group": "6_versioning@0"
+        },
+        {
+          "command": "SAS.clinical.disableVersioning",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;versioned;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
+          "group": "6_versioning@0"
+        },
+        {
+          "command": "SAS.clinical.selectForCompare",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;file;/ && !listMultiSelection",
+          "group": "7_compare@0"
+        },
+        {
+          "command": "SAS.clinical.compareWithSelected",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;file;/ && SAS.clinical.compareSourceSet && !listMultiSelection",
+          "group": "7_compare@1"
+        },
+        {
+          "command": "SAS.clinical.compareSelected",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;file;/ && SAS.clinical.twoItemsSelected",
+          "group": "7_compare@2"
+        },
+        {
+          "command": "SAS.clinical.downloadVersion",
+          "when": "view == clinicalversionhistoryprovider && viewItem =~ /;version;/",
+          "group": "1_transfer@0"
+        },
+        {
+          "command": "SAS.clinical.selectForCompare",
+          "when": "view == clinicalversionhistoryprovider && viewItem =~ /;version;/ && !listMultiSelection",
+          "group": "2_compare@0"
+        },
+        {
+          "command": "SAS.clinical.compareWithSelected",
+          "when": "view == clinicalversionhistoryprovider && viewItem =~ /;version;/ && SAS.clinical.compareSourceSet && !listMultiSelection",
+          "group": "2_compare@1"
+        },
+        {
+          "command": "SAS.clinical.compareSelected",
+          "when": "view == clinicalversionhistoryprovider && viewItem =~ /;version;/ && SAS.clinical.twoVersionsSelected",
+          "group": "2_compare@2"
+        },
+        {
+          "submenu": "SAS.clinical.copyToWorkspaceSubmenu",
+          "when": "view == clinicalrepositorydataprovider",
+          "group": "2_checkout@2"
+        },
+        {
+          "command": "SAS.clinical.copySpecificVersion",
+          "when": "view == clinicalversionhistoryprovider && viewItem =~ /;version;/ && !listMultiSelection",
+          "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.clinical.workspace.newFile",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;container;/ && !listMultiSelection",
+          "group": "1_new@0"
+        },
+        {
+          "command": "SAS.clinical.workspace.newFolder",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;container;/ && !listMultiSelection",
+          "group": "1_new@1"
+        },
+        {
+          "command": "SAS.clinical.workspace.checkIn",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;canCheckIn;/",
+          "group": "2_checkin@0"
+        },
+        {
+          "command": "SAS.clinical.workspace.undoCheckout",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;canUndo;/",
+          "group": "2_checkin@1"
+        },
+        {
+          "command": "SAS.clinical.workspace.copyPath",
+          "when": "view == clinicalworkspaceprovider",
+          "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.clinical.workspace.rename",
+          "when": "view == clinicalworkspaceprovider && !listMultiSelection",
+          "group": "4_modify@0"
+        },
+        {
+          "command": "SAS.clinical.workspace.delete",
+          "when": "view == clinicalworkspaceprovider",
+          "group": "4_modify@1"
+        },
+        {
+          "command": "SAS.clinical.workspace.download",
+          "when": "view == clinicalworkspaceprovider",
+          "group": "5_transfer@0"
+        },
+        {
+          "command": "SAS.clinical.workspace.upload",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;container;/ && !listMultiSelection",
+          "group": "5_transfer@1"
+        },
+        {
+          "command": "SAS.clinical.workspace.uploadAndExpand",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;container;/ && !listMultiSelection",
+          "group": "5_transfer@2"
+        },
+        {
+          "command": "SAS.clinical.selectForCompare",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;file;/ && !listMultiSelection",
+          "group": "7_compare@0"
+        },
+        {
+          "command": "SAS.clinical.compareWithSelected",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;file;/ && SAS.clinical.compareSourceSet && !listMultiSelection",
+          "group": "7_compare@1"
+        },
+        {
+          "command": "SAS.clinical.compareSelected",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;file;/ && SAS.clinical.twoWorkspaceItemsSelected",
+          "group": "7_compare@2"
         }
       ],
       "editor/title/run": [
@@ -1401,6 +1680,23 @@
         {
           "command": "SAS.clinical.checkoutWithoutContent",
           "group": "checkout@1"
+        }
+      ],
+      "SAS.clinical.copyToWorkspaceSubmenu": [
+        {
+          "command": "SAS.clinical.copyLatestVersion",
+          "when": "viewItem =~ /;file;/",
+          "group": "copy@0"
+        },
+        {
+          "command": "SAS.clinical.copyFolder",
+          "when": "viewItem =~ /;container;/",
+          "group": "copy@0"
+        },
+        {
+          "command": "SAS.clinical.copyFolderStructure",
+          "when": "viewItem =~ /;container;/",
+          "group": "copy@1"
         }
       ],
       "commandPalette": [
@@ -1623,6 +1919,102 @@
         {
           "when": "false",
           "command": "SAS.clinical.uploadAndExpand"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.refreshDetails"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.delete"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.enableVersioning"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.disableVersioning"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.downloadVersion"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.selectForCompare"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.compareWithSelected"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.compareSelected"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.copyLatestVersion"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.copyFolder"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.copyFolderStructure"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.copySpecificVersion"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.refresh"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.collapseAll"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.newFile"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.newFolder"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.rename"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.delete"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.copyPath"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.download"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.upload"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.uploadAndExpand"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.checkIn"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.workspace.undoCheckout"
         }
       ],
       "file/newFile": [
@@ -1737,6 +2129,21 @@
         {
           "id": "clinicalrepositorydataprovider",
           "name": "%clinical.views.repository%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable"
+        },
+        {
+          "id": "clinicalworkspaceprovider",
+          "name": "%clinical.views.workspace%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable"
+        },
+        {
+          "id": "clinicalpropertyprovider",
+          "name": "%clinical.views.properties%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable"
+        },
+        {
+          "id": "clinicalversionhistoryprovider",
+          "name": "%clinical.views.versionHistory%",
           "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable"
         }
       ]

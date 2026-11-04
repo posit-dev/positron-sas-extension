@@ -165,13 +165,9 @@ An example `audit.jsonl` with one submission:
 {"event":"complete","ts":"2026-11-02T10:15:01.200Z","positronSessionId":"1a2b3c4d","executionId":"e7f8","status":"ok","errorCount":0,"warningCount":0,"durationMs":1200}
 ```
 
-## Clinical Repository
+## SAS Clinical Acceleration
 
-On SAS Viya servers with SAS Clinical Acceleration, the **SAS** sidebar shows a **Clinical Repository** view. The extension detects the Clinical Repository service of the active profile's server and uses the existing SAS Viya sign-in.
-
-- **Browse and open:** browse the repository and open files read-only.
-- **Actions:** **New Folder...**, **Rename...**, **Upload...**, **Upload and Expand...**, **Download...**, **Copy Path**, **Check out to Workspace** (with or without content), and **Undo Check out**.
-- **Permissions:** actions that change an item appear only where you have write permission. Read-only items still offer **Copy Path** and **Download...**.
+On SAS Viya servers with SAS Clinical Acceleration, the **SAS** sidebar shows the **Clinical Repository**, **Clinical Workspace**, **Clinical Repository Properties**, and **Clinical Version History** views. They let you browse the repository, edit files in your workspace, check files out and in, manage versions, and compare files and versions. The extension detects the service of the active profile's server and uses the existing SAS Viya sign-in. See [SAS Clinical Acceleration](./clinicalAcceleration.md) for details.
 
 ## Local SAS
 
@@ -217,7 +213,7 @@ The profile's `autoExec` lines run once, right after SAS starts.
 | Compute session and job tags | Yes | No | No |
 | Sign-in through a Workbench OAuth integration | Yes | No | No |
 | **SAS Content** and **SAS Server** views | Yes | No | No |
-| **Clinical Repository** view | With SAS Clinical Acceleration | No | No |
+| Clinical Acceleration views | With SAS Clinical Acceleration | No | No |
 | Automatic `local` profile | No | No | Yes, for SAS Analytics Pro and SAS 9.4 |
 
 ## Known Limitations

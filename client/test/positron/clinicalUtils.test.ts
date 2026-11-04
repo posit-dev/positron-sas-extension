@@ -9,22 +9,42 @@ import type {
   ObjectType,
   RepositoryItem,
   ResourceCollection,
+  SynchronizationItem,
+  WorkspaceItem,
 } from "../../src/clinical/types";
 import {
+  buildCheckInBody,
   buildChildrenUrl,
   buildContextValue,
   buildIdFilter,
+  buildVersionsUrl,
+  buildWorkspaceContextValue,
+  buildWorkspaceFolderUrl,
+  buildWorkspaceItemsUrl,
   classifyProbe,
   collectPages,
+  compareVersions,
   createLimiter,
   downloadFileName,
+  encodePath,
   extractSingleZipEntry,
+  getNextVersion,
+  getWorkspaceCheckoutState,
   isAvailable,
+  isSameOrUnder,
+  isVersionRow,
+  isWorkspaceItem,
   isZip,
+  joinWorkspacePath,
+  parsePrivileges,
   parseWritePermission,
+  planCheckIn,
+  sortVersions,
   validateFileName,
   validateFolderName,
   validateVersion,
+  versionFileName,
+  workspaceIconName,
 } from "../../src/clinical/utils";
 
 const folder: RepositoryItem = {
@@ -52,6 +72,19 @@ const file = (extra: Partial<RepositoryItem> = {}): RepositoryItem => ({
   path: "/Acme/Study1/adam/adsl.sas",
   typeId: "sasprogram",
   primaryType: "FILE",
+  ...extra,
+});
+
+const wsFile = (extra: Partial<WorkspaceItem> = {}): WorkspaceItem => ({
+  name: "adsl.sas",
+  path: "/Acme/Study1/adsl.sas",
+  type: "FILE",
+  ...extra,
+});
+const wsFolder = (extra: Partial<WorkspaceItem> = {}): WorkspaceItem => ({
+  name: "Study1",
+  path: "/Acme/Study1",
+  type: "FOLDER",
   ...extra,
 });
 
@@ -150,16 +183,24 @@ describe("classifyProbe / isAvailable", () => {
 describe("buildContextValue", () => {
   it("marks containers and protects top-level contexts from rename", () => {
     expect(buildContextValue(folder, undefined, "me", "write")).to.equal(
-      ";clinical;canWrite;container;canCreate;canRename;",
+      ";clinical;canWrite;container;canCreate;canRename;canDelete;",
     );
+    // Organizations are managed by administrators: no rename, no delete.
     expect(buildContextValue(org, topType, "me", "write")).to.equal(
       ";clinical;canWrite;container;canCreate;",
     );
   });
 
+  it("never lets a context be deleted", () => {
+    const study: RepositoryItem = { ...org, id: "3", typeId: "study" };
+    expect(buildContextValue(study, undefined, "me", "write")).to.not.include(
+      ";canDelete;",
+    );
+  });
+
   it("reflects who has a file checked out", () => {
     expect(buildContextValue(file(), undefined, "me", "write")).to.equal(
-      ";clinical;canWrite;file;coNone;canRename;",
+      ";clinical;canWrite;file;coNone;unversioned;canRename;canDelete;",
     );
     expect(
       buildContextValue(
@@ -175,6 +216,23 @@ describe("buildContextValue", () => {
         "me",
       ),
     ).to.include(";coOther;");
+  });
+
+  it("tells versioned files from unversioned ones", () => {
+    expect(buildContextValue(file(), undefined, "me")).to.include(
+      ";unversioned;",
+    );
+    const versioned = buildContextValue(
+      file({ versioned: true }),
+      undefined,
+      "me",
+    );
+    expect(versioned).to.include(";versioned;");
+    // The tokens are delimited, so one can't match inside the other.
+    expect(versioned).to.not.match(/;unversioned;/);
+    expect(buildContextValue(folder, undefined, "me")).to.not.match(
+      /versioned/,
+    );
   });
 
   it("records the permission, unknown until looked up", () => {
@@ -202,17 +260,35 @@ describe("buildContextValue", () => {
     const menus: Array<{ command?: string; submenu?: string; when: string }> =
       pkg.contributes.menus["view/item/context"].filter(
         (m: { when?: string }) =>
-          m.when?.includes("view == clinicalrepositorydataprovider"),
+          /view == clinical(repository|versionhistory|workspace)/.test(
+            m.when ?? "",
+          ),
       );
 
-    const shown = (contextValue: string, multi = false) =>
+    interface Shown {
+      multi?: boolean;
+      // Context keys that are set.
+      keys?: string[];
+      view?: string;
+    }
+    const shown = (
+      contextValue: string,
+      {
+        multi = false,
+        keys = [],
+        view = "clinicalrepositorydataprovider",
+      }: Shown = {},
+    ) =>
       menus
         .filter((menu) => {
           let expr = menu.when
-            .replace("view == clinicalrepositorydataprovider", "true")
+            .replace(/view == (\w+)/g, (_m, v) => String(v === view))
             .replace(/!listMultiSelection/g, String(!multi))
             .replace(/viewItem =~ \/([^/]+)\//g, (_m, re) =>
               String(new RegExp(re).test(contextValue)),
+            )
+            .replace(/SAS\.clinical\.\w+/g, (key) =>
+              String(keys.includes(key)),
             );
           expect(expr).to.match(/^[truefals()|&! ]+$/);
           expr = expr.replace(/\btrue\b/g, "1").replace(/\bfalse\b/g, "0");
@@ -226,9 +302,11 @@ describe("buildContextValue", () => {
       ).to.have.members([
         "SAS.clinical.addFolder",
         "SAS.clinical.checkOutSubmenu",
+        "SAS.clinical.copyToWorkspaceSubmenu",
         "SAS.clinical.undoCheckout",
         "SAS.clinical.copyPath",
         "SAS.clinical.rename",
+        "SAS.clinical.delete",
         "SAS.clinical.download",
         "SAS.clinical.upload",
         "SAS.clinical.uploadAndExpand",
@@ -265,26 +343,33 @@ describe("buildContextValue", () => {
     });
 
     it("hides single-item actions for multi-selections", () => {
-      const multi = shown(
-        buildContextValue(folder, undefined, "me", "write"),
-        true,
-      );
+      const multi = shown(buildContextValue(folder, undefined, "me", "write"), {
+        multi: true,
+      });
       expect(multi).to.not.include("SAS.clinical.rename");
       expect(multi).to.not.include("SAS.clinical.addFolder");
       expect(multi).to.include("SAS.clinical.download");
+      // Several items can be deleted in one go.
+      expect(multi).to.include("SAS.clinical.delete");
     });
 
     it("offers only read actions without write permission", () => {
       for (const permission of ["read", "unknown"] as const) {
         expect(
           shown(buildContextValue(file(), undefined, "me", permission)),
-        ).to.have.members(["SAS.clinical.copyPath", "SAS.clinical.download"]);
+        ).to.have.members([
+          "SAS.clinical.copyPath",
+          "SAS.clinical.download",
+          "SAS.clinical.selectForCompare",
+          "SAS.clinical.copyToWorkspaceSubmenu",
+        ]);
         expect(
           shown(buildContextValue(folder, undefined, "me", permission)),
         ).to.have.members([
           "SAS.clinical.undoCheckout",
           "SAS.clinical.copyPath",
           "SAS.clinical.download",
+          "SAS.clinical.copyToWorkspaceSubmenu",
         ]);
       }
     });
@@ -300,6 +385,205 @@ describe("buildContextValue", () => {
       );
       expect(mine).to.include("SAS.clinical.undoCheckout");
       expect(mine).to.not.include("SAS.clinical.rename");
+    });
+
+    it("offers delete for items below a context, if writable", () => {
+      expect(
+        shown(buildContextValue(file(), undefined, "me", "write")),
+      ).to.include("SAS.clinical.delete");
+      expect(
+        shown(buildContextValue(file(), undefined, "me", "read")),
+      ).to.not.include("SAS.clinical.delete");
+      expect(
+        shown(buildContextValue(org, topType, "me", "write")),
+      ).to.not.include("SAS.clinical.delete");
+    });
+
+    it("offers to turn versioning on or off, depending on the file", () => {
+      const plain = shown(buildContextValue(file(), undefined, "me", "write"));
+      expect(plain).to.include("SAS.clinical.enableVersioning");
+      expect(plain).to.not.include("SAS.clinical.disableVersioning");
+
+      const versioned = shown(
+        buildContextValue(file({ versioned: true }), undefined, "me", "write"),
+      );
+      expect(versioned).to.include("SAS.clinical.disableVersioning");
+      expect(versioned).to.not.include("SAS.clinical.enableVersioning");
+
+      // Not for folders, without write permission, or for several files.
+      const folderMenu = shown(
+        buildContextValue(folder, undefined, "me", "write"),
+      );
+      expect(folderMenu).to.not.include("SAS.clinical.enableVersioning");
+      expect(folderMenu).to.not.include("SAS.clinical.disableVersioning");
+      const readOnly = shown(
+        buildContextValue(file(), undefined, "me", "read"),
+      );
+      expect(readOnly).to.not.include("SAS.clinical.enableVersioning");
+      const several = shown(
+        buildContextValue(file(), undefined, "me", "write"),
+        { multi: true },
+      );
+      expect(several).to.not.include("SAS.clinical.enableVersioning");
+    });
+
+    it("steps through comparing repository files", () => {
+      const value = buildContextValue(file(), undefined, "me", "write");
+      const compare = (keys: string[], multi = false) =>
+        shown(value, { keys, multi }).filter((c) =>
+          String(c).toLowerCase().includes("compare"),
+        );
+      expect(compare([])).to.deep.equal(["SAS.clinical.selectForCompare"]);
+      expect(compare(["SAS.clinical.compareSourceSet"])).to.have.members([
+        "SAS.clinical.selectForCompare",
+        "SAS.clinical.compareWithSelected",
+      ]);
+      expect(compare(["SAS.clinical.twoItemsSelected"], true)).to.deep.equal([
+        "SAS.clinical.compareSelected",
+      ]);
+      // Folders have nothing to compare.
+      expect(
+        shown(buildContextValue(folder, undefined, "me", "write"), {
+          keys: ["SAS.clinical.compareSourceSet"],
+        }).filter((c) => String(c).toLowerCase().includes("compare")),
+      ).to.deep.equal([]);
+    });
+
+    it("offers version actions in the Version History view only", () => {
+      const view = "clinicalversionhistoryprovider";
+      expect(shown(";version;", { view })).to.have.members([
+        "SAS.clinical.downloadVersion",
+        "SAS.clinical.selectForCompare",
+        "SAS.clinical.copySpecificVersion",
+      ]);
+      expect(
+        shown(";version;", {
+          view,
+          keys: ["SAS.clinical.compareSourceSet"],
+        }),
+      ).to.include("SAS.clinical.compareWithSelected");
+      expect(
+        shown(";version;", {
+          view,
+          keys: ["SAS.clinical.twoVersionsSelected"],
+          multi: true,
+        }),
+      ).to.include("SAS.clinical.compareSelected");
+      // Repository items never show the version actions.
+      expect(
+        shown(buildContextValue(file(), undefined, "me", "write")),
+      ).to.not.include("SAS.clinical.downloadVersion");
+    });
+
+    it("offers the workspace actions in the Workspace view only", () => {
+      const view = "clinicalworkspaceprovider";
+      const ws = (item: WorkspaceItem, opts: object = {}) =>
+        shown(buildWorkspaceContextValue(item, "me"), { view, ...opts });
+      const folderItem = wsFolder();
+      expect(ws(folderItem)).to.have.members([
+        "SAS.clinical.workspace.newFile",
+        "SAS.clinical.workspace.newFolder",
+        "SAS.clinical.workspace.checkIn",
+        "SAS.clinical.workspace.undoCheckout",
+        "SAS.clinical.workspace.copyPath",
+        "SAS.clinical.workspace.rename",
+        "SAS.clinical.workspace.delete",
+        "SAS.clinical.workspace.download",
+        "SAS.clinical.workspace.upload",
+        "SAS.clinical.workspace.uploadAndExpand",
+      ]);
+      expect(ws(wsFile())).to.have.members([
+        "SAS.clinical.workspace.checkIn",
+        "SAS.clinical.workspace.copyPath",
+        "SAS.clinical.workspace.rename",
+        "SAS.clinical.workspace.delete",
+        "SAS.clinical.workspace.download",
+        "SAS.clinical.selectForCompare",
+      ]);
+      // Repository actions don't leak into the Workspace view.
+      expect(ws(wsFile())).to.not.include("SAS.clinical.enableVersioning");
+      expect(
+        shown(buildContextValue(file(), undefined, "me", "write")),
+      ).to.not.include("SAS.clinical.workspace.newFile");
+    });
+
+    it("limits check in and undo to what the user may do", () => {
+      const view = "clinicalworkspaceprovider";
+      const ws = (item: WorkspaceItem) =>
+        shown(buildWorkspaceContextValue(item, "me"), { view });
+      const mine = ws(
+        wsFile({
+          synchronizationInfo: { checkedOut: true, checkedOutBy: "me" },
+        }),
+      );
+      expect(mine).to.include("SAS.clinical.workspace.checkIn");
+      expect(mine).to.include("SAS.clinical.workspace.undoCheckout");
+      const theirs = ws(
+        wsFile({
+          synchronizationInfo: { checkedOut: true, checkedOutBy: "you" },
+        }),
+      );
+      expect(theirs).to.not.include("SAS.clinical.workspace.checkIn");
+      expect(theirs).to.not.include("SAS.clinical.workspace.undoCheckout");
+      // A file that isn't checked out can be checked in, but not undone.
+      expect(ws(wsFile())).to.not.include(
+        "SAS.clinical.workspace.undoCheckout",
+      );
+    });
+
+    it("hides single-item workspace actions for multi-selections", () => {
+      const multi = shown(buildWorkspaceContextValue(wsFolder(), "me"), {
+        view: "clinicalworkspaceprovider",
+        multi: true,
+      });
+      expect(multi).to.not.include("SAS.clinical.workspace.rename");
+      expect(multi).to.not.include("SAS.clinical.workspace.newFile");
+      expect(multi).to.not.include("SAS.clinical.workspace.upload");
+      expect(multi).to.include("SAS.clinical.workspace.delete");
+      expect(multi).to.include("SAS.clinical.workspace.download");
+    });
+
+    it("compares workspace files", () => {
+      const view = "clinicalworkspaceprovider";
+      const value = buildWorkspaceContextValue(wsFile(), "me");
+      expect(
+        shown(value, { view, keys: ["SAS.clinical.compareSourceSet"] }),
+      ).to.include("SAS.clinical.compareWithSelected");
+      expect(
+        shown(value, {
+          view,
+          keys: ["SAS.clinical.twoWorkspaceItemsSelected"],
+          multi: true,
+        }),
+      ).to.include("SAS.clinical.compareSelected");
+    });
+
+    it("offers copying into the workspace from the repository", () => {
+      const submenu =
+        pkg.contributes.menus["SAS.clinical.copyToWorkspaceSubmenu"];
+      const offered = (value: string) =>
+        submenu
+          .filter((m: { when: string }) =>
+            new RegExp(m.when.replace(/^viewItem =~ \/(.*)\/$/, "$1")).test(
+              value,
+            ),
+          )
+          .map((m: { command: string }) => m.command);
+      expect(
+        offered(buildContextValue(file(), undefined, "me", "read")),
+      ).to.deep.equal(["SAS.clinical.copyLatestVersion"]);
+      expect(
+        offered(buildContextValue(folder, undefined, "me", "read")),
+      ).to.deep.equal([
+        "SAS.clinical.copyFolder",
+        "SAS.clinical.copyFolderStructure",
+      ]);
+    });
+
+    it("offers copying a version into the workspace", () => {
+      expect(
+        shown(";version;", { view: "clinicalversionhistoryprovider" }),
+      ).to.include("SAS.clinical.copySpecificVersion");
     });
 
     it("declares every command it uses", () => {
@@ -494,7 +778,258 @@ describe("validators", () => {
     expect(validateVersion("")).to.be.undefined;
     expect(validateVersion("1.0")).to.be.undefined;
     expect(validateVersion("1")).to.equal("versionFormat");
+    expect(validateVersion("1.0.1")).to.equal("versionFormat");
+    expect(validateVersion("MAJOR")).to.be.undefined;
+    expect(validateVersion("minor")).to.be.undefined;
+    expect(validateVersion("majors")).to.equal("versionFormat");
     // The regex has no /g flag, so repeated calls give the same answer.
     expect(validateVersion("2.1")).to.be.undefined;
+  });
+});
+
+describe("parsePrivileges", () => {
+  it("reads the versioning privileges", () => {
+    expect(
+      parsePrivileges(["PRIVILEGE_ENABLE_VERSIONING", "PRIVILEGE_X"]),
+    ).to.deep.equal({ enableVersioning: true, manageVersioning: false });
+    expect(
+      parsePrivileges({ items: ["privilege_manage_versioning"] }),
+    ).to.deep.equal({ enableVersioning: false, manageVersioning: true });
+    expect(parsePrivileges([])).to.deep.equal({
+      enableVersioning: false,
+      manageVersioning: false,
+    });
+  });
+
+  it("gives up on unrecognised responses", () => {
+    expect(parsePrivileges(undefined)).to.be.undefined;
+    expect(parsePrivileges(42)).to.be.undefined;
+  });
+});
+
+describe("versions", () => {
+  it("builds the versions URL of an item", () => {
+    expect(buildVersionsUrl("a b")).to.equal(
+      "/clinicalRepository/repository/items/a%20b/versions",
+    );
+  });
+
+  it("compares versions numerically, newest first", () => {
+    expect(compareVersions("10.0", "9.1")).to.be.lessThan(0);
+    expect(compareVersions("1.2", "1.10")).to.be.greaterThan(0);
+    expect(compareVersions("2", "2.0")).to.equal(0);
+    const versions = ["1.0", "10.0", "2.1", "2.0"].map((fileVersion) => ({
+      fileId: "11",
+      fileVersion,
+    }));
+    expect(sortVersions(versions).map((v) => v.fileVersion)).to.deep.equal([
+      "10.0",
+      "2.1",
+      "2.0",
+      "1.0",
+    ]);
+    // The input is left as it was.
+    expect(versions[0].fileVersion).to.equal("1.0");
+  });
+
+  it("names the file of a version", () => {
+    expect(versionFileName("adsl.sas", "2.0")).to.equal("adsl-v2.0.sas");
+    expect(versionFileName("my.data.xpt", "1.1")).to.equal("my.data-v1.1.xpt");
+    expect(versionFileName("README", "3.0")).to.equal("README-v3.0");
+    expect(versionFileName(".hidden", "1.0")).to.equal(".hidden-v1.0");
+  });
+
+  it("tells versions from repository items", () => {
+    expect(
+      isVersionRow({ ...file(), fileId: "11", name: "a", fileVersion: "1.0" }),
+    ).to.be.true;
+    // A repository file may carry a fileVersion, but never a fileId.
+    expect(isVersionRow(file({ fileVersion: "1.0" }))).to.be.false;
+  });
+});
+
+describe("isSameOrUnder", () => {
+  it("matches the folder itself and what lies inside it", () => {
+    expect(isSameOrUnder("/Acme/Study1", "/Acme/Study1")).to.be.true;
+    expect(isSameOrUnder("/Acme/Study1/adam/a.sas", "/Acme/Study1")).to.be.true;
+    expect(isSameOrUnder("/Acme/Study1/", "/Acme/Study1/")).to.be.true;
+  });
+
+  it("does not match siblings that merely share a prefix", () => {
+    expect(isSameOrUnder("/Acme/Study10/a.sas", "/Acme/Study1")).to.be.false;
+    expect(isSameOrUnder("/Acme", "/Acme/Study1")).to.be.false;
+  });
+});
+
+describe("workspace paths", () => {
+  it("encodes a path but keeps its slashes", () => {
+    expect(encodePath("/Acme/My Study/a#b.sas")).to.equal(
+      "/Acme/My%20Study/a%23b.sas",
+    );
+  });
+
+  it("builds items URLs, with the root as the collection itself", () => {
+    expect(buildWorkspaceItemsUrl(undefined)).to.equal(
+      "/clinicalRepository/workspaces/@currentUser/items",
+    );
+    expect(buildWorkspaceItemsUrl("/")).to.equal(
+      "/clinicalRepository/workspaces/@currentUser/items",
+    );
+    expect(
+      buildWorkspaceItemsUrl("/Acme/a b.sas", {
+        type: "FILE",
+        includeSynchronizationInfo: true,
+      }),
+    ).to.equal(
+      "/clinicalRepository/workspaces/@currentUser/items/Acme/a%20b.sas?type=FILE&includeSynchronizationInfo=true",
+    );
+    // A path without its leading slash is the same path.
+    expect(buildWorkspaceItemsUrl("Acme", { expand: false })).to.equal(
+      "/clinicalRepository/workspaces/@currentUser/items/Acme?expand=false",
+    );
+  });
+
+  it("builds folder URLs", () => {
+    expect(buildWorkspaceFolderUrl("/Acme/Study1", "new folder")).to.equal(
+      "/clinicalRepository/workspaces/@currentUser/folders/Acme/Study1?name=new%20folder",
+    );
+    expect(buildWorkspaceFolderUrl("/", "top")).to.equal(
+      "/clinicalRepository/workspaces/@currentUser/folders?name=top",
+    );
+  });
+
+  it("joins a folder path and a name", () => {
+    expect(joinWorkspacePath("/", "a.sas")).to.equal("/a.sas");
+    expect(joinWorkspacePath("/Acme", "a.sas")).to.equal("/Acme/a.sas");
+    expect(joinWorkspacePath("/Acme/", "a.sas")).to.equal("/Acme/a.sas");
+  });
+
+  it("tells workspace items from repository items and versions", () => {
+    expect(isWorkspaceItem(wsFile())).to.be.true;
+    expect(isWorkspaceItem(file())).to.be.false;
+    expect(isWorkspaceItem({ ...file(), fileId: "11", fileVersion: "1.0" })).to
+      .be.false;
+    expect(isVersionRow(wsFile())).to.be.false;
+  });
+
+  it("picks the icon of a Clinical Acceleration file type", () => {
+    expect(workspaceIconName("adsl.sas")).to.equal("sasProgramFile");
+    expect(workspaceIconName("ADSL.SAS7BDAT")).to.equal("sasDataSet");
+    expect(workspaceIconName("adsl.xpt")).to.equal("sasTransportFile");
+    expect(workspaceIconName("run.cjob")).to.equal("clinicalJobFile");
+    expect(workspaceIconName("run.cmnf")).to.equal("clinicalJobManifest");
+    expect(workspaceIconName("run.log")).to.equal("log");
+    expect(workspaceIconName("notes.txt")).to.be.undefined;
+    expect(workspaceIconName("Makefile")).to.be.undefined;
+  });
+
+  it("names downloads of workspace items", () => {
+    expect(
+      downloadFileName([{ name: "adsl.sas", primaryType: "FILE" }]),
+    ).to.equal("adsl.sas");
+    expect(
+      downloadFileName([{ name: "Study1", primaryType: "FOLDER" }]),
+    ).to.equal("Study1.zip");
+  });
+});
+
+describe("workspace check-out state", () => {
+  const checkedOut = (by: string) =>
+    wsFile({ synchronizationInfo: { checkedOut: true, checkedOutBy: by } });
+
+  it("tells who has a file checked out", () => {
+    expect(getWorkspaceCheckoutState(wsFile(), "me")).to.equal("none");
+    expect(getWorkspaceCheckoutState(checkedOut("me"), "me")).to.equal("self");
+    expect(getWorkspaceCheckoutState(checkedOut("you"), "me")).to.equal(
+      "other",
+    );
+    expect(getWorkspaceCheckoutState(checkedOut("me"), undefined)).to.equal(
+      "other",
+    );
+    expect(getWorkspaceCheckoutState(wsFolder(), "me")).to.equal("none");
+  });
+
+  it("builds the context value of workspace items", () => {
+    expect(buildWorkspaceContextValue(wsFolder(), "me")).to.equal(
+      ";workspace;container;canCheckIn;canUndo;",
+    );
+    expect(buildWorkspaceContextValue(wsFile(), "me")).to.equal(
+      ";workspace;file;coNone;canCheckIn;",
+    );
+    expect(buildWorkspaceContextValue(checkedOut("me"), "me")).to.equal(
+      ";workspace;file;coSelf;canCheckIn;canUndo;",
+    );
+    expect(buildWorkspaceContextValue(checkedOut("you"), "me")).to.equal(
+      ";workspace;file;coOther;",
+    );
+  });
+});
+
+describe("check in", () => {
+  const candidate = (
+    name: string,
+    synchronizationInfo: SynchronizationItem["synchronizationInfo"],
+  ): SynchronizationItem => ({
+    name,
+    path: `/Acme/${name}`,
+    synchronizationInfo,
+  });
+  const items = [
+    candidate("new.sas", {}),
+    candidate("unversioned.sas", { checkedOut: true, fileVersion: "-" }),
+    candidate("unversioned2.sas", { checkedOut: true }),
+    candidate("versioned.sas", { checkedOut: true, fileVersion: "2.3" }),
+  ];
+
+  it("sorts the candidates by what has to be asked", () => {
+    const plan = planCheckIn(items);
+    expect(plan.newFiles.map((i) => i.name)).to.deep.equal(["new.sas"]);
+    expect(plan.unversioned.map((i) => i.name)).to.deep.equal([
+      "unversioned.sas",
+      "unversioned2.sas",
+    ]);
+    expect(plan.versioned.map((i) => i.name)).to.deep.equal(["versioned.sas"]);
+  });
+
+  it("raises the major or minor version", () => {
+    expect(getNextVersion("major", "2.3")).to.equal("3.0");
+    expect(getNextVersion("minor", "2.3")).to.equal("2.4");
+    expect(getNextVersion("minor", "9.9")).to.equal("9.10");
+    expect(getNextVersion("major", undefined)).to.equal("1.0");
+    expect(getNextVersion("minor", "-")).to.equal("0.1");
+    expect(() => getNextVersion("major", "3")).to.throw(/not a valid version/);
+  });
+
+  it("builds the body, versioning only what was asked for", () => {
+    const body = buildCheckInBody(planCheckIn(items), {
+      newFileVersion: "1.0",
+      bump: "minor",
+      comment: "weekly",
+    });
+    expect(body).to.deep.equal({
+      fileSpecifications: [
+        { path: "/Acme/new.sas", fileVersion: "1.0", type: "FILE" },
+        { path: "/Acme/unversioned.sas", type: "FILE" },
+        { path: "/Acme/unversioned2.sas", type: "FILE" },
+        { path: "/Acme/versioned.sas", fileVersion: "2.4", type: "FILE" },
+      ],
+      comment: "weekly",
+      includeNewFiles: true,
+    });
+  });
+
+  it("can version everything, and upper-cases version keywords", () => {
+    const body = buildCheckInBody(planCheckIn(items), {
+      newFileVersion: "major",
+      unversionedVersion: "1.0",
+      bump: "major",
+      comment: "",
+    });
+    expect(body.fileSpecifications.map((f) => f.fileVersion)).to.deep.equal([
+      "MAJOR",
+      "1.0",
+      "1.0",
+      "3.0",
+    ]);
   });
 });
