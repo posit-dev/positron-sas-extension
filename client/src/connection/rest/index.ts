@@ -1,6 +1,6 @@
 // Copyright © 2022-2024, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
-import { authentication, l10n } from "vscode";
+import { authentication, l10n, workspace } from "vscode";
 
 import { BaseConfig, RunResult } from "..";
 import { SASAuthProvider } from "../../components/AuthProvider";
@@ -10,13 +10,22 @@ import {
 } from "../../components/ExtensionContext";
 import { updateStatusBarItem } from "../../components/StatusBarItem";
 import { Session, SessionContextAttributes } from "../session";
-import { Context, ContextsApi, SessionsApi } from "./api/compute";
+import {
+  Context,
+  ContextsApi,
+  LogLineTypeEnum,
+  SessionsApi,
+} from "./api/compute";
 import { ComputeState, getApiConfig } from "./common";
 import { ComputeJob } from "./job";
+import { KeepAlive, httpStatus } from "./keepAlive";
 import { ComputeServer } from "./server";
 import { ComputeSession } from "./session";
 
 let sessionInstance: RestSession;
+
+// Stop pinging an idle session after this long without a submit.
+const KEEP_ALIVE_MAX_IDLE_MS = 8 * 60 * 60 * 1000;
 
 export interface Config extends BaseConfig {
   endpoint: string;
@@ -31,6 +40,13 @@ class RestSession extends Session {
   private _config: Config;
   private _computeSession: ComputeSession | undefined;
   private _cachedContext: Context | undefined;
+
+  // Keeps an idle compute session from being reaped by the server.
+  private _keepAlive: KeepAlive | undefined;
+  private _busy = 0;
+  // The server dropped the compute session; the next run starts a new one.
+  private _expired = false;
+  private _jobSubmitted = false;
 
   /**
    * @param _sharesSessionId whether this session saves its compute session id
@@ -111,6 +127,7 @@ class RestSession extends Session {
     }
 
     if (this._computeSession) {
+      this.startKeepAlive();
       return;
     }
 
@@ -128,6 +145,7 @@ class RestSession extends Session {
       //reconnected to a running session, so just return
       await this.printSessionLog(this._computeSession);
       updateStatusBarItem(true);
+      this.startKeepAlive();
       return;
     }
 
@@ -188,9 +206,107 @@ class RestSession extends Session {
       setContextValue("SAS.sessionId", this._computeSession.sessionId);
     }
     updateStatusBarItem(true);
+    this.startKeepAlive();
   };
 
+  /**
+   * Starts (or restarts) pinging the compute session while it is idle. The
+   * Viya server reaps a compute session that gets no requests for its
+   * inactivity timeout, which otherwise ends an idle console.
+   */
+  private startKeepAlive(): void {
+    this._expired = false;
+    this._keepAlive?.stop();
+    const seconds = workspace
+      .getConfiguration("SAS.session")
+      .get<number>("keepAliveSeconds", 60);
+    if (!(seconds > 0)) {
+      return;
+    }
+    this._keepAlive = new KeepAlive({
+      intervalMs: seconds * 1000,
+      ping: this.keepAlivePing,
+      isBusy: () => this._busy > 0,
+      onGone: () => {
+        this._expired = true;
+        this._computeSession = undefined;
+        updateStatusBarItem(false);
+      },
+      maxIdleMs: KEEP_ALIVE_MAX_IDLE_MS,
+      log: (message) => console.log(message),
+    });
+    this._keepAlive.start();
+  }
+
+  private keepAlivePing = async (): Promise<void> => {
+    const compute = this._computeSession;
+    if (!compute?.sessionId) {
+      return;
+    }
+    try {
+      await compute.getState();
+    } catch (err) {
+      // The access token may have expired while idle. Fetch the session
+      // silently (this refreshes the token) and try once more.
+      if (httpStatus(err) !== 401 || this._config.serverId) {
+        throw err;
+      }
+      const session = await authentication.getSession(SASAuthProvider.id, [], {
+        silent: true,
+      });
+      if (!session) {
+        throw err;
+      }
+      getApiConfig().accessToken = session.accessToken;
+      await compute.getState();
+    }
+  };
+
+  /**
+   * Runs code, replacing the compute session first if the server dropped it
+   * (for example after it sat idle past its inactivity timeout).
+   */
   protected _run = async (code: string, ...args) => {
+    this._keepAlive?.touch();
+    this._busy++;
+    try {
+      if (this._expired) {
+        await this.restartExpiredSession();
+      }
+      this._jobSubmitted = false;
+      try {
+        return await this._runOnce(code, ...args);
+      } catch (err) {
+        // A 404 before the job was submitted means the session is gone and
+        // nothing ran, so it is safe to start a new session and try again.
+        if (this._jobSubmitted || httpStatus(err) !== 404) {
+          throw err;
+        }
+        await this.restartExpiredSession();
+        this._jobSubmitted = false;
+        return await this._runOnce(code, ...args);
+      }
+    } finally {
+      this._busy--;
+    }
+  };
+
+  private restartExpiredSession = async (): Promise<void> => {
+    this._keepAlive?.stop();
+    this._computeSession = undefined;
+    this._connectionPromise = undefined;
+    await this.establishConnection();
+    this._onExecutionLogFn?.([
+      {
+        type: LogLineTypeEnum.Warning,
+        line: l10n.t(
+          "The SAS session expired and was restarted. The WORK library, macro variables and options from the previous session are gone.",
+        ),
+      },
+    ]);
+  };
+
+  private _runOnce = async (code: string, ...args) => {
     if (!this._computeSession?.sessionId) {
       throw new Error();
     }
@@ -211,6 +327,7 @@ class RestSession extends Session {
       code: [code],
       variables: variables,
     });
+    this._jobSubmitted = true;
 
     //Clear out the logs
     await this.printJobLog(job);
@@ -247,6 +364,8 @@ class RestSession extends Session {
   };
 
   protected _close = async () => {
+    this._keepAlive?.stop();
+    this._expired = false;
     this._cachedContext = undefined;
     if (this.sessionId()) {
       this._computeSession.delete();

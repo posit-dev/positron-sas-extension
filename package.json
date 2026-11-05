@@ -714,6 +714,13 @@
             },
             "scope": "machine",
             "markdownDescription": "%configuration.SAS.localSasPaths%"
+          },
+          "SAS.session.keepAliveSeconds": {
+            "order": 13,
+            "type": "number",
+            "default": 60,
+            "minimum": 0,
+            "markdownDescription": "%configuration.SAS.session.keepAliveSeconds%"
           }
         }
       }

@@ -14,6 +14,7 @@
 
 ### Bug Fixes
 
+- SAS Viya: an idle console no longer loses its SAS session. The Viya server ends a compute session that gets no requests for its inactivity timeout, and the next submit then failed with a 404. The extension now contacts an idle session every 60 seconds (setting `SAS.session.keepAliveSeconds`, `0` turns it off) and stops after 8 hours without a submit. If the server has dropped the session anyway, the next submit starts a new one and says so in the log, because the WORK library and macro variables of the old session are gone. Verified against a real Viya server that both `GET .../state` and `GET .../sessions/{id}` reset the inactivity timer; the server's default timeout and the restart path are not yet verified end to end
 - Clinical Repository: Upload and Upload and Expand now send the file as `multipart/form-data`, as the Clinical Repository API specifies, and no longer version the upload by default. The version prompt is empty unless you enter a version (such as `1.0`, `MAJOR` or `MINOR`), because versioning needs a privilege that normal users often lack ([#73](https://github.com/posit-dev/positron-sas-extension/issues/73)). Verified against the API specification and unit tests, not yet against a server with write access
 - Clinical Repository: after the sign-in token expires, the first request no longer fails with a 401. The request that triggers the refresh is now replayed with the new token instead of the old one ([#101](https://github.com/posit-dev/positron-sas-extension/pull/101))
 
