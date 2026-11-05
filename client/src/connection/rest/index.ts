@@ -3,7 +3,7 @@
 import { authentication, l10n, workspace } from "vscode";
 
 import { BaseConfig, RunResult } from "..";
-import { SASAuthProvider } from "../../components/AuthProvider";
+import { SASAuthProvider, getViyaSession } from "../../components/AuthProvider";
 import {
   getContextValue,
   setContextValue,
@@ -106,9 +106,7 @@ class RestSession extends Session {
     }
 
     if (!this._config.serverId) {
-      const session = await authentication.getSession(SASAuthProvider.id, [], {
-        createIfNone: true,
-      });
+      const session = await getViyaSession();
       apiConfig.accessToken = session.accessToken;
     }
 

@@ -1,6 +1,6 @@
 // Copyright © 2024, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
-import { FileType, Uri, authentication } from "vscode";
+import { FileType, Uri } from "vscode";
 
 import axios, {
   AxiosError,
@@ -9,7 +9,7 @@ import axios, {
   AxiosResponse,
 } from "axios";
 
-import { SASAuthProvider } from "../../components/AuthProvider";
+import { getViyaSession } from "../../components/AuthProvider";
 import {
   DEFAULT_FILE_CONTENT_TYPE,
   FILE_TYPES,
@@ -660,9 +660,7 @@ class RestContentAdapter implements ContentAdapter {
   }
 
   private async updateAccessToken(): Promise<void> {
-    const session = await authentication.getSession(SASAuthProvider.id, [], {
-      createIfNone: true,
-    });
+    const session = await getViyaSession();
     this.connection.defaults.headers.common.Authorization = `Bearer ${session.accessToken}`;
   }
 
