@@ -1,4 +1,4 @@
-// Copyright © 2026, Posit Software, PBC.
+// Copyright © 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 /** HTTP status carried by an axios-style error, or 0 when there is none. */
