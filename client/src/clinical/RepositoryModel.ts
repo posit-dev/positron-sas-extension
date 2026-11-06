@@ -3,8 +3,6 @@
 // Adapted from sassoftware/vscode-sas-ca-extension
 // client/src/components/ContentNavigator/RepositoryModel.ts and
 // WorkspaceModel.ts (Apache-2.0).
-import { authentication } from "vscode";
-
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -14,7 +12,7 @@ import axios, {
 import { randomUUID } from "crypto";
 
 import { profileConfig } from "../commands/profile";
-import { SASAuthProvider } from "../components/AuthProvider";
+import { getViyaSession } from "../components/AuthProvider";
 import { ConnectionType } from "../components/profile";
 import { getActionToken, pollActionStatus } from "./actionStatus";
 import {
@@ -212,9 +210,7 @@ export class RepositoryModel {
   }
 
   private async updateAccessToken(connection: AxiosInstance): Promise<void> {
-    const session = await authentication.getSession(SASAuthProvider.id, [], {
-      createIfNone: true,
-    });
+    const session = await getViyaSession();
     connection.defaults.headers.common.Authorization = `Bearer ${session.accessToken}`;
     this.currentUserId = session.account.id;
   }

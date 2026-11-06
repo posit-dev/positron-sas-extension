@@ -1,6 +1,6 @@
 // Copyright © 2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
-import { Uri, authentication, l10n, workspace } from "vscode";
+import { Uri, l10n, workspace } from "vscode";
 
 import axios, { AxiosInstance } from "axios";
 import { basename } from "path";
@@ -10,7 +10,7 @@ import {
   associateFlowObject,
   createStudioSession,
 } from "../../connection/studio";
-import { SASAuthProvider } from "../AuthProvider";
+import { getViyaSession } from "../AuthProvider";
 import { ContentModel } from "./ContentModel";
 import { MYFOLDER_TYPE, Messages } from "./const";
 import { ContentItem, ContentSourceType } from "./types";
@@ -387,9 +387,7 @@ export class NotebookToFlowConverter {
 
   public async establishConnection() {
     this.connection = axios.create({ baseURL: this.viyaEndpoint });
-    const session = await authentication.getSession(SASAuthProvider.id, [], {
-      createIfNone: true,
-    });
+    const session = await getViyaSession();
     this.connection.defaults.headers.common.Authorization = `Bearer ${session.accessToken}`;
 
     try {

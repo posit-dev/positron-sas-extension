@@ -8,6 +8,7 @@ import {
   Disposable,
   Event,
   EventEmitter,
+  authentication,
   commands,
   l10n,
   window,
@@ -58,6 +59,44 @@ const isUnauthorized = (err: unknown) =>
   "status" in err.response &&
   err.response.status === 401;
 
+/** The provider registered by this extension, if it is running. */
+let activeProvider: SASAuthProvider | undefined;
+
+function setActiveProvider(provider: SASAuthProvider, active = true): void {
+  if (active) {
+    activeProvider = provider;
+  } else if (activeProvider === provider) {
+    activeProvider = undefined;
+  }
+}
+
+/**
+ * Get the SAS Viya session for the active profile, signing in if needed.
+ *
+ * This asks our own provider first. When a session is available without user
+ * interaction (a Posit Workbench token, or a stored session), it is returned
+ * directly. Going through `authentication.getSession` instead would make
+ * VS Code / Positron show an "extension wants to sign in" dialog that has to
+ * be confirmed, even though the extension is only talking to its own provider.
+ * Only when no session can be had silently do we fall back to the interactive
+ * flow.
+ */
+export async function getViyaSession(): Promise<AuthenticationSession> {
+  try {
+    const [session] = (await activeProvider?.getSessions()) ?? [];
+    if (session) {
+      return session;
+    }
+  } catch (err) {
+    getAuthLog().warn(
+      `Silent SAS Viya sign-in failed: ${err instanceof Error ? err.message : "error"}`,
+    );
+  }
+  return authentication.getSession(SASAuthProvider.id, [], {
+    createIfNone: true,
+  });
+}
+
 export class SASAuthProvider implements AuthenticationProvider, Disposable {
   static id = "SAS";
 
@@ -96,9 +135,11 @@ export class SASAuthProvider implements AuthenticationProvider, Disposable {
       }),
     ];
     this.secretStorage = getSecretStorage<SASAuthSession>(SECRET_KEY);
+    setActiveProvider(this);
   }
 
   dispose(): void {
+    setActiveProvider(this, false);
     this.clearWorkbenchSession();
     for (const d of this._disposables) {
       d.dispose();

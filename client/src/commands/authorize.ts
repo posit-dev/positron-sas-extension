@@ -1,8 +1,8 @@
 // Copyright © 2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
-import { authentication, commands, window } from "vscode";
+import { commands, window } from "vscode";
 
-import { SASAuthProvider } from "../components/AuthProvider";
+import { getViyaSession } from "../components/AuthProvider";
 import LibraryNavigator from "../components/LibraryNavigator";
 import { ConnectionType } from "../components/profile";
 import { profileConfig, switchProfile } from "./profile";
@@ -30,9 +30,7 @@ export const checkProfileAndAuthorize =
     switch (activeProfile.connectionType) {
       case ConnectionType.Rest:
         try {
-          await authentication.getSession(SASAuthProvider.id, [], {
-            createIfNone: true,
-          });
+          await getViyaSession();
         } catch (error) {
           window.showErrorMessage(error.message);
         }
