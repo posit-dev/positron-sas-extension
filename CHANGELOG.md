@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.3 - 2026-11-09
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+This release gives the SAS Clinical Acceleration views their own activity bar icon ([#108](https://github.com/posit-dev/positron-sas-extension/pull/108)) and removes the sign-in confirmation dialog for SAS Viya in Posit Workbench ([#107](https://github.com/posit-dev/positron-sas-extension/pull/107)).
+
+### Features
+
+- SAS Clinical Acceleration: the four Clinical Acceleration views now have their own **Clinical Acceleration** icon in the activity bar instead of sharing the **SAS** sidebar with SAS Content and SAS Server. The icon appears only when the server has Clinical Acceleration. **Clinical Repository Properties** and **Clinical Version History** start collapsed
+
+### Bug Fixes
+
+- SAS Viya: signing in no longer shows an "extension wants to sign in" confirmation dialog when a session is already available, such as the Posit Workbench token that the extension picks up automatically. The dialog appeared on every fresh Posit Workbench session until the extension was on the account's allow-list. The extension now uses an available session directly and starts the interactive sign-in only when there is none
+
 ## 0.5.2 - 2026-11-05
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
@@ -8,7 +22,6 @@ This release adds a Clinical Workspace to the SAS Clinical Acceleration support,
 
 ### Features
 
-- SAS Clinical Acceleration: the four Clinical Acceleration views now have their own **Clinical Acceleration** icon in the activity bar instead of sharing the **SAS** sidebar with SAS Content and SAS Server. The icon appears only when the server has Clinical Acceleration. **Clinical Repository Properties** and **Clinical Version History** start collapsed
 - SAS Clinical Acceleration: new **Clinical Workspace** view with your own workspace on the server. Files open for editing and are saved to the workspace when you save the editor. You can create, rename, delete, upload (optionally expanding a zip), and download files and folders, copy paths, and compare files with repository files and versions. Verified against the SAS Clinical Acceleration extension's requests and unit tests, not yet against a server with write access
 - SAS Clinical Acceleration: **Check In** from the workspace asks only what applies to the selected files (whether to version new and unversioned files, **Major** or **Minor** for versioned files, and a comment). **Undo Check out** is available in the workspace too
 - SAS Clinical Acceleration: **Copy to Workspace** copies the latest version of a file or folder, or the structure of a folder, from the repository to the workspace. **Copy to Workspace** in the **Clinical Version History** view copies one version. `.sas` files in the workspace run as usual, and `.sas7bdat` and `.xpt` files open in the Data Explorer
