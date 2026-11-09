@@ -43,9 +43,9 @@ jobs:
       - run: |
           if gh release view v${{ steps.package-json.outputs.version }} > /dev/null 2>&1; then
             gh release upload v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --clobber
-            gh release edit v${{ steps.package-json.outputs.version }} --notes-file release-notes.md
+            gh release edit v${{ steps.package-json.outputs.version }} --title v${{ steps.package-json.outputs.version }} --notes-file release-notes.md
           else
-            gh release create v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --notes-file release-notes.md
+            gh release create v${{ steps.package-json.outputs.version }} ${{ steps.vsixPath.outputs.vsixPath }} --title v${{ steps.package-json.outputs.version }} --notes-file release-notes.md
           fi
         if: steps.package-json.outputs.has-updated == 'true'
         env:
