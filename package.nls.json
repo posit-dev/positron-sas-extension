@@ -113,6 +113,7 @@
   "clinical.commands.uploadAndExpand": "Upload and Expand...",
   "clinical.commands.withContent": "With Content",
   "clinical.commands.withoutContent": "Without Content",
+  "clinical.container": "Clinical Acceleration",
   "clinical.views.properties": "Clinical Repository Properties",
   "clinical.views.repository": "Clinical Repository",
   "clinical.views.versionHistory": "Clinical Version History",

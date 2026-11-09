@@ -2103,6 +2103,11 @@
           "id": "sas-view-container",
           "title": "SAS",
           "icon": "icons/dark/sasIndicatorDark.svg"
+        },
+        {
+          "id": "sas-clinical-view-container",
+          "title": "%clinical.container%",
+          "icon": "icons/dark/clinicalAccelerationDark.svg"
         }
       ]
     },
@@ -2132,7 +2137,9 @@
           "id": "sas-content-invalid-connection",
           "name": "%views.SAS.signIn%",
           "when": "!SAS.authorized && !SAS.canSignIn"
-        },
+        }
+      ],
+      "sas-clinical-view-container": [
         {
           "id": "clinicalrepositorydataprovider",
           "name": "%clinical.views.repository%",
@@ -2146,12 +2153,14 @@
         {
           "id": "clinicalpropertyprovider",
           "name": "%clinical.views.properties%",
-          "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable"
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable",
+          "visibility": "collapsed"
         },
         {
           "id": "clinicalversionhistoryprovider",
           "name": "%clinical.views.versionHistory%",
-          "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable"
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable",
+          "visibility": "collapsed"
         }
       ]
     },
