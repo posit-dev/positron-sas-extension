@@ -4,16 +4,16 @@ sidebar_position: 10
 
 # SAS Clinical Acceleration
 
-SAS Clinical Acceleration stores clinical study files in a controlled repository on a SAS Viya server. The Positron SAS extension adds four views to the **SAS** sidebar so that you can browse the repository, work on files in your own workspace, and check them back in.
+SAS Clinical Acceleration stores clinical study files in a controlled repository on a SAS Viya server. The Positron SAS extension adds four views to their own **Clinical Acceleration** sidebar, next to the **SAS** one in the activity bar, so that you can browse the repository, work on files in your own workspace, and check them back in.
 
-The views appear when the active SAS profile is a SAS Viya profile, you are signed in, and the server runs the Clinical Repository service. The extension finds the service on its own and uses your SAS Viya sign-in, so there is nothing to configure.
+The **Clinical Acceleration** icon appears in the activity bar, and the views with it, when the active SAS profile is a SAS Viya profile, you are signed in, and the server runs the Clinical Repository service. The extension finds the service on its own and uses your SAS Viya sign-in, so there is nothing to configure.
 
 ## The four views
 
 - **Clinical Repository**: the shared store. Files open read-only.
 - **Clinical Workspace**: your own area on the server. Files open for editing, and saving a file saves it to your workspace.
-- **Clinical Repository Properties**: the details of the item you select in the **Clinical Repository** view.
-- **Clinical Version History**: the versions of the file you select in the **Clinical Repository** view.
+- **Clinical Repository Properties** (collapsed at first): the details of the item you select in the **Clinical Repository** view.
+- **Clinical Version History** (collapsed at first): the versions of the file you select in the **Clinical Repository** view.
 
 To refresh the **Clinical Repository** view and detect the service again, click **Refresh** in the title bar of the view.
 

@@ -167,7 +167,7 @@ An example `audit.jsonl` with one submission:
 
 ## SAS Clinical Acceleration
 
-On SAS Viya servers with SAS Clinical Acceleration, the **SAS** sidebar shows the **Clinical Repository**, **Clinical Workspace**, **Clinical Repository Properties**, and **Clinical Version History** views. They let you browse the repository, edit files in your workspace, check files out and in, manage versions, and compare files and versions. The extension detects the service of the active profile's server and uses the existing SAS Viya sign-in. See [SAS Clinical Acceleration](./clinicalAcceleration.md) for details.
+On SAS Viya servers with SAS Clinical Acceleration, the **Clinical Acceleration** sidebar, next to the **SAS** one in the activity bar, shows the **Clinical Repository**, **Clinical Workspace**, **Clinical Repository Properties**, and **Clinical Version History** views. They let you browse the repository, edit files in your workspace, check files out and in, manage versions, and compare files and versions. The extension detects the service of the active profile's server and uses the existing SAS Viya sign-in. See [SAS Clinical Acceleration](./clinicalAcceleration.md) for details.
 
 ## Local SAS
 

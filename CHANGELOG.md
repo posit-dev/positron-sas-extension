@@ -4,6 +4,7 @@
 
 ### Features
 
+- SAS Clinical Acceleration: the four Clinical Acceleration views now have their own **Clinical Acceleration** icon in the activity bar instead of sharing the **SAS** sidebar with SAS Content and SAS Server. The icon appears only when the server has Clinical Acceleration. **Clinical Repository Properties** and **Clinical Version History** start collapsed
 - SAS Clinical Acceleration: new **Clinical Workspace** view with your own workspace on the server. Files open for editing and are saved to the workspace when you save the editor. You can create, rename, delete, upload (optionally expanding a zip), and download files and folders, copy paths, and compare files with repository files and versions. Verified against the SAS Clinical Acceleration extension's requests and unit tests, not yet against a server with write access
 - SAS Clinical Acceleration: **Check In** from the workspace asks only what applies to the selected files (whether to version new and unversioned files, **Major** or **Minor** for versioned files, and a comment). **Undo Check out** is available in the workspace too
 - SAS Clinical Acceleration: **Copy to Workspace** copies the latest version of a file or folder, or the structure of a folder, from the repository to the workspace. **Copy to Workspace** in the **Clinical Version History** view copies one version. `.sas` files in the workspace run as usual, and `.sas7bdat` and `.xpt` files open in the Data Explorer

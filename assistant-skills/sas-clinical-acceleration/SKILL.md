@@ -3,7 +3,7 @@ name: sas-clinical-acceleration
 description: >
   Working with SAS Clinical Acceleration (CA) in Positron: the Clinical
   Repository, Clinical Workspace, Clinical Repository Properties and Clinical
-  Version History views in the SAS sidebar. Use when the user asks about files
+  Version History views in the Clinical Acceleration sidebar. Use when the user asks about files
   in the Clinical Repository or their CA workspace, checking files out or in,
   versioning, comparing versions, copying repository files into the workspace,
   or running SAS programs and opening SAS datasets that live in CA. Triggers:
@@ -14,7 +14,8 @@ description: >
 
 # SAS Clinical Acceleration in Positron
 
-The SAS extension adds four views to the **SAS** sidebar when the active SAS
+The SAS extension adds four views to their own **Clinical Acceleration** sidebar (a separate
+icon below **SAS** in the activity bar) when the active SAS
 profile is a SAS Viya profile and the server runs SAS Clinical Acceleration. The
 views use the same sign-in as the SAS Viya profile. If they are missing, the
 profile is not a SAS Viya profile, the user is not signed in, or the server has
