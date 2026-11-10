@@ -210,7 +210,7 @@ The following screenshot shows the same steps in a Positron Pro session. It runs
 
 Python code can use the same `sascfg_personal.py`. An `authtoken` argument to `SASsession()` takes precedence over the configuration.
 
-Posit Assistant in Positron can export a SAS Viya profile as a saspy configuration. That configuration reads the token from the `SAS_VIYA_TOKEN` environment variable once, when saspy loads the file. To get a fresh token for each connection, replace its `authtoken` entry with the `__main__` lookup above.
+The SAS extension can export a SAS Viya profile as a saspy configuration (**SAS: Export saspy Configuration**). That configuration looks for a token each time saspy connects. In this order, it uses the `SAS_VIYA_TOKEN` environment variable, the `SAS_VIYA_TOKEN` variable on the Python main module (as above), the Workbench integration read with posit-sdk (when `SAS_VIYA_INTEGRATION_ID` or the profile's `workbenchIntegration` gives its ID), and the token file `~/.positron-sas/viya-token.json`. The command **SAS: Save Viya Token for saspy** writes that file from the extension's own sign-in, readable only by the user, so that a Quarto render can use the same sign-in. Run it again when the token has expired.
 
 #### swat and sasctl
 

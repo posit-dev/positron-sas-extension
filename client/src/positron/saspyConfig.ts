@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Type-only imports: components/profile pulls in the VS Code API at load time,
 // which this module must not need (it is unit-tested without VS Code).
+import * as fs from "fs";
+import * as path from "path";
+
 import type { ConnectionType, Profile } from "../components/profile";
 
 // ConnectionType values; the enum itself is only imported as a type (see above).
@@ -19,6 +22,9 @@ const DEFAULT_COMPUTE_CONTEXT = "SAS Job Execution compute context";
 /** Environment variable the SAS Viya configuration reads the token from. */
 export const SASPY_TOKEN_ENV = "SAS_VIYA_TOKEN";
 
+/** Environment variable with the ID of the Posit Workbench OAuth integration. */
+export const SASPY_INTEGRATION_ENV = "SAS_VIYA_INTEGRATION_ID";
+
 /**
  * saspy reads each configuration from a Python variable of that name, so
  * turn the profile name into a Python identifier.
@@ -31,6 +37,11 @@ export function saspyConfigName(profileName: string): string {
 /** A single-quoted Python string literal. */
 function py(value: string): string {
   return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+}
+
+/** A double-quoted R string literal (for the names in the R example). */
+function rq(value: string): string {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 /**
@@ -47,25 +58,70 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
   switch (profile.connectionType) {
     case REST: {
       // saspy's HTTP access method talks to the SAS Viya Compute service,
-      // as this profile does (#91).
+      // as this profile does (#91). The token comes from outside the file,
+      // and is looked up for every SASsession because tokens expire.
       const lines = [
         `# saspy configuration for profile "${name}" (SAS Viya, HTTP access method)`,
-        `import os`,
+        `import json as _json`,
+        `import os as _os`,
+        `import time as _time`,
         ``,
         `SAS_config_names = [${py(cfg)}]`,
         ``,
-        `${cfg} = {`,
-        `    'url': ${py(profile.endpoint)},`,
-        `    'context': ${py(profile.context || DEFAULT_COMPUTE_CONTEXT)},`,
-        `    # Sign in with a SAS Viya access token from the environment. Do not`,
-        `    # put tokens, passwords or client secrets in this file. To get a`,
-        `    # token, sign in with the SAS Viya CLI (\`sas-viya auth login\`; the`,
-        `    # token is in ~/.sas/credentials.json) or ask your SAS administrator,`,
-        `    # then set ${SASPY_TOKEN_ENV} (on Posit Connect, as an environment`,
-        `    # variable of the content). Tokens expire, so renew it when needed.`,
+        `_VIYA_URL = ${py(profile.endpoint)}`,
+        ``,
+        `def _viya_token():`,
+        `    # Do not put tokens, passwords or client secrets in this file. The`,
+        `    # token comes from the first of these that has one:`,
+        `    # 1. the ${SASPY_TOKEN_ENV} environment variable (for example on Posit`,
+        `    #    Connect, or from \`sas-viya auth login\`, with the token in`,
+        `    #    ~/.sas/credentials.json)`,
+        `    token = _os.environ.get(${py(SASPY_TOKEN_ENV)})`,
+        `    if token:`,
+        `        return token`,
+        `    # 2. a variable on the Python main module, which R code can set with`,
+        `    #    reticulate::py_set_attr(reticulate::import_main(), ${rq(SASPY_TOKEN_ENV)}, token)`,
+        `    try:`,
+        `        import __main__`,
+        `        token = getattr(__main__, ${py(SASPY_TOKEN_ENV)}, None)`,
+        `        if token:`,
+        `            return token`,
+        `    except ImportError:`,
+        `        pass`,
+        `    # 3. the Posit Workbench OAuth integration for SAS Viya (needs the`,
+        `    #    posit-sdk package, and the integration ID from Managed Credentials)`,
+        `    integration = _os.environ.get(${py(SASPY_INTEGRATION_ENV)}) or ${py(profile.workbenchIntegration ?? "")}`,
+        `    if integration:`,
+        `        try:`,
+        `            from posit.workbench import Client`,
+        `            creds = Client().oauth.get_credentials(audience=integration)`,
+        `            if creds and creds.get('access_token'):`,
+        `                return creds['access_token']`,
+        `        except Exception:`,
+        `            pass`,
+        `    # 4. the file that the command "SAS: Save Viya Token for saspy" writes`,
+        `    #    from the extension's own sign-in`,
+        `    try:`,
+        `        with open(_os.path.join(_os.path.expanduser('~'), '.positron-sas', 'viya-token.json')) as f:`,
+        `            saved = _json.load(f)`,
+        `        same_server = saved.get('endpoint', '').rstrip('/') == _VIYA_URL.rstrip('/')`,
+        `        fresh = saved.get('expires_at', _time.time() + 60) > _time.time() + 30`,
+        `        if same_server and fresh and saved.get('access_token'):`,
+        `            return saved['access_token']`,
+        `    except Exception:`,
+        `        pass`,
         `    # Without a token, saspy asks for a user ID and password.`,
-        `    'authtoken': os.environ.get(${py(SASPY_TOKEN_ENV)}),`,
-        `}`,
+        `    return None`,
+        ``,
+        `def __getattr__(name):`,
+        `    # saspy looks the definition up by name for each SASsession`,
+        `    if name == ${py(cfg)}:`,
+        `        return {`,
+        `            'url': _VIYA_URL,`,
+        `            'context': ${py(profile.context || DEFAULT_COMPUTE_CONTEXT)},`,
+        `            'authtoken': _viya_token(),`,
+        `        }`,
+        `    raise AttributeError(name)`,
       ];
       return lines.join("\n");
     }
@@ -118,4 +174,35 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
     default:
       return `# Unknown connection type for profile "${name}"`;
   }
+}
+
+/** The file name saspy looks for in the working directory. */
+export const SASPY_CONFIG_FILE = "sascfg_personal.py";
+
+export type SaspyWriteResult =
+  | { status: "written" | "unchanged"; path: string }
+  | { status: "exists"; path: string };
+
+/**
+ * Write the configuration as sascfg_personal.py into a directory. An existing
+ * file with other content is left alone unless `overwrite` is set, so callers
+ * can ask the user first.
+ */
+export function writeSaspyConfig(
+  dir: string,
+  config: string,
+  overwrite = false,
+): SaspyWriteResult {
+  const file = path.join(dir, SASPY_CONFIG_FILE);
+  const text = config.endsWith("\n") ? config : `${config}\n`;
+  if (fs.existsSync(file)) {
+    if (fs.readFileSync(file, "utf8") === text) {
+      return { status: "unchanged", path: file };
+    }
+    if (!overwrite) {
+      return { status: "exists", path: file };
+    }
+  }
+  fs.writeFileSync(file, text, "utf8");
+  return { status: "written", path: file };
 }

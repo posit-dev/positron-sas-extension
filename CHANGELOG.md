@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- New command **SAS: Export saspy Configuration**. It writes the active SAS connection profile as a saspy `sascfg_personal.py` next to the open `.qmd` file (or in the workspace folder), for sasquatch and saspy. SAS Viya profiles read their token from the `SAS_VIYA_TOKEN` environment variable, so no secret is written. Posit Assistant runs the same command when it sets up a SAS report
+- New command **SAS: Save Viya Token for saspy**. It saves the access token of the extension's SAS Viya sign-in (including a Posit Workbench token) to `~/.positron-sas/viya-token.json`, readable only by the user, so a Quarto render with sasquatch can connect without a separate sign-in. The exported saspy configuration now looks up the token each time saspy connects: the `SAS_VIYA_TOKEN` environment variable, the Workbench OAuth integration (needs posit-sdk and the integration ID), then that file
+- Posit Assistant: a new `sas-quarto-report` skill makes `/report` and other report requests about SAS work produce a Quarto document with `{sas}` chunks run through the sasquatch R package. Before, the Assistant asked whether to use R with haven or Python with pandas, because only Positron Assistant saw the sasquatch note. The skill also explains that the rendered report opens its own SAS session, so it must load data from permanent libraries or files and not from WORK tables of the console session
+
 ## 0.5.3 - 2026-11-09
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

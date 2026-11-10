@@ -108,8 +108,10 @@ function exportSaspyConfig(): vscode.LanguageModelToolResult {
   ];
   if (profile.connectionType === ConnectionType.Rest) {
     output.push(
-      `4. Set the ${SASPY_TOKEN_ENV} environment variable to a SAS Viya access token`,
-      `   (see the comment in the config). Never write the token into a file`,
+      `4. Before rendering, run the SAS.saveViyaTokenForSaspy command to save the token of`,
+      `   the extension's sign-in for saspy, or set the ${SASPY_TOKEN_ENV} environment variable`,
+      `   to a SAS Viya access token (see the comment in the config). Never write the token`,
+      `   into the report or the config`,
     );
   }
 
@@ -156,19 +158,24 @@ export class SasWorkspaceContextProvider {
           `explore available data before generating SAS code.`,
         value: `Active SAS profile: ${this.sessionInfo.profileName}`,
       },
+      // Posit Assistant does not read this provider. For it, the same guidance
+      // lives in assistant-skills/sas-quarto-report; keep the two in step.
       {
         label: "SAS Quarto Integration",
         modelDescription:
-          `When the user asks to create a Quarto document (.qmd) with SAS code, use the ` +
-          `sasquatch R package. sasquatch enables SAS code chunks in Quarto documents via saspy. ` +
-          `Setup steps: (1) Install sasquatch: install.packages("sasquatch"), ` +
+          `When the user asks to create a Quarto document (.qmd) or report with SAS code, use the ` +
+          `sasquatch R package; do not ask whether to use R/haven or Python/pandas. sasquatch enables SAS code chunks in Quarto documents via saspy. ` +
+          `Setup steps: (1) Check that sasquatch is installed; if it is not, ask the user whether to install it with install.packages("sasquatch"), ` +
           `(2) Install saspy by running sasquatch::install_saspy() in R, ` +
-          `(3) Call the sas_export_saspy_config tool to get the saspy configuration and save it ` +
+          `(3) Export the saspy configuration without waiting to be asked: run the SAS.exportSaspyConfig command, or call the sas_export_saspy_config tool and save the result ` +
           `as sascfg_personal.py in the working directory (not ~/.config/saspy) so the project ` +
           `is self-contained and deployable to Posit Connect, ` +
-          `(4) In the .qmd file, add a setup chunk with library(sasquatch), ` +
+          `(4) In the .qmd file, start with an {r} chunk that runs library(sasquatch) and sas_connect(). ` +
+          `This first {r} chunk is required: without it Quarto picks the Jupyter engine and the {sas} chunks fail, ` +
           `(5) Use \`\`\`{sas} code chunks for SAS code. ` +
-          `The sasquatch package handles the SAS session connection automatically.`,
+          `The rendered document opens its own SAS session through saspy, separate from the SAS console session, ` +
+          `so WORK tables from the console do not exist there: load data from permanent libraries or files, ` +
+          `or repeat the DATA steps that created the tables.`,
         value: "sasquatch + saspy available for Quarto rendering",
       },
     ];
