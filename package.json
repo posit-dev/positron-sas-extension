@@ -798,6 +798,16 @@
         "category": "SAS"
       },
       {
+        "command": "SAS.exportSaspyConfig",
+        "title": "%commands.SAS.exportSaspyConfig%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.saveViyaTokenForSaspy",
+        "title": "%commands.SAS.saveViyaTokenForSaspy%",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.content.copyPath",
         "title": "%commands.SAS.copyPath%",
         "category": "SAS"

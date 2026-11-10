@@ -23,6 +23,8 @@ import * as path from "path";
 
 import { checkProfileAndAuthorize } from "../commands/authorize";
 import { closeSession } from "../commands/closeSession";
+import { exportSaspyConfig } from "../commands/exportSaspyConfig";
+import { saveViyaTokenForSaspy } from "../commands/saveViyaToken";
 import { newSASFile, newSASNotebook } from "../commands/new";
 import {
   addProfile,
@@ -182,6 +184,8 @@ export async function activate(context: ExtensionContext) {
     commands.registerCommand("SAS.addProfile", addProfile),
     commands.registerCommand("SAS.deleteProfile", deleteProfile),
     commands.registerCommand("SAS.updateProfile", updateProfile),
+    commands.registerCommand("SAS.exportSaspyConfig", exportSaspyConfig),
+    commands.registerCommand("SAS.saveViyaTokenForSaspy", saveViyaTokenForSaspy),
     commands.registerCommand(
       "SAS.authorize",
       checkProfileAndAuthorize(libraryNavigator),

@@ -159,6 +159,9 @@ sas.endsas()
 ## Limitations
 
 - sasquatch keeps one SAS session for each R process. Content on Connect that serves several viewers from one R process shares that session.
+- A Quarto document with `{sas}` chunks needs an `{r}` chunk first that runs `library(sasquatch)` and `sas_connect()`. The `{r}` chunk makes Quarto use the knitr engine. Without it, Quarto uses the Jupyter engine and looks for a SAS kernel.
+- In a `{sas}` chunk, chunk options start with `*| ` and end with `;`, for example `*| label: load-data;`. The `#|` form fails, because knitr treats SAS comments like that. `{sas}` chunks produce HTML and PDF output only.
+- A rendered document opens its own SAS session. It does not see tables in `WORK` from another session, such as a Positron console.
 - `sas_connect()` passes only `cfgname` to saspy. Options such as an access token must come from `sascfg_personal.py`. [SAS Viya with OAuth Tokens](./viyaOauth.md) shows how.
 - saspy STDIO and STDIO over SSH work only with SAS on Linux or UNIX.
 - Data moves between the languages as copies. Large data sets take time to transfer.

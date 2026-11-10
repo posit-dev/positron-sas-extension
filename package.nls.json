@@ -9,6 +9,8 @@
   "commands.SAS.convertNotebookToFlow": "Convert to Flow...",
   "commands.SAS.copyPath": "Copy Path",
   "commands.SAS.deleteProfile": "Delete Connection Profile",
+  "commands.SAS.exportSaspyConfig": "Export saspy Configuration",
+  "commands.SAS.saveViyaTokenForSaspy": "Save Viya Token for saspy",
   "commands.SAS.deleteResource": "Delete",
   "commands.SAS.deleteTable": "Delete",
   "commands.SAS.download": "Download",

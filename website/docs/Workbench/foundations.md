@@ -18,7 +18,7 @@ With these in place, users sign in once in the browser, and files move between S
 
 ## Posit Assistant with SAS
 
-Posit Assistant in Positron works with SAS through the SAS extension: it lists libraries and tables, reads SAS output and graphs, and can create a saspy configuration. See [Positron SAS Extension Features](../Features/positron.md#posit-assistant).
+Posit Assistant in Positron works with SAS through the SAS extension: it lists libraries and tables, reads SAS output and graphs, writes Quarto reports with `{sas}` chunks, and can create a saspy configuration and save your SAS Viya token for it. See [Positron SAS Extension Features](../Features/positron.md#posit-assistant).
 
 The Assistant needs access to a language model. In the reference deployment, Workbench sessions use Amazon Bedrock through AWS Identity and Access Management (IAM) roles for service accounts.
 
