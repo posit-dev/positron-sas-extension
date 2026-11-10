@@ -129,7 +129,7 @@ The extension gives Posit Assistant access to the SAS session and its results.
   - `sas_describe_table` returns the columns, types, lengths, formats, and row count of a dataset.
   - `sas_export_saspy_config` returns the active profile as a saspy configuration, for SAS code chunks in Quarto documents with the sasquatch R package. Posit Assistant uses the commands below instead.
 - **Commands for Quarto reports:**
-  - **SAS: Export saspy Configuration** writes the active profile as `sascfg_personal.py`, next to the open `.qmd` file or in the workspace folder. It asks before it replaces a different file. For a SAS Viya profile, the file uses saspy's HTTP access method and looks for the access token each time saspy connects: the `SAS_VIYA_TOKEN` environment variable, a variable on the Python main module, the Workbench OAuth integration (with posit-sdk and the integration ID), and then the token file. The file never contains secrets. See [SAS Viya with OAuth Tokens](../Workbench/Code/viyaOauth.md#r-with-sasquatch).
+  - **SAS: Export saspy Configuration** writes the active profile as `sascfg_personal.py`, next to the open `.qmd` file or in the workspace folder. It never asks before replacing a different file: it keeps the old one as `sascfg_personal.py.old-<timestamp>` next to it and tells you where. For a SAS Viya profile, the file uses saspy's HTTP access method and looks for the access token each time saspy connects: the `SAS_VIYA_TOKEN` environment variable, a variable on the Python main module, the Workbench OAuth integration (with posit-sdk and the integration ID), and then the token file. The file never contains secrets. See [SAS Viya with OAuth Tokens](../Workbench/Code/viyaOauth.md#r-with-sasquatch).
   - **SAS: Save Viya Token for saspy** writes the access token of the extension's SAS Viya sign-in, including a Posit Workbench token, to `~/.positron-sas/viya-token.json`. Only you can read the file. Run it again when the token has expired.
 - **Workspace context:** while a SAS console runs, the assistant knows the active profile and how to use the tools above.
 - **Results:** the assistant reads the text copy of each result and looks at graphs in the **Plots** pane.
@@ -161,9 +161,11 @@ For a SAS Viya profile, the assistant also runs **SAS: Save Viya Token for saspy
 A SAS report follows these rules:
 
 - **Setup chunk first:** the first code chunk is an `{r}` chunk labeled `setup`, with `library(sasquatch)` and `sas_connect()`. With only `{sas}` chunks, Quarto looks for a SAS Jupyter kernel and fails.
-- **Chunk options:** in a `{sas}` chunk, options are written `*| label: load-data;`. The `#|` form that `{r}` chunks use stops the render.
+- **Chunk options:** in a `{sas}` chunk, options are written `*| label: load-data;`. The `#|` form that `{r}` chunks use stops the render. Leave one blank line between the last `*|` line and the first SAS statement: without it, only the first option is read.
 - **Own SAS session:** the render opens its own SAS session through saspy, not your console session. Tables in `WORK` and macro variables from the console do not exist there. The report loads its data from permanent libraries or files, or repeats the DATA steps.
 - **Formats:** `{sas}` chunks produce HTML and PDF output only.
+
+Before the assistant says a report is done, it checks the `{sas}` chunks against these rules and renders the document. If it could not render, it says "Written, not rendered" and gives the reason.
 
 The skill is part of the extension and works in Positron 2026.10 and later. In older versions, ask for the same steps by hand.
 

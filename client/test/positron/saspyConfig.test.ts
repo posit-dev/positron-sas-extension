@@ -141,14 +141,45 @@ describe("writeSaspyConfig", () => {
     expect(writeSaspyConfig(dir, "x = 1").status).to.equal("unchanged");
   });
 
-  it("does not replace a different file unless asked to", () => {
+  it("keeps a different file as a timestamped backup, then replaces it", () => {
     writeSaspyConfig(dir, "x = 1");
-    const result = writeSaspyConfig(dir, "x = 2");
-    expect(result.status).to.equal("exists");
-    expect(fs.readFileSync(result.path, "utf8")).to.equal("x = 1\n");
-
-    expect(writeSaspyConfig(dir, "x = 2", true).status).to.equal("written");
+    const result = writeSaspyConfig(
+      dir,
+      "x = 2",
+      new Date(2026, 0, 31, 9, 4, 5),
+    );
+    expect(result.status).to.equal("written");
     expect(fs.readFileSync(result.path, "utf8")).to.equal("x = 2\n");
+    expect(result.backupPath).to.equal(
+      path.join(dir, "sascfg_personal.py.old-20260131-090405"),
+    );
+    expect(fs.readFileSync(result.backupPath, "utf8")).to.equal("x = 1\n");
+  });
+
+  it("makes no backup when the content is the same or the file is new", () => {
+    expect(writeSaspyConfig(dir, "x = 1").backupPath).to.equal(undefined);
+    expect(writeSaspyConfig(dir, "x = 1").backupPath).to.equal(undefined);
+    expect(fs.readdirSync(dir)).to.deep.equal([SASPY_CONFIG_FILE]);
+  });
+
+  it("never overwrites an earlier backup, even within the same second", () => {
+    const now = new Date(2026, 0, 31, 9, 4, 5);
+    writeSaspyConfig(dir, "x = 1");
+    const first = writeSaspyConfig(dir, "x = 2", now);
+    const second = writeSaspyConfig(dir, "x = 3", now);
+    expect(second.backupPath).to.not.equal(first.backupPath);
+    expect(fs.readFileSync(first.backupPath, "utf8")).to.equal("x = 1\n");
+    expect(fs.readFileSync(second.backupPath, "utf8")).to.equal("x = 2\n");
+    expect(fs.readFileSync(second.path, "utf8")).to.equal("x = 3\n");
+  });
+
+  it("names backups so that Python does not import them", () => {
+    writeSaspyConfig(dir, "x = 1");
+    const { backupPath } = writeSaspyConfig(dir, "x = 2");
+    expect(path.extname(backupPath)).to.not.equal(".py");
+    expect(path.basename(backupPath)).to.match(
+      /^sascfg_personal\.py\.old-\d{8}-\d{6}$/,
+    );
   });
 });
 
