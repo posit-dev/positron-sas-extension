@@ -173,6 +173,8 @@ export class SasWorkspaceContextProvider {
           `(4) In the .qmd file, start with an {r} chunk that runs library(sasquatch) and sas_connect(). ` +
           `This first {r} chunk is required: without it Quarto picks the Jupyter engine and the {sas} chunks fail, ` +
           `(5) Use \`\`\`{sas} code chunks for SAS code. ` +
+          `In a {sas} chunk, options are written \`*| label: name;\` (not \`#|\`), and one blank line must follow the last option line, ` +
+          `before the first SAS statement, or only the first option is read. ` +
           `The rendered document opens its own SAS session through saspy, separate from the SAS console session, ` +
           `so WORK tables from the console do not exist there: load data from permanent libraries or files, ` +
           `or repeat the DATA steps that created the tables.`,

@@ -179,30 +179,66 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
 /** The file name saspy looks for in the working directory. */
 export const SASPY_CONFIG_FILE = "sascfg_personal.py";
 
-export type SaspyWriteResult =
-  | { status: "written" | "unchanged"; path: string }
-  | { status: "exists"; path: string };
+export interface SaspyWriteResult {
+  status: "written" | "unchanged";
+  path: string;
+  /** Set when a different file was there: where its content was kept. */
+  backupPath?: string;
+}
+
+/** `20260131-094501`, in local time, for backup file names. */
+function backupTimestamp(date: Date): string {
+  const two = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${date.getFullYear()}${two(date.getMonth() + 1)}${two(date.getDate())}` +
+    `-${two(date.getHours())}${two(date.getMinutes())}${two(date.getSeconds())}`
+  );
+}
 
 /**
- * Write the configuration as sascfg_personal.py into a directory. An existing
- * file with other content is left alone unless `overwrite` is set, so callers
- * can ask the user first.
+ * Copy `file` to `<file>.old-<timestamp>`. The name does not end in `.py`, so
+ * Python never imports it. An existing backup is never overwritten: a clash
+ * within the same second gets a counter.
+ */
+function backUpFile(file: string, date: Date): string {
+  const base = `${file}.old-${backupTimestamp(date)}`;
+  for (let n = 0; ; n++) {
+    const target = n === 0 ? base : `${base}-${n}`;
+    try {
+      fs.copyFileSync(file, target, fs.constants.COPYFILE_EXCL);
+      return target;
+    } catch (error) {
+      if (!(
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "EEXIST"
+      )) {
+        throw error;
+      }
+    }
+  }
+}
+
+/**
+ * Write the configuration as sascfg_personal.py into a directory. A file with
+ * the same content is left alone. A file with other content is copied to
+ * `sascfg_personal.py.old-<timestamp>` first and then replaced, so nothing is
+ * lost and no one has to be asked (the caller may be an unattended assistant).
  */
 export function writeSaspyConfig(
   dir: string,
   config: string,
-  overwrite = false,
+  now: Date = new Date(),
 ): SaspyWriteResult {
   const file = path.join(dir, SASPY_CONFIG_FILE);
   const text = config.endsWith("\n") ? config : `${config}\n`;
+  let backupPath: string | undefined;
   if (fs.existsSync(file)) {
     if (fs.readFileSync(file, "utf8") === text) {
       return { status: "unchanged", path: file };
     }
-    if (!overwrite) {
-      return { status: "exists", path: file };
-    }
+    backupPath = backUpFile(file, now);
   }
   fs.writeFileSync(file, text, "utf8");
-  return { status: "written", path: file };
+  return { status: "written", path: file, backupPath };
 }

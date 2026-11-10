@@ -7,7 +7,6 @@ import * as path from "path";
 
 import { ConnectionType, ProfileConfig } from "../components/profile";
 import {
-  SASPY_CONFIG_FILE,
   SASPY_TOKEN_ENV,
   profileToSaspyConfig,
   saspyConfigName,
@@ -28,6 +27,8 @@ export interface ExportSaspyConfigResult {
   tokenCommand?: string;
   /** False when the file already had this exact content. */
   changed: boolean;
+  /** Set when a different file was there: where its content was kept. */
+  backupPath?: string;
 }
 
 /** A folder from the command argument: a folder, or a file in the folder. */
@@ -101,36 +102,35 @@ export async function exportSaspyConfig(
     return undefined;
   }
 
-  const config = profileToSaspyConfig(profileName, profile);
-  let result = writeSaspyConfig(dir, config);
-  if (result.status === "exists") {
-    const replace = l10n.t("Replace");
-    const answer = await window.showWarningMessage(
-      l10n.t(
-        "{0} already exists in {1} and is different. Replace it?",
-        SASPY_CONFIG_FILE,
-        dir,
-      ),
-      { modal: true },
-      replace,
-    );
-    if (answer !== replace) {
-      return undefined;
-    }
-    result = writeSaspyConfig(dir, config, true);
-  }
+  // Never asks: an assistant may run this unattended, and a dialog would block
+  // it. A different file is kept as a backup instead.
+  const result = writeSaspyConfig(
+    dir,
+    profileToSaspyConfig(profileName, profile),
+  );
 
   const tokenEnvVar =
     profile.connectionType === ConnectionType.Rest
       ? SASPY_TOKEN_ENV
       : undefined;
-  const message = tokenEnvVar
-    ? l10n.t(
-        "Saved {0}. Before a render, run SAS: Save Viya Token for saspy, or set the {1} environment variable to a SAS Viya access token.",
-        result.path,
+  const parts = [
+    result.backupPath
+      ? l10n.t(
+          "Saved {0}. The previous file was kept as {1}.",
+          result.path,
+          result.backupPath,
+        )
+      : l10n.t("Saved {0}.", result.path),
+  ];
+  if (tokenEnvVar) {
+    parts.push(
+      l10n.t(
+        "Before a render, run SAS: Save Viya Token for saspy, or set the {0} environment variable to a SAS Viya access token.",
         tokenEnvVar,
-      )
-    : l10n.t("Saved {0}.", result.path);
+      ),
+    );
+  }
+  const message = parts.join(" ");
   // Not awaited: the message stays up until dismissed, and callers need the result.
   window
     .showInformationMessage(message, l10n.t("Open"))
@@ -144,5 +144,6 @@ export async function exportSaspyConfig(
     tokenEnvVar,
     tokenCommand: tokenEnvVar ? "SAS.saveViyaTokenForSaspy" : undefined,
     changed: result.status === "written",
+    backupPath: result.backupPath,
   };
 }

@@ -65,15 +65,22 @@ with ';'". Write the label like this:
 
 ```{sas}
 *| label: load-data;
+
 data work.cars;
   set sashelp.cars;
 run;
 ```
 
 - Use `*| ` at the start of the line and `;` at the end. `{r}` chunks keep `#|`.
-- Put the label on the first line of the chunk, before the SAS code.
-- Use the label as the only option. Several option lines are read unreliably when
-  the code that follows also ends its lines in `;`.
+- Put the options on the first lines of the chunk, before the SAS code.
+- **Always leave one blank line between the last `*|` line and the first SAS
+  statement, in every `{sas}` chunk.** Without it, knitr reads only the first
+  option line. Every further `*|` line is passed to SAS as code, where it is a
+  comment, so `echo`, `fig-cap` and the like are silently ignored. With the blank
+  line all option lines are read. A chunk with a single label also works without
+  the blank line, but write it anyway so that every chunk looks the same and
+  adding an option later cannot break it.
+- Prefer the label as the only option.
 
 ## How a SAS report works
 
@@ -144,6 +151,7 @@ sas_connect()
 
 ```{sas}
 *| label: load-data;
+
 data work.cars;
   set sashelp.cars;
 run;
@@ -153,6 +161,7 @@ run;
 
 ```{sas}
 *| label: summarize-mpg;
+
 proc means data=work.cars mean min max;
   class origin;
   var mpg_city;
@@ -192,8 +201,11 @@ this order:
    Positron commands and the folder of the `.qmd` as its argument. It writes
    `sascfg_personal.py` there and returns the file's path, the configuration name
    and, for SAS Viya, how the token gets to saspy (see "The SAS Viya token"
-   below). If the file exists with other content, it asks the user before replacing it. A
-   `not-found` result means the extension is older than this command.
+   below). If the file exists with other content, the command does not ask: it
+   keeps the old file as `sascfg_personal.py.old-<timestamp>` next to it and writes the
+   new one. The result then has a `backupPath`: **tell the user in your reply that the
+   previous configuration was saved there.** A `not-found` result means the extension
+   is older than this command.
 2. **If the command is not available or cannot be run, ask the user to run
    *SAS: Export saspy Configuration* from the Command Palette**, with the `.qmd`
    open so the file lands next to it.
@@ -287,14 +299,76 @@ saspy** from the Command Palette.
 **Never read that file, print the token, or put a token, password or client
 secret into a file or the report.** The token must not appear in the conversation.
 
-## Checking the report
+## Before you say the report is done
 
-Render it as the generic report skill describes (`quarto render`), after saving
-the SAS Viya token as described above. If the render
-fails, the usual causes are, in this order:
+Do these in order after writing or changing the `.qmd`.
+
+**1. Lint the `{sas}` chunks.** Every `{sas}` chunk needs a `*| label: name;` line,
+no `#|` lines, `;` at the end of each `*|` line, and a blank line after the last `*|`
+line. Run this, with the path of the `.qmd` as the argument (it needs only R; on
+Windows save it to a file and run `Rscript file.R report.qmd`):
+
+```bash
+Rscript - report.qmd <<'EOF'
+x <- readLines(commandArgs(TRUE)[1], warn = FALSE)
+open <- NA_integer_
+sas <- FALSE
+problems <- character()
+n <- 0
+for (i in seq_along(x)) {
+  if (!grepl("^\\s*`{3,}", x[i])) next
+  if (is.na(open)) {
+    open <- i
+    sas <- grepl("^\\s*`{3,}\\s*\\{sas[ ,}]", x[i])
+    next
+  }
+  if (sas) {
+    n <- n + 1
+    body <- x[seq_len(i - open - 1) + open]
+    for (k in grep("^\\s*#\\|", body)) {
+      problems <- c(problems, sprintf("line %d: `#|` option in a {sas} chunk, use `*| ...;`", open + k))
+    }
+    star <- grep("^\\s*\\*\\|", body)
+    if (!any(grepl("^\\s*\\*\\|\\s*label:", body[star]))) {
+      problems <- c(problems, sprintf("line %d: {sas} chunk has no `*| label: name;` line", open))
+    }
+    for (k in star[!grepl(";\\s*$", body[star])]) {
+      problems <- c(problems, sprintf("line %d: `*|` option does not end in `;`", open + k))
+    }
+    if (length(star) > 0 && max(star) < length(body) && nzchar(trimws(body[max(star) + 1]))) {
+      problems <- c(problems, sprintf("line %d: no blank line after the last `*|` option line", open + max(star)))
+    }
+  }
+  open <- NA_integer_
+}
+if (length(problems)) { cat(problems, sep = "\n"); quit(status = 1) }
+cat("OK:", n, "{sas} chunks checked\n")
+EOF
+```
+
+Fix every line it reports, then run it again. If you cannot run commands, check the
+same four rules by reading the file.
+
+**2. Render it, do not leave that to the user.** When the setup is complete
+(sasquatch, saspy, the connection file and, for SAS Viya, the saved token), run
+`quarto render` yourself, as the generic report skill describes, after saving the
+SAS Viya token as described above. Do not end with an offer such as "Render the report
+and check that it runs": render it and report what happened.
+
+**3. Choose the closing words by what actually happened.**
+
+- The render succeeded: say so, and only now say the report is done. Name the output file.
+- The render was not run (a setup step is missing or the user said no): say
+  "Written, not rendered", give the reason, and name the next step. Do not say
+  "done", "complete" or "finished".
+- The render failed: say it failed and show the error. Fix it with the list below
+  and render again.
+
+If the render fails, the usual causes are, in this order:
 
 1. "The chunk options should start with '*| ' instead of '#| '": a `{sas}` chunk
-   has `#| label: name` and needs `*| label: name;`.
+   has `#| label: name` and needs `*| label: name;`. If an option such as `echo` or
+   `fig-cap` has no effect, there is no blank line after the `*|` lines.
 2. The Jupyter engine was chosen: the first chunk is not an `{r}` chunk.
 3. `sasquatch` is not installed, or saspy is not installed in the Python
    environment that reticulate uses (`sasquatch::install_saspy()`).
