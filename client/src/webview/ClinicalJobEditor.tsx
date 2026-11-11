@@ -59,6 +59,7 @@ interface Context {
   canBrowse: boolean;
   canSchedule: boolean;
   canPopulate: boolean;
+  canTest: boolean;
   fileName: string;
 }
 
@@ -841,6 +842,7 @@ function App() {
             canBrowse: message.canBrowse,
             canSchedule: message.canSchedule,
             canPopulate: message.canPopulate,
+            canTest: message.canTest,
             fileName: message.fileName,
           });
           show(message.text);
@@ -877,6 +879,11 @@ function App() {
           <button className="primary" onClick={() => send({ type: "run" })}>
             ▶ {ctx.labels.run}
           </button>
+          {ctx.canTest && (
+            <button onClick={() => send({ type: "test" })}>
+              {ctx.labels.test}
+            </button>
+          )}
           {ctx.canPopulate && (
             <button onClick={() => send({ type: "runAndPopulate" })}>
               {ctx.labels.runAndPopulate}

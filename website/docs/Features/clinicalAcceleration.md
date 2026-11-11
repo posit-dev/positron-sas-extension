@@ -141,6 +141,15 @@ If the run does not succeed, the job is not changed.
 
 When the run ends, a notification says how many files and folders Publish Setup lists, and the job editor shows the new settings. **Run and Populate** works only on jobs in your workspace: SAS Clinical Acceleration does not offer it for jobs in the repository.
 
+### Test a job
+
+A job that runs in your workspace can still fail from the repository, because its programs, inputs, or output locations exist only in your workspace. **Test Clinical Job...** finds this out before you check the job in. It runs a job from your workspace as if it ran from the repository: the programs and input files are read from their locations in the repository, and the output locations must exist there.
+
+1. Right-click a `.cjob` file in the **Clinical Workspace** view and select **Test Clinical Job...**. In the job editor, click **Test...**. Unsaved changes are saved first.
+2. Enter the parameter values. File and folder parameters name locations in the repository, so you pick them in the repository.
+
+A test writes only the log, the listing, and the manifest, to the job's output locations in your workspace. They show what a repository run would report, including the outputs it would check in. Nothing is checked in and no audit record is created. A test cannot find every problem: a check-in can still fail, for example without write permission on an output folder or without the privilege to version new files.
+
 ### Create and edit jobs
 
 A `.cjob` file opens in the clinical job editor, a form with these sections:
@@ -153,7 +162,7 @@ A `.cjob` file opens in the clinical job editor, a form with these sections:
 
 Paths of programs and output locations are stored relative to the job, as SAS Clinical Acceleration stores them. The editor checks the job as you edit it and lists problems, such as a job without programs or an invalid parameter name, above the form.
 
-Save the job as you save any file. Undo and redo work as in a text editor. Click **Run** to save and run the job, **Run and Populate...** to fill its Publish Setup from a run (see [Run and populate a job](#run-and-populate-a-job)), or **Open as JSON** to edit the file as text.
+Save the job as you save any file. Undo and redo work as in a text editor. Click **Run** to save and run the job, **Test...** to try it as a repository run (see [Test a job](#test-a-job)), **Run and Populate...** to fill its Publish Setup from a run (see [Run and populate a job](#run-and-populate-a-job)), or **Open as JSON** to edit the file as text.
 
 To create a job, right-click a folder in the **Clinical Workspace** view, select **New Clinical Job...**, and enter a name. The job opens in the editor.
 

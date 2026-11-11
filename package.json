@@ -1214,6 +1214,11 @@
         "category": "SAS Clinical Acceleration"
       },
       {
+        "command": "SAS.clinical.job.test",
+        "title": "%clinical.commands.testJob%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.job.runProgram",
         "title": "%clinical.commands.runProgram%",
         "category": "SAS Clinical Acceleration",
@@ -1435,9 +1440,14 @@
           "group": "navigation@0"
         },
         {
-          "command": "SAS.clinical.job.runAndPopulate",
+          "command": "SAS.clinical.job.test",
           "when": "resourceExtname == .cjob && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
           "group": "1_run@0"
+        },
+        {
+          "command": "SAS.clinical.job.runAndPopulate",
+          "when": "resourceExtname == .cjob && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
+          "group": "1_run@1"
         }
       ],
       "webview/context": [
@@ -1882,9 +1892,14 @@
           "group": "0_run@0"
         },
         {
-          "command": "SAS.clinical.job.runAndPopulate",
+          "command": "SAS.clinical.job.test",
           "when": "view == clinicalworkspaceprovider && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
           "group": "0_run@1"
+        },
+        {
+          "command": "SAS.clinical.job.runAndPopulate",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@2"
         },
         {
           "command": "SAS.clinical.job.runProgram",
@@ -2439,6 +2454,10 @@
         {
           "when": "resourceExtname == .cjob && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
           "command": "SAS.clinical.job.runAndPopulate"
+        },
+        {
+          "when": "resourceExtname == .cjob && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
+          "command": "SAS.clinical.job.test"
         },
         {
           "when": "false",

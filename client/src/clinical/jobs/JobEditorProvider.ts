@@ -101,6 +101,7 @@ export class JobEditorProvider implements CustomTextEditorProvider {
               canBrowse: !!resource && !readOnly,
               canSchedule: !!resource,
               canPopulate: isWorkspace && !!resource && !readOnly,
+              canTest: isWorkspace && !!resource,
               fileName: baseName(document.uri.path),
               labels: EditorLabelText,
             });
@@ -144,6 +145,15 @@ export class JobEditorProvider implements CustomTextEditorProvider {
               return;
             }
             await commands.executeCommand("SAS.clinical.job.run", document.uri);
+            break;
+          case "test":
+            if (document.isDirty && !(await document.save())) {
+              return;
+            }
+            await commands.executeCommand(
+              "SAS.clinical.job.test",
+              document.uri,
+            );
             break;
           case "runAndPopulate":
             if (document.isDirty && !(await document.save())) {

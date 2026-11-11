@@ -23,7 +23,7 @@ import type {
   JobResource,
   Manifest,
   ParameterValue,
-  PopulatePaths,
+  RunKind,
   Submission,
 } from "./types";
 import { publishCounts, toRunInfo } from "./utils";
@@ -117,11 +117,36 @@ export class JobRunner {
     await this.submit(resource, values, choice.paths);
   }
 
+  /**
+   * Test a workspace job: it runs as if from the repository, reading its
+   * programs and inputs there, and writes only its log, listing and manifest
+   * to the workspace, without checking anything in. File and folder
+   * parameters therefore name repository paths.
+   */
+  async testJob(resource: JobResource): Promise<void> {
+    let job: ClinicalJob;
+    try {
+      job = await this.loadJob(resource);
+    } catch (error) {
+      this.fail(JobMessages.LoadJobError, resource.name, error);
+      return;
+    }
+    const values = await promptParameterValues(
+      job,
+      { ...resource, resourceLocation: "REPOSITORY" },
+      this.picker,
+    );
+    if (values === undefined) {
+      return;
+    }
+    await this.submit(resource, values, "test");
+  }
+
   /** Run a job with the given values, without prompting. */
   async submit(
     resource: JobResource,
     values: ParameterValue[],
-    populate?: PopulatePaths,
+    kind?: RunKind,
   ): Promise<void> {
     let submission: Submission;
     try {
@@ -130,7 +155,7 @@ export class JobRunner {
           location: ProgressLocation.Window,
           title: l10n.t(JobMessages.Starting, { name: resource.name }),
         },
-        () => this.model.submit(toRunInfo(resource, values), populate),
+        () => this.model.submit(toRunInfo(resource, values), kind),
       );
     } catch (error) {
       this.fail(JobMessages.RunError, resource.name, error);
@@ -138,14 +163,30 @@ export class JobRunner {
     }
     this.output.info(
       `Started ${resource.path} (${resource.resourceLocation})${
-        populate ? ` to run and populate with ${populate} paths` : ""
+        kind === "test"
+          ? " as a test run"
+          : kind
+            ? ` to run and populate with ${kind} paths`
+            : ""
       } as run ${submission.id}.`,
     );
     this.onChanged(submission);
     await this.follow(
       submission,
-      populate && ((state) => this.afterPopulate(resource, state)),
+      kind === "test"
+        ? (state) => this.afterTest(resource, state)
+        : kind && ((state) => this.afterPopulate(resource, state)),
     );
+  }
+
+  /** Say what a passed test run does and does not show, without waiting. */
+  private async afterTest(resource: JobResource, state: string): Promise<void> {
+    const outcome = outcomeOf(state);
+    if (outcome === "success" || outcome === "warning") {
+      void window.showInformationMessage(
+        l10n.t(JobMessages.TestPassed, { name: resource.name }),
+      );
+    }
   }
 
   /** Report what Run and populate left in the job, without waiting. */

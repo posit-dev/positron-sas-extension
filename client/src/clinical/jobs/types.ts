@@ -112,6 +112,12 @@ export interface RunInfo {
  */
 export type PopulatePaths = "relative" | "absolute";
 
+/**
+ * A run other than a plain one: a test run (the workspace job runs as if
+ * from the repository, without check-in) or Run and populate.
+ */
+export type RunKind = "test" | PopulatePaths;
+
 export type SubmissionState =
   | "NOT_STARTED"
   | "STARTED"

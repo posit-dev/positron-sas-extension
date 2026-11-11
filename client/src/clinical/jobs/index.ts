@@ -194,6 +194,36 @@ export function registerClinicalJobs(
     return resourceFromPath(path, where.location);
   };
 
+  /**
+   * The workspace job a command was invoked on, saved first when it has
+   * unsaved changes, because the service runs the saved job. Undefined, with
+   * a message, for anything else.
+   */
+  const savedWorkspaceJob = async (
+    target: RunTarget,
+    workspaceOnly: string,
+  ): Promise<JobResource | undefined> => {
+    const resource = jobResource(target);
+    if (!resource) {
+      window.showInformationMessage(JobMessages.NotAJob);
+      return undefined;
+    }
+    if (resource.resourceLocation !== "WORKSPACE") {
+      window.showInformationMessage(
+        l10n.t(workspaceOnly, { name: resource.name }),
+      );
+      return undefined;
+    }
+    const uri = uriForResource(resource);
+    const open = workspace.textDocuments.find(
+      (d) => d.uri.toString() === uri?.toString(),
+    );
+    if (open?.isDirty && !(await open.save())) {
+      return undefined;
+    }
+    return resource;
+  };
+
   const runOf = (node: JobNode | undefined): Submission | undefined =>
     node?.kind === "run" ? node.submission : undefined;
 
@@ -359,27 +389,23 @@ export function registerClinicalJobs(
     commands.registerCommand(
       "SAS.clinical.job.runAndPopulate",
       async (target: RunTarget) => {
-        const resource = jobResource(target);
-        if (!resource) {
-          window.showInformationMessage(JobMessages.NotAJob);
-          return;
-        }
         // The service refuses repository jobs (error 145526).
-        if (resource.resourceLocation !== "WORKSPACE") {
-          window.showInformationMessage(
-            l10n.t(JobMessages.PopulateWorkspaceOnly, { name: resource.name }),
-          );
-          return;
-        }
-        // The run reads the saved job, as in SAS Studio.
-        const uri = uriForResource(resource);
-        const open = workspace.textDocuments.find(
-          (d) => d.uri.toString() === uri?.toString(),
+        const resource = await savedWorkspaceJob(
+          target,
+          JobMessages.PopulateWorkspaceOnly,
         );
-        if (open?.isDirty && !(await open.save())) {
-          return;
-        }
-        return runner.runAndPopulate(resource);
+        return resource && runner.runAndPopulate(resource);
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.job.test",
+      async (target: RunTarget) => {
+        // A test runs a workspace job as if from the repository.
+        const resource = await savedWorkspaceJob(
+          target,
+          JobMessages.TestWorkspaceOnly,
+        );
+        return resource && runner.testJob(resource);
       },
     ),
     commands.registerCommand(

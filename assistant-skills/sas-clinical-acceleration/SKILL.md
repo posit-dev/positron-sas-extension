@@ -120,6 +120,16 @@ That manifest is the audit trail.
   in the editor); programs and parameters stay. A failed run leaves the job
   unchanged. Workspace jobs only: the service refuses repository jobs. Use it
   before checking a job in, so its repository runs get their inputs.
+- **Test a job:** right-click a `.cjob` in the Clinical Workspace view and
+  choose **Test Clinical Job...** (or **Test...** in the job editor). It runs
+  the workspace job as if from the repository: programs and inputs are read
+  from their repository locations, and file and folder parameters are picked
+  in the repository. Only the log, listing and manifest are written, to the
+  workspace; nothing is checked in and no audit record is made. A passed test
+  means the job should run from the repository, but check-in problems
+  (write permission, versioning privilege) can still occur. Suggested order:
+  Run and Populate, check the job and its programs and inputs in, Test, then
+  run from the repository.
 - **Create and edit jobs:** a `.cjob` opens in the clinical job editor, a form
   with General (description), Programs (ordered, optional version; empty means
   latest), Parameters (name, label, type, default; names must be valid SAS
