@@ -15,6 +15,7 @@ import {
   env,
   l10n,
   window,
+  workspace,
 } from "vscode";
 
 import {
@@ -66,6 +67,8 @@ export function registerClinicalJobs(
   output: LogOutputChannel,
   /** Refresh the Repository and Workspace views: runs write outputs. */
   refreshTrees: () => void,
+  /** Tell open editors that a workspace file changed on the server. */
+  notifyWorkspaceFileChanged: (path: string) => void = () => undefined,
 ): ClinicalJobs {
   const log = (message: string) => output.info(message);
   const model = new JobsModel(repositoryModel, workspaceModel);
@@ -79,12 +82,18 @@ export function registerClinicalJobs(
   );
   const view = new JobsDataProvider(model, log, hidden);
   const reports = new ManifestReports(model, output);
-  const runner = new JobRunner(model, picker, output, (submission) => {
-    view.upsert(submission);
-    if (isTerminal(submission.state)) {
-      refreshTrees();
-    }
-  });
+  const runner = new JobRunner(
+    model,
+    picker,
+    output,
+    (submission) => {
+      view.upsert(submission);
+      if (isTerminal(submission.state)) {
+        refreshTrees();
+      }
+    },
+    (resource) => notifyWorkspaceFileChanged(resource.path),
+  );
 
   const programs = new ProgramJobs(model, runner, output, refreshTrees);
   const schedules = new SchedulesDataProvider(model, log, currentUser);
@@ -183,6 +192,36 @@ export function registerClinicalJobs(
       return undefined;
     }
     return resourceFromPath(path, where.location);
+  };
+
+  /**
+   * The workspace job a command was invoked on, saved first when it has
+   * unsaved changes, because the service runs the saved job. Undefined, with
+   * a message, for anything else.
+   */
+  const savedWorkspaceJob = async (
+    target: RunTarget,
+    workspaceOnly: string,
+  ): Promise<JobResource | undefined> => {
+    const resource = jobResource(target);
+    if (!resource) {
+      window.showInformationMessage(JobMessages.NotAJob);
+      return undefined;
+    }
+    if (resource.resourceLocation !== "WORKSPACE") {
+      window.showInformationMessage(
+        l10n.t(workspaceOnly, { name: resource.name }),
+      );
+      return undefined;
+    }
+    const uri = uriForResource(resource);
+    const open = workspace.textDocuments.find(
+      (d) => d.uri.toString() === uri?.toString(),
+    );
+    if (open?.isDirty && !(await open.save())) {
+      return undefined;
+    }
+    return resource;
   };
 
   const runOf = (node: JobNode | undefined): Submission | undefined =>
@@ -347,6 +386,28 @@ export function registerClinicalJobs(
       }
       return runner.run(resource);
     }),
+    commands.registerCommand(
+      "SAS.clinical.job.runAndPopulate",
+      async (target: RunTarget) => {
+        // The service refuses repository jobs (error 145526).
+        const resource = await savedWorkspaceJob(
+          target,
+          JobMessages.PopulateWorkspaceOnly,
+        );
+        return resource && runner.runAndPopulate(resource);
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.job.test",
+      async (target: RunTarget) => {
+        // A test runs a workspace job as if from the repository.
+        const resource = await savedWorkspaceJob(
+          target,
+          JobMessages.TestWorkspaceOnly,
+        );
+        return resource && runner.testJob(resource);
+      },
+    ),
     commands.registerCommand(
       "SAS.clinical.job.runProgram",
       (target: RunTarget) => {

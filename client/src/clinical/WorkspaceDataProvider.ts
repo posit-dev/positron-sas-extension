@@ -74,6 +74,17 @@ export class WorkspaceDataProvider
     this._onDidChangeTreeData.fire(undefined);
   }
 
+  /**
+   * Tell open editors that a file changed on the server, such as a job that
+   * Run and populate rewrote, so they show the new content.
+   */
+  notifyChanged(path: string): void {
+    this._onDidChangeFile.fire([
+      { type: FileChangeType.Changed, uri: getWorkspaceUri({ path }) },
+    ]);
+    this.refresh();
+  }
+
   /** The clicked item plus any other selected items. */
   selection(item: WorkspaceItem | undefined): WorkspaceItem[] {
     const selected = this.treeView.selection;

@@ -40,6 +40,35 @@ export const JobMessages = {
   NoLog: l10n.t("This run wrote no log."),
   NoResults: l10n.t("This run wrote no results."),
   NotAJob: l10n.t("Select a clinical job (.cjob) to run."),
+  PopulateTitle: l10n.t("Run and Populate {name}"),
+  PopulatePlaceholder: l10n.t(
+    "Run the job, then fill Publish Setup with the files its programs read and the folders they write to.",
+  ),
+  PopulateReplaces: l10n.t(
+    "Run the job, then replace its {setup} Publish Setup entries with the files its programs read and the folders they write to, and remove its {locations} check-in locations.",
+  ),
+  PopulateRelative: l10n.t("Use Relative Paths"),
+  PopulateRelativeDetail: l10n.t(
+    "./ and ../ from the job's folder, so the job can be copied to a folder with the same structure",
+  ),
+  PopulateAbsolute: l10n.t("Use Absolute Paths"),
+  PopulateAbsoluteDetail: l10n.t("Full paths from the root of the workspace"),
+  PopulateWorkspaceOnly: l10n.t(
+    "Run and Populate works only on jobs in your Clinical Workspace. Copy or check out {name} to your workspace and run it there.",
+  ),
+  Populated: l10n.t(
+    "{name} was populated: Publish Setup lists {files} file(s) and {folders} folder(s), and check-in locations were removed. Add check-in locations again in the job editor if the job needs them.",
+  ),
+  PopulateUnchanged: l10n.t(
+    "{name} was not changed, because the run did not complete successfully.",
+  ),
+  OpenJob: l10n.t("Open Job"),
+  TestWorkspaceOnly: l10n.t(
+    "Test Clinical Job works only on jobs in your Clinical Workspace: it runs a workspace job as if it ran from the repository. Run {name} from the repository instead, or copy or check it out to your workspace.",
+  ),
+  TestPassed: l10n.t(
+    "The test of {name} passed: its programs and inputs exist in the repository, so the job should also run from there. A test checks nothing in, so it does not show check-in problems such as missing write permission on an output folder.",
+  ),
   StillRunning: l10n.t("Running..."),
   LoadMore: l10n.t("Load more..."),
   NoRuns: l10n.t("No clinical job runs yet."),
@@ -264,6 +293,8 @@ export function errorStatus(error: unknown): string {
 
 export const EditorLabelText: EditorLabels = {
   run: l10n.t("Run"),
+  runAndPopulate: l10n.t("Run and Populate..."),
+  test: l10n.t("Test..."),
   schedule: l10n.t("Schedule..."),
   openAsJson: l10n.t("Open as JSON"),
   readOnly: l10n.t(

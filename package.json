@@ -1209,6 +1209,16 @@
         "icon": "$(play)"
       },
       {
+        "command": "SAS.clinical.job.runAndPopulate",
+        "title": "%clinical.commands.runAndPopulate%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.job.test",
+        "title": "%clinical.commands.testJob%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.job.runProgram",
         "title": "%clinical.commands.runProgram%",
         "category": "SAS Clinical Acceleration",
@@ -1428,6 +1438,16 @@
           "command": "SAS.clinical.job.showManifest",
           "when": "resourceExtname == .cmnf && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",
           "group": "navigation@0"
+        },
+        {
+          "command": "SAS.clinical.job.test",
+          "when": "resourceExtname == .cjob && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
+          "group": "1_run@0"
+        },
+        {
+          "command": "SAS.clinical.job.runAndPopulate",
+          "when": "resourceExtname == .cjob && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
+          "group": "1_run@1"
         }
       ],
       "webview/context": [
@@ -1870,6 +1890,16 @@
           "command": "SAS.clinical.job.run",
           "when": "view == clinicalworkspaceprovider && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
           "group": "0_run@0"
+        },
+        {
+          "command": "SAS.clinical.job.test",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@1"
+        },
+        {
+          "command": "SAS.clinical.job.runAndPopulate",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@2"
         },
         {
           "command": "SAS.clinical.job.runProgram",
@@ -2420,6 +2450,14 @@
         {
           "when": "resourceExtname == .cjob && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",
           "command": "SAS.clinical.job.run"
+        },
+        {
+          "when": "resourceExtname == .cjob && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
+          "command": "SAS.clinical.job.runAndPopulate"
+        },
+        {
+          "when": "resourceExtname == .cjob && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
+          "command": "SAS.clinical.job.test"
         },
         {
           "when": "false",

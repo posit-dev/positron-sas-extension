@@ -135,6 +135,7 @@ export class ClinicalRepository {
       workspaceModel,
       output,
       () => repository.refreshAll(),
+      (path) => workspaceProvider.notifyChanged(path),
     );
     const jobsAvailability = new ClinicalAvailability(
       (available) => {

@@ -50,8 +50,10 @@ import {
   parentPath,
   parseJobFile,
   programJob,
+  publishCounts,
   resolveJobPath,
   resourceFromPath,
+  runRequest,
   runsOnlyProgram,
   submittedByFilter,
   toRunInfo,
@@ -147,6 +149,49 @@ describe("clinical job paths", () => {
       location: "/a",
       resourceLocation: "WORKSPACE",
     });
+  });
+});
+
+describe("run and populate", () => {
+  const run = toRunInfo(resourceFromPath("/s/job.cjob", "WORKSPACE"));
+
+  it("is a plain run without populate", () => {
+    expect(runRequest(run)).to.deep.equal({ action: "RUN", body: run });
+  });
+
+  it("is a test run with action=TEST and the plain body", () => {
+    expect(runRequest(run, "test")).to.deep.equal({
+      action: "TEST",
+      body: run,
+    });
+  });
+
+  it("asks for relative paths in the body only when wanted", () => {
+    expect(runRequest(run, "absolute")).to.deep.equal({
+      action: "RUN_AND_POPULATE",
+      body: run,
+    });
+    expect(runRequest(run, "relative")).to.deep.equal({
+      action: "RUN_AND_POPULATE",
+      body: { ...run, useRelativePaths: true },
+    });
+  });
+
+  it("counts what Publish Setup and check-in list", () => {
+    expect(publishCounts({})).to.deep.equal({
+      files: 0,
+      folders: 0,
+      locations: 0,
+    });
+    expect(
+      publishCounts({
+        publishSetup: {
+          files: [{ path: "./probe.sas" }],
+          folders: [{ path: "./out" }, { path: "./data" }],
+        },
+        publishCheckin: { locations: [{ path: "./out" }] },
+      }),
+    ).to.deep.equal({ files: 1, folders: 2, locations: 1 });
   });
 });
 
@@ -388,6 +433,22 @@ describe("JobsModel", () => {
       Accept: "application/json",
     });
     expect(run.id).to.equal("eba8e748-2de6-4ef0-b3f7-e83d32cb7055");
+  });
+
+  it("runs and populates with ?action=RUN_AND_POPULATE, tests with TEST", async () => {
+    answers["POST /clinicalJobs/submissions"] = json("submit-response.json");
+    const resource = resourceFromPath("/probe-jobs/probe.cjob", "WORKSPACE");
+    await model.submit(toRunInfo(resource), "absolute");
+    await model.submit(toRunInfo(resource), "relative");
+    await model.submit(toRunInfo(resource), "test");
+    expect(calls.map((c) => c.url)).to.deep.equal([
+      "/clinicalJobs/submissions?action=RUN_AND_POPULATE",
+      "/clinicalJobs/submissions?action=RUN_AND_POPULATE",
+      "/clinicalJobs/submissions?action=TEST",
+    ]);
+    // Relative paths are a body field; the server ignores a query parameter.
+    expect(calls[0].data).to.not.have.property("useRelativePaths");
+    expect(calls[1].data).to.deep.include({ useRelativePaths: true });
   });
 
   it("reads the state as JSON and waits for a final one", async () => {

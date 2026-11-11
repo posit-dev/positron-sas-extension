@@ -155,6 +155,8 @@ export const defaultToDate = (value: unknown): string =>
 /** Texts of the editor, translated by the extension. */
 export interface EditorLabels {
   run: string;
+  runAndPopulate: string;
+  test: string;
   schedule: string;
   openAsJson: string;
   readOnly: string;
@@ -217,6 +219,10 @@ export type ToEditor =
       canBrowse: boolean;
       /** Whether the job can be scheduled (CA files, read-only ones too). */
       canSchedule: boolean;
+      /** Whether Run and Populate applies (workspace jobs that can change). */
+      canPopulate: boolean;
+      /** Whether Test applies (workspace jobs). */
+      canTest: boolean;
       fileName: string;
       labels: EditorLabels;
     }
@@ -236,5 +242,7 @@ export type FromEditor =
     }
   | { type: "open"; path: string }
   | { type: "run" }
+  | { type: "runAndPopulate" }
+  | { type: "test" }
   | { type: "schedule" }
   | { type: "openText" };
