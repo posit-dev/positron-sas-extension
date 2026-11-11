@@ -173,6 +173,20 @@ export function runRequest(
   }
 }
 
+/** The kind of run a run context names, to repeat it the same way. */
+export function runKindOf(context: string | undefined): RunKind | undefined {
+  switch (context) {
+    case "INTERACTIVE_TEST":
+      return "test";
+    case "INTERACTIVE_RUN_AND_POPULATE":
+      return "absolute";
+    case "INTERACTIVE_RUN_AND_POPULATE_RELATIVE":
+      return "relative";
+    default:
+      return undefined;
+  }
+}
+
 /** What a job's Publish Setup and check-in options list, for messages. */
 export function publishCounts(job: ClinicalJob): {
   files: number;
