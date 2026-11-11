@@ -12,7 +12,10 @@ The **Clinical Acceleration** icon appears in the activity bar, and the views wi
 
 - **Clinical Repository**: the shared store. Files open read-only.
 - **Clinical Workspace**: your own area on the server. Files open for editing, and saving a file saves it to your workspace.
-- **Clinical Jobs**: your clinical job runs and what each run used and wrote. This view appears when the server also runs SAS Clinical Job Management.
+- **Clinical Jobs**: your clinical job runs and what each run used and wrote.
+- **Clinical Job Schedules**: your schedules that run clinical jobs at set times.
+
+**Clinical Jobs** and **Clinical Job Schedules** appear when the server also runs SAS Clinical Job Management.
 - **Clinical Repository Properties** (collapsed at first): the details of the item you select in the **Clinical Repository** view.
 - **Clinical Version History** (collapsed at first): the versions of the file you select in the **Clinical Repository** view.
 
@@ -163,6 +166,33 @@ A run of a repository job checks its outputs in to the repository. If an output 
 
 :::
 
+### Schedule jobs
+
+A schedule runs a job at set times, with set parameter values, under your user. To create one:
+
+1. Right-click a `.cjob` file in the **Clinical Workspace** or **Clinical Repository** view and select **New Schedule...**. You can also click **Schedule...** in the clinical job editor, or **New Schedule** (the plus sign) in the title bar of the **Clinical Job Schedules** view and pick the job.
+2. Enter a name for the schedule.
+3. Select when the job runs, and answer the questions for that choice:
+   - **Once** or **On several dates**: the dates and the time of day.
+   - **Every few minutes** or **Hourly**: the interval, and for hourly runs the minute of the hour.
+   - **Daily** or **Weekly**: the interval in days or weeks, the days of the week for weekly runs, and the time of day.
+   - **Monthly** or **Yearly**: the month for yearly runs, either a day of the month (such as the 15th) or a weekday (such as the first Monday), and the time of day. Monthly runs also take an interval in months.
+4. For repeated runs, enter the first day and when the schedule ends: never, on a date, or after a number of runs.
+5. Confirm the time zone. It defaults to the time zone of your computer.
+6. Enter the parameter values of the job.
+
+A notification shows the next run. The **Clinical Job Schedules** view lists your schedules with when they run. Expand a schedule to see its job, its parameter values, and its next runs, as the server calculates them.
+
+Right-click a schedule for more actions:
+
+- **Run Now**: run the job now with the parameter values of the schedule. The run appears in the **Clinical Jobs** view.
+- **Edit Schedule...**: change the name, the times, the time zone, or the parameter values. The questions start with the current values.
+- **Disable Schedule** and **Enable Schedule**: stop and resume the runs without deleting the schedule.
+- **Delete Schedule...**: delete the schedule. The job itself is kept.
+- **Copy Schedule ID**: copy the ID of the schedule.
+
+A schedule whose job was deleted, or that you can no longer read, is marked with a warning.
+
 ### The manifest report
 
 The manifest report shows the manifest of a run as one page, for review or for a quality check. It lists the job, how the run ended, who ran it and when, the parameter values, the programs with their results and run times, and each input and output file with its version, size, modification time, and MD5 checksum. For a repository job, it also shows how outputs are checked in and which outputs failed to check in.
@@ -198,4 +228,3 @@ A server can still refuse an action, such as a check-out without write permissio
 - The views use the active SAS Viya profile. Switch profiles to work with another server.
 - The views do not detect changes made by other users or other applications. Click **Refresh** to see them.
 - You cannot search the repository, restore deleted items, or change permissions. Use SAS Clinical Acceleration for those tasks.
-- Job schedules are not shown, and you cannot create or change them. Use SAS Clinical Acceleration for schedules.

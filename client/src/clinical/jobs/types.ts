@@ -254,13 +254,17 @@ export interface Trigger {
   numOccurrences?: number;
   interval?: number;
   dayOfMonth?: number;
-  daysOfWeek?: string[];
+  daysOfWeek?: DayOfWeek[];
   minutes?: string;
   hours?: string;
   dates?: string[];
-  occurrence?: "FIRST" | "SECOND" | "THIRD" | "FOURTH" | "LAST";
+  occurrence?: Occurrence;
   monthOfYear?: string;
 }
+
+export type Occurrence = "FIRST" | "SECOND" | "THIRD" | "FOURTH" | "LAST";
+export type DayOfWeek = "SUN" | "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT";
+export type ScheduleStatus = "ENABLED" | "DISABLED";
 
 export interface Schedule {
   id: string;
@@ -268,8 +272,24 @@ export interface Schedule {
   description?: string;
   runAs?: string;
   runAsDisplayName?: string;
-  status?: "ENABLED" | "DISABLED";
+  status?: ScheduleStatus;
+  /** False when the job no longer exists or the user may not read it. */
   jobAvailable?: boolean;
   jobInfo?: { job?: Partial<JobResource>; parameterValues?: ParameterValue[] };
   trigger?: Trigger;
+  createdBy?: string;
+  createdByDisplayName?: string;
+  creationTimeStamp?: string;
+  modifiedTimeStamp?: string;
+}
+
+/**
+ * Body of POST /schedules (not in the public spec; checked live). The service
+ * fills in interval 1 and numOccurrences -1 (no limit) when they are missing.
+ */
+export interface ScheduleDefinition {
+  name: string;
+  description?: string;
+  jobInfo: RunInfo;
+  trigger: Trigger;
 }

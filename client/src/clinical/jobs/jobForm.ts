@@ -155,6 +155,7 @@ export const defaultToDate = (value: unknown): string =>
 /** Texts of the editor, translated by the extension. */
 export interface EditorLabels {
   run: string;
+  schedule: string;
   openAsJson: string;
   readOnly: string;
   invalidJson: string;
@@ -214,6 +215,8 @@ export type ToEditor =
       resourceLocation: ResourceLocation;
       /** Whether paths can be picked and opened (CA files only). */
       canBrowse: boolean;
+      /** Whether the job can be scheduled (CA files, read-only ones too). */
+      canSchedule: boolean;
       fileName: string;
       labels: EditorLabels;
     }
@@ -233,4 +236,5 @@ export type FromEditor =
     }
   | { type: "open"; path: string }
   | { type: "run" }
+  | { type: "schedule" }
   | { type: "openText" };

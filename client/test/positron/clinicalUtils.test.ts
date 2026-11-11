@@ -634,6 +634,26 @@ describe("buildContextValue", () => {
       ).to.not.include("SAS.clinical.job.runProgram");
     });
 
+    it("offers New Schedule on jobs in both views", () => {
+      const keys = ["SAS.clinical.jobsAvailable"];
+      const job = file({ name: "t.cjob", path: "/Acme/t.cjob" });
+      expect(
+        shown(buildContextValue(job, undefined, "me", "read"), { keys }),
+      ).to.include("SAS.clinical.schedule.new");
+      expect(
+        shown(
+          buildWorkspaceContextValue(
+            wsFile({ name: "t.cjob", path: "/Acme/t.cjob" }),
+            "me",
+          ),
+          { keys, view: "clinicalworkspaceprovider" },
+        ),
+      ).to.include("SAS.clinical.schedule.new");
+      expect(
+        shown(buildContextValue(file(), undefined, "me", "read"), { keys }),
+      ).to.not.include("SAS.clinical.schedule.new");
+    });
+
     it("offers the manifest report on .cmnf files", () => {
       const keys = ["SAS.clinical.jobsAvailable"];
       const cmnf = file({ name: "t.cmnf", path: "/Acme/t.cmnf" });

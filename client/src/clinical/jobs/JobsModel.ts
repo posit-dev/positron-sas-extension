@@ -28,6 +28,8 @@ import type {
   RawSubmission,
   RunInfo,
   Schedule,
+  ScheduleDefinition,
+  ScheduleStatus,
   Submission,
   SubmissionState,
 } from "./types";
@@ -79,6 +81,7 @@ export interface JobsConnection {
     data?: unknown,
     config?: RequestConfig,
   ): Promise<{ data: T }>;
+  delete<T>(url: string, config?: RequestConfig): Promise<{ data: T }>;
 }
 
 /** What the model needs from RepositoryModel: its signed-in connection. */
@@ -282,6 +285,62 @@ export class JobsModel {
       { headers: ACCEPT_JSON },
     );
     return response.data.items ?? [];
+  }
+
+  /**
+   * Schedules can be created, changed, switched on and off and deleted,
+   * although the public spec only documents reading them (checked live).
+   */
+  async createSchedule(definition: ScheduleDefinition): Promise<Schedule> {
+    const connection = await this.repository.getConnection();
+    const response = await connection.post<Schedule>(
+      JOB_SCHEDULES,
+      definition,
+      {
+        headers: JSON_HEADERS,
+      },
+    );
+    return response.data;
+  }
+
+  async getSchedule(id: string): Promise<Schedule> {
+    const connection = await this.repository.getConnection();
+    const response = await connection.get<Schedule>(
+      `${JOB_SCHEDULES}/${encodeURIComponent(id)}`,
+      { headers: ACCEPT_JSON },
+    );
+    return response.data;
+  }
+
+  /** Replace a schedule's name, description, job values and trigger. */
+  async updateSchedule(
+    id: string,
+    definition: ScheduleDefinition,
+  ): Promise<Schedule> {
+    const connection = await this.repository.getConnection();
+    const response = await connection.patch<Schedule>(
+      `${JOB_SCHEDULES}/${encodeURIComponent(id)}`,
+      definition,
+      { headers: JSON_HEADERS },
+    );
+    return response.data;
+  }
+
+  /** Switch a schedule on or off. The value must be uppercase. */
+  async setScheduleStatus(id: string, status: ScheduleStatus): Promise<void> {
+    const connection = await this.repository.getConnection();
+    await connection.put(
+      `${JOB_SCHEDULES}/${encodeURIComponent(id)}/state?value=${status}`,
+      undefined,
+      { headers: ACCEPT_JSON },
+    );
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    const connection = await this.repository.getConnection();
+    await connection.delete(`${JOB_SCHEDULES}/${encodeURIComponent(id)}`, {
+      headers: ACCEPT_JSON,
+    });
   }
 
   /** The next run times of a schedule, as date strings. */

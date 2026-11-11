@@ -21,6 +21,7 @@ import type { RepositoryModel } from "../RepositoryModel";
 import { getWorkspaceUri } from "../WorkspaceDataProvider";
 import type { WorkspaceModel } from "../WorkspaceModel";
 import { toInputValidator } from "../messages";
+import { formatDate } from "../properties";
 import type { RepositoryItem, WorkspaceItem } from "../types";
 import { validateFileName } from "../utils";
 import { ItemPicker } from "./ItemPicker";
@@ -29,13 +30,20 @@ import { JobRunner } from "./JobRunner";
 import { JobsDataProvider } from "./JobsDataProvider";
 import { JobsModel } from "./JobsModel";
 import { type LoadedManifest, ManifestReports } from "./ManifestReports";
+import { promptSchedule } from "./ScheduleWizard";
+import {
+  SCHEDULES_VIEW_ID,
+  type ScheduleNode,
+  SchedulesDataProvider,
+} from "./SchedulesDataProvider";
 import type { JobNode } from "./manifestTree";
 import { JobMessages, errorStatus, jobErrorMessage } from "./messages";
 import { valuesForRerun } from "./parameterValues";
 import { ProgramJobs } from "./programJobs";
 import { resourceForItem, resourceForUri, uriForResource } from "./resources";
+import { scheduleJob, scheduleValues } from "./schedules";
 import { isTerminal } from "./state";
-import type { JobResource, Submission } from "./types";
+import type { ClinicalJob, JobResource, Schedule, Submission } from "./types";
 import { resourceFromPath } from "./utils";
 
 export interface ClinicalJobs extends Disposable {
@@ -68,12 +76,252 @@ export function registerClinicalJobs(
   });
 
   const programs = new ProgramJobs(model, runner, output, refreshTrees);
+  const schedules = new SchedulesDataProvider(model, log);
+
+  const scheduleOf = (node: ScheduleNode | undefined): Schedule | undefined =>
+    node?.kind === "schedule" ? node.schedule : undefined;
+
+  /** Run a change to a schedule; report a failure and refresh the view. */
+  const changeSchedule = async (
+    schedule: Schedule,
+    change: () => Promise<unknown>,
+  ) => {
+    try {
+      await change();
+    } catch (error) {
+      const message = jobErrorMessage(error);
+      output.error(
+        `Schedule ${schedule.id} (${schedule.name}): ${errorStatus(error)} ${message}`,
+      );
+      window.showErrorMessage(
+        l10n.t(JobMessages.ScheduleError, { name: schedule.name, message }),
+      );
+    }
+    schedules.refresh();
+  };
+
+  /**
+   * The job definition, for its parameters. For a schedule whose job cannot
+   * be read (a repository job is addressed by id), the schedule's own values
+   * stand in.
+   */
+  const definitionFor = async (
+    job: JobResource,
+    schedule?: Schedule,
+  ): Promise<ClinicalJob> => {
+    try {
+      return await runner.loadJob(job);
+    } catch (error) {
+      if (!schedule) {
+        throw error;
+      }
+      return {
+        parameters: (schedule.jobInfo?.parameterValues ?? []).map((v) => ({
+          name: v.name,
+          label: v.label && v.label !== "null" ? v.label : undefined,
+          type: v.type,
+          defaultValue: v.value,
+        })),
+      };
+    }
+  };
+
+  /** The next run of a saved schedule, for the confirmation. */
+  const nextRun = async (id: string) => {
+    try {
+      const [next] = await model.getFutureRuns(id, 1);
+      return next ? formatDate(next) : JobMessages.ScheduleNoNext;
+    } catch {
+      return JobMessages.ScheduleNoNext;
+    }
+  };
+
+  /** A job to schedule when none was selected: pick one. */
+  const pickJob = async (): Promise<JobResource | undefined> => {
+    const where = await window.showQuickPick(
+      [
+        {
+          label: "$(folder) Clinical Workspace",
+          location: "WORKSPACE" as const,
+        },
+        {
+          label: "$(database) Clinical Repository",
+          location: "REPOSITORY" as const,
+        },
+      ],
+      { placeHolder: JobMessages.PickJobLocation },
+    );
+    if (!where) {
+      return undefined;
+    }
+    const path = await picker.pick({
+      mode: "file",
+      location: where.location,
+      title: JobMessages.NotAScheduleJob,
+    });
+    if (!path?.toLowerCase().endsWith(".cjob")) {
+      if (path) {
+        window.showInformationMessage(JobMessages.NotAScheduleJob);
+      }
+      return undefined;
+    }
+    return resourceFromPath(path, where.location);
+  };
 
   const runOf = (node: JobNode | undefined): Submission | undefined =>
     node?.kind === "run" ? node.submission : undefined;
 
   const disposables: Disposable[] = [
     view,
+    schedules,
+    commands.registerCommand("SAS.clinical.schedules.refresh", () =>
+      schedules.refresh(),
+    ),
+    commands.registerCommand(
+      "SAS.clinical.schedule.new",
+      async (target: RunTarget) => {
+        // A job item or editor; else the active editor if it is a job; else
+        // ask (the view's + button).
+        const job =
+          jobResource(target) ?? (target ? undefined : await pickJob());
+        if (!job) {
+          if (target) {
+            window.showInformationMessage(JobMessages.NotAScheduleJob);
+          }
+          return;
+        }
+        let definition: ClinicalJob;
+        try {
+          definition = await definitionFor(job);
+        } catch (error) {
+          window.showErrorMessage(
+            l10n.t(JobMessages.LoadJobError, {
+              name: job.name,
+              message: jobErrorMessage(error),
+            }),
+          );
+          return;
+        }
+        const schedule = await promptSchedule(job, definition, picker);
+        if (!schedule) {
+          return;
+        }
+        let created: Schedule;
+        try {
+          created = await model.createSchedule(schedule);
+        } catch (error) {
+          const message = jobErrorMessage(error);
+          output.error(
+            `New schedule ${schedule.name}: ${errorStatus(error)} ${message}`,
+          );
+          window.showErrorMessage(
+            l10n.t(JobMessages.ScheduleCreateError, {
+              name: schedule.name,
+              message,
+            }),
+          );
+          return;
+        }
+        output.info(
+          `Created schedule ${created.id} (${created.name}) for ${job.path}.`,
+        );
+        schedules.refresh();
+        const choice = await window.showInformationMessage(
+          l10n.t(JobMessages.ScheduleCreated, {
+            name: created.name,
+            next: await nextRun(created.id),
+          }),
+          JobMessages.ShowSchedules,
+        );
+        if (choice) {
+          await commands.executeCommand(`${SCHEDULES_VIEW_ID}.focus`);
+        }
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.schedule.edit",
+      async (node: ScheduleNode) => {
+        const schedule = scheduleOf(node);
+        const job = schedule && scheduleJob(schedule);
+        if (!schedule || !job) {
+          return;
+        }
+        const definition = await definitionFor(job, schedule);
+        const changed = await promptSchedule(job, definition, picker, schedule);
+        if (!changed) {
+          return;
+        }
+        await changeSchedule(schedule, async () => {
+          await model.updateSchedule(schedule.id, changed);
+          output.info(`Changed schedule ${schedule.id} (${changed.name}).`);
+          window.showInformationMessage(
+            l10n.t(JobMessages.ScheduleUpdated, {
+              name: changed.name,
+              next: await nextRun(schedule.id),
+            }),
+          );
+        });
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.schedule.enable",
+      (node: ScheduleNode) => {
+        const schedule = scheduleOf(node);
+        return (
+          schedule &&
+          changeSchedule(schedule, () =>
+            model.setScheduleStatus(schedule.id, "ENABLED"),
+          )
+        );
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.schedule.disable",
+      (node: ScheduleNode) => {
+        const schedule = scheduleOf(node);
+        return (
+          schedule &&
+          changeSchedule(schedule, () =>
+            model.setScheduleStatus(schedule.id, "DISABLED"),
+          )
+        );
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.schedule.delete",
+      async (node: ScheduleNode) => {
+        const schedule = scheduleOf(node);
+        if (!schedule) {
+          return;
+        }
+        const answer = await window.showWarningMessage(
+          l10n.t(JobMessages.DeleteSchedulePrompt, { name: schedule.name }),
+          { modal: true },
+          JobMessages.DeleteSchedule,
+        );
+        if (answer === JobMessages.DeleteSchedule) {
+          await changeSchedule(schedule, async () => {
+            await model.deleteSchedule(schedule.id);
+            output.info(`Deleted schedule ${schedule.id} (${schedule.name}).`);
+          });
+        }
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.schedule.runNow",
+      (node: ScheduleNode) => {
+        const schedule = scheduleOf(node);
+        const job = schedule && scheduleJob(schedule);
+        return job && runner.submit(job, scheduleValues(schedule));
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.schedule.copyId",
+      (node: ScheduleNode) => {
+        const schedule = scheduleOf(node);
+        return schedule && env.clipboard.writeText(schedule.id);
+      },
+    ),
     commands.registerCommand("SAS.clinical.job.run", (target: RunTarget) => {
       const resource = jobResource(target);
       if (!resource) {
@@ -244,7 +492,10 @@ export function registerClinicalJobs(
   }
 
   return {
-    refresh: () => view.refresh(),
+    refresh: () => {
+      view.refresh();
+      schedules.refresh();
+    },
     dispose: () => disposables.forEach((d) => d.dispose()),
   };
 }

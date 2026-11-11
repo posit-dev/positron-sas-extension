@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "createdBy": "test1",
+  "creationTimeStamp": "2026-11-11T11:28:53.849Z",
+  "modifiedBy": "test1",
+  "modifiedTimeStamp": "2026-11-11T11:28:53.849Z",
+  "id": "b2eb0038-860f-48eb-ac5e-5f22c398835b",
+  "createdByDisplayName": "test1 (test1)",
+  "modifiedByDisplayName": "test1 (test1)",
+  "name": "positron-probe-schedule",
+  "description": "Test schedule from the positron-sas-extension probe; safe to delete",
+  "runAs": "test1",
+  "runAsDisplayName": "test1 (test1)",
+  "trigger": {
+    "version": 1,
+    "type": "DATELIST",
+    "timeZone": "Europe/Berlin",
+    "interval": 1,
+    "numOccurrences": -1,
+    "minutes": "0",
+    "hours": "3",
+    "dates": [
+      "2027-06-01"
+    ]
+  },
+  "jobInfo": {
+    "job": {
+      "name": "probe.cjob",
+      "path": "/probe-jobs/probe.cjob",
+      "location": "/probe-jobs",
+      "resourceLocation": "WORKSPACE"
+    },
+    "parameterValues": [
+      {
+        "version": 1,
+        "name": "probe_char",
+        "value": "from-schedule",
+        "label": "null",
+        "type": "CHARACTER"
+      }
+    ]
+  },
+  "status": "ENABLED",
+  "jobAvailable": true
+}
