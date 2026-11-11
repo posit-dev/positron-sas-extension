@@ -118,6 +118,7 @@
   "clinical.commands.openResults": "Open Results",
   "clinical.commands.runAgain": "Run Again",
   "clinical.commands.runJob": "Run Clinical Job",
+  "clinical.commands.runProgram": "Run as Clinical Job",
   "clinical.commands.selectForCompare": "Select for Compare",
   "clinical.commands.showManifest": "Show Manifest Report",
   "clinical.commands.undoCheckOut": "Undo Check out",

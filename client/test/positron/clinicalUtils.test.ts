@@ -609,6 +609,31 @@ describe("buildContextValue", () => {
       ).to.include("SAS.clinical.job.run");
     });
 
+    it("offers Run as Clinical Job on workspace programs only", () => {
+      const keys = ["SAS.clinical.jobsAvailable"];
+      const view = "clinicalworkspaceprovider";
+      const program = buildWorkspaceContextValue(wsFile(), "me");
+      expect(shown(program, { keys, view })).to.include(
+        "SAS.clinical.job.runProgram",
+      );
+      expect(shown(program, { view })).to.not.include(
+        "SAS.clinical.job.runProgram",
+      );
+      // Not on repository programs, not on other files.
+      expect(
+        shown(buildContextValue(file(), undefined, "me", "write"), { keys }),
+      ).to.not.include("SAS.clinical.job.runProgram");
+      expect(
+        shown(
+          buildWorkspaceContextValue(
+            wsFile({ name: "adsl.log", path: "/Acme/adsl.log" }),
+            "me",
+          ),
+          { keys, view },
+        ),
+      ).to.not.include("SAS.clinical.job.runProgram");
+    });
+
     it("offers the manifest report on .cmnf files", () => {
       const keys = ["SAS.clinical.jobsAvailable"];
       const cmnf = file({ name: "t.cmnf", path: "/Acme/t.cmnf" });

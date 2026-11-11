@@ -92,7 +92,7 @@ To compare two items in the same view, select both, right-click one of them, and
 
 ## Run programs and open datasets
 
-Open a `.sas` file from the **Clinical Workspace** or **Clinical Repository** view and run it as you run any SAS program. The program runs in the SAS console session of the active profile. Running a program does not write its results to your workspace, and SAS Clinical Acceleration keeps no record of the run. To keep a result file, save it on your computer and upload it. To run programs with a record of their inputs and outputs, run them as a clinical job, as described in [Run clinical jobs](#run-clinical-jobs).
+Open a `.sas` file from the **Clinical Workspace** or **Clinical Repository** view and run it as you run any SAS program. The program runs in the SAS console session of the active profile. Running a program does not write its results to your workspace, and SAS Clinical Acceleration keeps no record of the run. To keep a result file, save it on your computer and upload it. To run a program with a record of its inputs and outputs, run it as a clinical job, as described in [Run a program as a clinical job](#run-a-program-as-a-clinical-job).
 
 A `.sas7bdat` or `.xpt` file from the **Clinical Repository** or **Clinical Workspace** view opens in the Data Explorer. The extension copies the file into the WORK library of the SAS session first, so a SAS session must be running. See [Positron SAS Extension Features](./positron.md) for more about the Data Explorer.
 
@@ -107,6 +107,14 @@ To run a job:
 3. A notification shows the state of the run. To cancel the run, click **Cancel** in the notification.
 
 When the run ends, a notification says how it ended, with buttons to open the log, the results, and the manifest report. A job writes its log (`.log`), listing (`.lst`), and manifest next to the job file unless the job names other locations.
+
+### Run a program as a clinical job
+
+To run a single `.sas` program from your workspace as a clinical job, right-click it in the **Clinical Workspace** view and select **Run as Clinical Job**. With the program open in the editor, you can also select **Run as Clinical Job** from the **Run** menu in the editor title bar or from the context menu of the editor.
+
+The first time, the extension creates a job with the name of the program next to it, such as `adsl.cjob` for `adsl.sas`, and runs it. Later runs reuse that job. Unsaved changes in the editor are saved first, because the job runs the file on the server. If a job of that name already exists and runs other programs, you can create a new job, such as `adsl-2.cjob`, or replace the existing one.
+
+The job and its log, listing and manifest are written to your workspace. To keep a record in the repository, check in the job and the program, and run the job from the **Clinical Repository** view.
 
 ### The Clinical Jobs view
 
@@ -172,4 +180,4 @@ A server can still refuse an action, such as a check-out without write permissio
 - The views use the active SAS Viya profile. Switch profiles to work with another server.
 - The views do not detect changes made by other users or other applications. Click **Refresh** to see them.
 - You cannot search the repository, restore deleted items, or change permissions. Use SAS Clinical Acceleration for those tasks.
-- You cannot create or edit clinical jobs in Positron yet, and job schedules are not shown. Use SAS Clinical Acceleration for those tasks. You can run existing jobs and review their runs.
+- You cannot edit clinical jobs in Positron yet, and job schedules are not shown. Use SAS Clinical Acceleration for those tasks. You can run existing jobs, create a job for a single program with **Run as Clinical Job**, and review runs.

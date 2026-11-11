@@ -185,3 +185,41 @@ export function manifestSubmissionId(text: string): string | undefined {
 export function submittedByFilter(userId: string): string {
   return `eq(submittedBy,${JSON.stringify(userId)})`;
 }
+
+/**
+ * Path of the job that runs one program: "/a/adsl.sas" → "/a/adsl.cjob", or
+ * "/a/adsl-2.cjob" for `n` = 2.
+ */
+export function jobPathForProgram(programPath: string, n = 1): string {
+  const stem = baseName(programPath).replace(/\.[^.]*$/, "");
+  const folder = parentPath(programPath);
+  const name = `${stem}${n > 1 ? `-${n}` : ""}.cjob`;
+  return folder === "/" ? `/${name}` : `${folder}/${name}`;
+}
+
+/** Whether a job runs exactly this one program (it may take parameters). */
+export function runsOnlyProgram(
+  job: ClinicalJob,
+  programPath: string,
+): boolean {
+  const location = job.resource?.location ?? "/";
+  const programs = job.programs ?? [];
+  return (
+    programs.length === 1 &&
+    resolveJobPath(location, programs[0].path) === programPath
+  );
+}
+
+/** A workspace job that runs one program, as POST /definitions takes it. */
+export function programJob(programPath: string, jobPath: string): ClinicalJob {
+  return {
+    resource: resourceFromPath(jobPath, "WORKSPACE"),
+    programs: [
+      {
+        path: programPath,
+        name: baseName(programPath),
+        location: parentPath(programPath),
+      },
+    ],
+  };
+}

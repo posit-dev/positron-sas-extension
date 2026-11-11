@@ -61,6 +61,16 @@ export const JobMessages = {
   ExportTitle: l10n.t("Export Manifest"),
   Exported: l10n.t("Exported the manifest to {path}."),
   ExportError: l10n.t("Could not export the manifest. {message}"),
+  ProgramJobError: l10n.t("Could not run {name} as a clinical job. {message}"),
+  JobExists: l10n.t(
+    "{job} already exists and runs other programs. Create a new job for {program}, or replace {job}?",
+  ),
+  CreateNewJob: l10n.t("Create New Job"),
+  ReplaceJob: l10n.t("Replace"),
+  NoFreeJobName: l10n.t("Could not find a free name for the job of {program}."),
+  NotAProgram: l10n.t(
+    "Select a SAS program (.sas) in the Clinical Workspace to run as a clinical job.",
+  ),
   CannotOpen: l10n.t(
     "This file is in the repository but the run did not record its id, so it cannot be opened.",
   ),
