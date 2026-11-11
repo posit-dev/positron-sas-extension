@@ -32,7 +32,9 @@ import type { RepositoryItem, VersionHistoryItem, VersionRow } from "./types";
 import { isContainer, sortVersions, versionFileName } from "./utils";
 
 /** URI of one version: `sasClinicalVersion:/<name>-v<version>.<ext>?id=&version=`. */
-export function getVersionUri(row: VersionRow): Uri {
+export function getVersionUri(
+  row: Pick<VersionRow, "fileId" | "fileVersion" | "name">,
+): Uri {
   return Uri.from({
     scheme: VERSION_SCHEME,
     path: `/${versionFileName(row.name, row.fileVersion)}`,

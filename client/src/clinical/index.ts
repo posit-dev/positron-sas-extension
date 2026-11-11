@@ -50,8 +50,9 @@ import {
   WORKSPACE_VIEW_ID,
 } from "./const";
 import { closeEditors } from "./editors";
+import { registerClinicalJobs } from "./jobs";
 import { Messages, errorMessage, toInputValidator } from "./messages";
-import { ClinicalAvailability } from "./probe";
+import { CLINICAL_JOBS_PROBE, ClinicalAvailability } from "./probe";
 import type {
   CheckoutAction,
   RepositoryItem,
@@ -126,6 +127,20 @@ export class ClinicalRepository {
         repository.refreshAll();
       }
     }, log);
+    // SAS Clinical Job Management, a separate service: the Jobs view and the
+    // job commands show when SAS.clinical.jobsAvailable is set.
+    const jobs = registerClinicalJobs(model, workspaceModel, output, () =>
+      repository.refreshAll(),
+    );
+    const jobsAvailability = new ClinicalAvailability(
+      (available) => {
+        if (available) {
+          jobs.refresh();
+        }
+      },
+      log,
+      CLINICAL_JOBS_PROBE,
+    );
 
     context.subscriptions.push(
       output,
@@ -135,6 +150,8 @@ export class ClinicalRepository {
       versions,
       workspaceProvider,
       availability,
+      jobs,
+      jobsAvailability,
       workspace.registerFileSystemProvider(
         WORKSPACE_SCHEME,
         workspaceProvider,
@@ -177,6 +194,8 @@ export class ClinicalRepository {
         model.reset();
         repository.refreshAll();
         availability.schedule(0);
+        jobsAvailability.schedule(0);
+        jobs.refresh();
       }),
       commands.registerCommand("SAS.clinical.refreshDetails", () =>
         repository.showDetails(repository.current),

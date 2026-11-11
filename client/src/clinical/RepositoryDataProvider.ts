@@ -37,7 +37,9 @@ import {
 } from "./utils";
 
 /** Stable URI of a repository item: `sasClinical:/<path>?id=<id>`. */
-export function getItemUri(item: RepositoryItem): Uri {
+export function getItemUri(
+  item: Pick<RepositoryItem, "id" | "name" | "path">,
+): Uri {
   return Uri.from({
     scheme: CLINICAL_SCHEME,
     path: item.path || `/${item.name}`,

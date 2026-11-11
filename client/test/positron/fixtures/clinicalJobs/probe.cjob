@@ -1,0 +1,27 @@
+{
+  "description" : "Probe job (patched)",
+  "useSingleOutputLocation" : false,
+  "outputLocation" : null,
+  "logsLocation" : "./",
+  "resultsLocation" : "./",
+  "manifestLocation" : "./",
+  "programs" : [ {
+    "path" : "./probe.sas",
+    "version" : null
+  } ],
+  "parameters" : [ {
+    "name" : "probe_char",
+    "label" : "Probe text",
+    "type" : "CHARACTER",
+    "defaultValue" : "hello"
+  } ],
+  "publishSetup" : {
+    "files" : [ ],
+    "folders" : [ ]
+  },
+  "publishCheckin" : {
+    "enableVersioningOnNewFiles" : false,
+    "fileVersion" : "MAJOR",
+    "locations" : [ ]
+  }
+}

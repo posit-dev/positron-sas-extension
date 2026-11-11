@@ -47,6 +47,44 @@ export function summarizeActionStatus(status: ActionStatus): ActionOutcome {
   }
 }
 
+export interface PollUntilOptions<T> extends PollOptions {
+  /** Called with every response, finished or not, for progress reports. */
+  onUpdate?: (value: T) => void;
+}
+
+/**
+ * Call `get` until `isDone` holds for its answer, sleeping `intervalMs`
+ * between calls, and return that answer. Stops with ActionCancelledError when
+ * `isCancelled` turns true, and with ActionTimeoutError after `timeoutMs`
+ * (pass Infinity to wait for as long as it takes).
+ */
+export async function pollUntil<T>(
+  get: () => Promise<T>,
+  isDone: (value: T) => boolean,
+  {
+    intervalMs = 2000,
+    timeoutMs = 5 * 60 * 1000,
+    isCancelled = () => false,
+    sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    onUpdate,
+  }: PollUntilOptions<T> = {},
+): Promise<T> {
+  for (let waited = 0; ; waited += intervalMs) {
+    const value = await get();
+    onUpdate?.(value);
+    if (isDone(value)) {
+      return value;
+    }
+    if (isCancelled()) {
+      throw new ActionCancelledError("Stopped waiting for the action.");
+    }
+    if (waited >= timeoutMs) {
+      throw new ActionTimeoutError("The action did not finish in time.");
+    }
+    await sleep(intervalMs);
+  }
+}
+
 /**
  * Poll a Clinical Acceleration action until the server reports that it has
  * ended, and return its final status. The caller inspects
@@ -58,27 +96,13 @@ export async function pollActionStatus(
     config: { headers: { Accept: string } },
   ) => Promise<{ data: ActionStatus }>,
   token: string,
-  {
-    intervalMs = 2000,
-    timeoutMs = 5 * 60 * 1000,
-    isCancelled = () => false,
-    sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  }: PollOptions = {},
+  options: PollOptions = {},
 ): Promise<ActionStatus> {
   const url = `${ACTION_STATUS}/${encodeURIComponent(token)}`;
-  for (let waited = 0; ; waited += intervalMs) {
-    const { data } = await get(url, {
-      headers: { Accept: ACTION_STATUS_MEDIA_TYPE },
-    });
-    if (data?.summary?.endTimeStamp) {
-      return data;
-    }
-    if (isCancelled()) {
-      throw new ActionCancelledError("Stopped waiting for the action.");
-    }
-    if (waited >= timeoutMs) {
-      throw new ActionTimeoutError("The action did not finish in time.");
-    }
-    await sleep(intervalMs);
-  }
+  return pollUntil(
+    async () =>
+      (await get(url, { headers: { Accept: ACTION_STATUS_MEDIA_TYPE } })).data,
+    (data) => !!data?.summary?.endTimeStamp,
+    options,
+  );
 }

@@ -2,19 +2,21 @@
 name: sas-clinical-acceleration
 description: >
   Working with SAS Clinical Acceleration (CA) in Positron: the Clinical
-  Repository, Clinical Workspace, Clinical Repository Properties and Clinical
-  Version History views in the Clinical Acceleration sidebar. Use when the user asks about files
+  Repository, Clinical Workspace, Clinical Repository Properties, Clinical
+  Version History and Clinical Jobs views in the Clinical Acceleration sidebar. Use when the user asks about files
   in the Clinical Repository or their CA workspace, checking files out or in,
   versioning, comparing versions, copying repository files into the workspace,
-  or running SAS programs and opening SAS datasets that live in CA. Triggers:
-  "check out", "check in", "clinical repository", "my workspace", "version
-  history", "enable versioning", "copy to workspace", "open this sas7bdat from
-  the repository".
+  running SAS programs and opening SAS datasets that live in CA, or running
+  clinical jobs (.cjob) and reviewing their runs and manifests (.cmnf).
+  Triggers: "check out", "check in", "clinical repository", "my workspace",
+  "version history", "enable versioning", "copy to workspace", "open this
+  sas7bdat from the repository", "clinical job", "run the job", "manifest",
+  "audit trail", "which inputs did the run use".
 ---
 
 # SAS Clinical Acceleration in Positron
 
-The SAS extension adds four views to their own **Clinical Acceleration** sidebar (a separate
+The SAS extension adds its views to their own **Clinical Acceleration** sidebar (a separate
 icon below **SAS** in the activity bar) when the active SAS
 profile is a SAS Viya profile and the server runs SAS Clinical Acceleration. The
 views use the same sign-in as the SAS Viya profile. If they are missing, the
@@ -72,6 +74,38 @@ version uploads without versioning.
   workspace opens in the Data Explorer (versions from the version history do not). The extension
   copies it into the SAS session's WORK library first, so a SAS session must be
   running. If it is not, ask the user to start one.
+
+## Clinical jobs: runs with an audit record
+
+Running a `.sas` file in the console leaves no record in CA. For a run that CA
+records, use a **clinical job**: a `.cjob` file that lists programs to run in
+order and their parameters. Each run writes a **manifest** (`.cmnf`) next to
+the job: which programs ran and how they ended, the parameter values, and every
+input and output file with its version (and MD5 checksum for repository files).
+That manifest is the audit trail.
+
+- **Run a job:** right-click a `.cjob` in the Clinical Workspace or Clinical
+  Repository view and choose **Run Clinical Job** (or use the editor title
+  button on an open `.cjob`). The extension prompts for each parameter,
+  pre-filled with its default. A notification follows the run; its **Cancel**
+  cancels the run. When it ends, **Open Log** and **Open Results** open the
+  `.log` and `.lst` the job wrote next to itself.
+- **Review runs:** the **Clinical Jobs** view lists the user's runs, newest
+  first. Expanding a run shows its manifest: Programs (state and run time),
+  Parameters, Inputs, Outputs, Logs, Results, and Check-in failures. A
+  versioned repository file opens at the version the run used. Right-click a
+  run for **Run Again** (same values, no prompts), **Open Job**, **Cancel Run**
+  and **Copy Run ID**.
+- **States:** a run ends as successful, with program warnings or errors,
+  failed, canceled, or with a *check-in error*. A check-in error means a
+  repository job ran but some outputs were not checked in (an output was
+  checked out, or the user lacks write permission). The Check-in failures group
+  lists them.
+- Jobs cannot be created or edited in Positron yet, and schedules are not
+  shown. Point the user to SAS Clinical Acceleration for that.
+
+The Clinical Jobs view appears only when the server also runs SAS Clinical Job
+Management.
 
 ## When something is refused
 

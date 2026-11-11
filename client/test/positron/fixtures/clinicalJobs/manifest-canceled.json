@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "type": "WORKSPACE",
+  "jobSubmission": {
+    "version": 1,
+    "state": "COMPLETED_CANCELED",
+    "id": "b948aadd-2410-45d6-b9da-15cfd7700b69",
+    "jobRunContext": "INTERACTIVE",
+    "submittedTimeStamp": "2026-11-11T09:43:09.497Z",
+    "submittedBy": "test1",
+    "submittedByDisplayName": "test1 (test1)",
+    "completedTimeStamp": "2026-11-11T09:43:19.546Z",
+    "info": "Clinical job was canceled.",
+    "runAsUser": "test1",
+    "runAsUserDisplayName": "test1 (test1)"
+  },
+  "job": {
+    "version": 1,
+    "resource": {
+      "name": "slow.cjob",
+      "path": "/probe-jobs/slow.cjob",
+      "location": "/probe-jobs",
+      "resourceLocation": "WORKSPACE"
+    },
+    "lastModifiedTimeStamp": "2026-11-11T09:43:02.000Z",
+    "size": 454,
+    "owner": "test1",
+    "ownerDisplayName": "test1 (test1)",
+    "runAsOwner": false
+  },
+  "totalExecutionTime": 3405,
+  "programs": [
+    {
+      "version": 1,
+      "resource": {
+        "name": "slow.sas",
+        "path": "/probe-jobs/slow.sas",
+        "location": "/probe-jobs",
+        "resourceLocation": "WORKSPACE"
+      },
+      "lastModifiedTimeStamp": "2026-11-11T09:43:01.000Z",
+      "size": 37,
+      "executionState": "CANCELED",
+      "executionTime": 3405,
+      "executionInfo": "Clinical job was canceled while this program was executing."
+    }
+  ],
+  "logs": [
+    {
+      "version": 1,
+      "resource": {
+        "name": "slow.log",
+        "path": "/probe-jobs/slow.log",
+        "location": "/probe-jobs",
+        "resourceLocation": "WORKSPACE"
+      },
+      "lastModifiedTimeStamp": "2026-11-11T09:43:19.000Z",
+      "size": 2893
+    }
+  ],
+  "results": [
+    {
+      "version": 1,
+      "resource": {
+        "name": "slow.lst",
+        "path": "/probe-jobs/slow.lst",
+        "location": "/probe-jobs",
+        "resourceLocation": "WORKSPACE"
+      },
+      "lastModifiedTimeStamp": "2026-11-11T09:43:19.000Z",
+      "size": 0
+    }
+  ],
+  "outputs": [
+    {
+      "version": 1,
+      "resource": {
+        "name": "slow.log",
+        "path": "/probe-jobs/slow.log",
+        "location": "/probe-jobs",
+        "resourceLocation": "WORKSPACE"
+      },
+      "lastModifiedTimeStamp": "2026-11-11T09:43:19.000Z",
+      "size": 2893
+    },
+    {
+      "version": 1,
+      "resource": {
+        "name": "slow.lst",
+        "path": "/probe-jobs/slow.lst",
+        "location": "/probe-jobs",
+        "resourceLocation": "WORKSPACE"
+      },
+      "lastModifiedTimeStamp": "2026-11-11T09:43:19.000Z",
+      "size": 0
+    }
+  ],
+  "manifest": {
+    "version": 1,
+    "resource": {
+      "name": "slow.cmnf",
+      "path": "/probe-jobs/slow.cmnf",
+      "location": "/probe-jobs",
+      "resourceLocation": "WORKSPACE"
+    }
+  },
+  "checkinSpecification": {
+    "enableVersioningOnNewFiles": false,
+    "fileVersion": "MAJOR",
+    "locations": []
+  }
+}
