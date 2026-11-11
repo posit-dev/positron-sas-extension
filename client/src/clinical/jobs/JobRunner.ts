@@ -247,7 +247,12 @@ export class JobRunner {
       state = await window.withProgress(
         {
           location: ProgressLocation.Notification,
-          title: l10n.t(JobMessages.RunTitle, { name }),
+          title: l10n.t(
+            submission.jobRunContext === "INTERACTIVE_TEST"
+              ? JobMessages.TestTitle
+              : JobMessages.RunTitle,
+            { name },
+          ),
           cancellable: true,
         },
         async (progress, token) => {

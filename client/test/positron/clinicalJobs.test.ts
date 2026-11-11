@@ -53,6 +53,7 @@ import {
   publishCounts,
   resolveJobPath,
   resourceFromPath,
+  runKindOf,
   runRequest,
   runsOnlyProgram,
   submittedByFilter,
@@ -175,6 +176,17 @@ describe("run and populate", () => {
       action: "RUN_AND_POPULATE",
       body: { ...run, useRelativePaths: true },
     });
+  });
+
+  it("repeats a run as the same kind", () => {
+    expect(runKindOf("INTERACTIVE")).to.equal(undefined);
+    expect(runKindOf("SCHEDULER")).to.equal(undefined);
+    expect(runKindOf(undefined)).to.equal(undefined);
+    expect(runKindOf("INTERACTIVE_TEST")).to.equal("test");
+    expect(runKindOf("INTERACTIVE_RUN_AND_POPULATE")).to.equal("absolute");
+    expect(runKindOf("INTERACTIVE_RUN_AND_POPULATE_RELATIVE")).to.equal(
+      "relative",
+    );
   });
 
   it("counts what Publish Setup and check-in list", () => {

@@ -127,7 +127,11 @@ That manifest is the audit trail.
   in the repository. Only the log, listing and manifest are written, to the
   workspace; nothing is checked in and no audit record is made. A passed test
   means the job should run from the repository, but check-in problems
-  (write permission, versioning privilege) can still occur. Suggested order:
+  (write permission, versioning privilege) can still occur. When workspace
+  and repository hold the same files, a test and a run look alike; the
+  difference is where the files come from, that a test writes no outputs
+  besides the log, listing and manifest, and the **Test** mark on the run in
+  the Clinical Jobs view. Suggested order:
   Run and Populate, check the job and its programs and inputs in, Test, then
   run from the repository.
 - **Create and edit jobs:** a `.cjob` opens in the clinical job editor, a form
@@ -143,7 +147,8 @@ That manifest is the audit trail.
   first. Expanding a run shows its manifest: Programs (state and run time),
   Parameters, Inputs, Outputs, Logs, Results, and Check-in failures. A
   versioned repository file opens at the version the run used. Right-click a
-  run for **Run Again** (same values, no prompts), **Open Job**, **Cancel Run**,
+  run for **Run Again** (same values, no prompts, same kind of run: a test
+  stays a test), **Open Job**, **Cancel Run**,
   **Copy Run ID** and **Remove from List**. **Clear Finished Runs** (view
   title) hides all finished runs. Hiding is only in Positron, per user and
   server; the run history on the server stays. **Show Hidden Runs** and

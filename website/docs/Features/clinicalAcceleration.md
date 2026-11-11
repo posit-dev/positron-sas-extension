@@ -170,7 +170,7 @@ Jobs in the **Clinical Repository** view open read-only. To change one, copy it 
 
 ### The Clinical Jobs view
 
-The **Clinical Jobs** view lists your runs, newest first, with their state. Runs that have not ended update on their own while the view is visible. Click **Load more...** at the end of the list for older runs.
+The **Clinical Jobs** view lists your runs, newest first, with their state. Runs other than a normal run are marked with their kind: **Test**, **Run and populate** (with or without relative paths), or **Scheduled**. Runs that have not ended update on their own while the view is visible. Click **Load more...** at the end of the list for older runs.
 
 Expand a run to see its manifest:
 
@@ -187,7 +187,7 @@ Right-click a run for more actions:
 - **Show Manifest Report** and **Export Manifest...**: show or save the manifest report, described in the next section.
 - **Open Log** and **Open Results**: open the log or the results of the run.
 - **Open Job**: open the job file.
-- **Run Again**: run the job again with the same parameter values, without prompts.
+- **Run Again**: run the job again with the same parameter values, without prompts. A test runs again as a test, and Run and populate again as Run and populate.
 - **Cancel Run**: cancel a run that has not ended.
 - **Copy Run ID**: copy the ID of the run, for example for an administrator.
 - **Remove from List**: hide the run in Positron. You can select several runs and remove them together.
