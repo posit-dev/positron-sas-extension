@@ -1215,6 +1215,11 @@
         "icon": "$(play-circle)"
       },
       {
+        "command": "SAS.clinical.job.new",
+        "title": "%clinical.commands.newJob%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.jobs.refresh",
         "title": "%commands.SAS.refresh%",
         "category": "SAS Clinical Acceleration",
@@ -1738,6 +1743,11 @@
           "group": "0_run@0"
         },
         {
+          "command": "SAS.clinical.job.new",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;container;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "1_new@2"
+        },
+        {
           "command": "SAS.clinical.job.openLog",
           "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
           "group": "inline@1"
@@ -2245,6 +2255,10 @@
           "command": "SAS.clinical.job.copyId"
         },
         {
+          "when": "false",
+          "command": "SAS.clinical.job.new"
+        },
+        {
           "when": "resourceExtname == .sas && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
           "command": "SAS.clinical.job.runProgram"
         },
@@ -2462,6 +2476,16 @@
           },
           {
             "filenamePattern": "*.XPT"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "SAS.clinical.jobEditor",
+        "displayName": "%clinical.jobEditor%",
+        "selector": [
+          {
+            "filenamePattern": "*.cjob"
           }
         ],
         "priority": "default"

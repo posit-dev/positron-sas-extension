@@ -129,8 +129,12 @@ export class ClinicalRepository {
     }, log);
     // SAS Clinical Job Management, a separate service: the Jobs view and the
     // job commands show when SAS.clinical.jobsAvailable is set.
-    const jobs = registerClinicalJobs(model, workspaceModel, output, () =>
-      repository.refreshAll(),
+    const jobs = registerClinicalJobs(
+      context,
+      model,
+      workspaceModel,
+      output,
+      () => repository.refreshAll(),
     );
     const jobsAvailability = new ClinicalAvailability(
       (available) => {

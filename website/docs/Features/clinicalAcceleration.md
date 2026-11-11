@@ -116,6 +116,24 @@ The first time, the extension creates a job with the name of the program next to
 
 The job and its log, listing and manifest are written to your workspace. To keep a record in the repository, check in the job and the program, and run the job from the **Clinical Repository** view.
 
+### Create and edit jobs
+
+A `.cjob` file opens in the clinical job editor, a form with these sections:
+
+- **General**: the description of the job.
+- **Programs**: the programs the job runs, in order. Click **Add Program...** to pick a program, use the arrows to change the order, and click **Open** to open a program. Leave **Version** empty to run the latest version of a program.
+- **Parameters**: the values asked for when the job runs. The programs see them as macro variables, so a name must be a valid SAS name. Each parameter has a type (text, masked text, number, date, file, or folder) and an optional default.
+- **Output locations**: the folders for the log, the results, and the manifest. `./` is the folder of the job.
+- **Repository runs**: the repository files and folders the job reads, and how its outputs are checked in. These settings apply only when the job runs from the **Clinical Repository** view.
+
+Paths of programs and output locations are stored relative to the job, as SAS Clinical Acceleration stores them. The editor checks the job as you edit it and lists problems, such as a job without programs or an invalid parameter name, above the form.
+
+Save the job as you save any file. Undo and redo work as in a text editor. Click **Run** to save and run the job, or **Open as JSON** to edit the file as text.
+
+To create a job, right-click a folder in the **Clinical Workspace** view, select **New Clinical Job...**, and enter a name. The job opens in the editor.
+
+Jobs in the **Clinical Repository** view open read-only. To change one, copy it or check it out to your workspace.
+
 ### The Clinical Jobs view
 
 The **Clinical Jobs** view lists your runs, newest first, with their state. Runs that have not ended update on their own while the view is visible. Click **Load more...** at the end of the list for older runs.
@@ -180,4 +198,4 @@ A server can still refuse an action, such as a check-out without write permissio
 - The views use the active SAS Viya profile. Switch profiles to work with another server.
 - The views do not detect changes made by other users or other applications. Click **Refresh** to see them.
 - You cannot search the repository, restore deleted items, or change permissions. Use SAS Clinical Acceleration for those tasks.
-- You cannot edit clinical jobs in Positron yet, and job schedules are not shown. Use SAS Clinical Acceleration for those tasks. You can run existing jobs, create a job for a single program with **Run as Clinical Job**, and review runs.
+- Job schedules are not shown, and you cannot create or change them. Use SAS Clinical Acceleration for schedules.

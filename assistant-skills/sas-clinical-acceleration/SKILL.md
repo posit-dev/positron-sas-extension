@@ -97,6 +97,15 @@ That manifest is the audit trail.
   first. This is the quickest way to get an audited run of a program. The job
   and its outputs stay in the workspace; for a repository record, check in the
   job and program and run the job from the Clinical Repository view.
+- **Create and edit jobs:** a `.cjob` opens in the clinical job editor, a form
+  with General (description), Programs (ordered, optional version; empty means
+  latest), Parameters (name, label, type, default; names must be valid SAS
+  names because programs see them as macro variables), Output locations
+  (relative to the job, `./` is its folder) and Repository runs (inputs and
+  check-in, used only when the job runs from the repository). Save like any
+  file; **Run** saves and runs, **Open as JSON** shows the text. Create a job
+  with **New Clinical Job...** on a Clinical Workspace folder. Repository jobs
+  open read-only: copy or check them out to the workspace to change them.
 - **Review runs:** the **Clinical Jobs** view lists the user's runs, newest
   first. Expanding a run shows its manifest: Programs (state and run time),
   Parameters, Inputs, Outputs, Logs, Results, and Check-in failures. A
@@ -117,8 +126,8 @@ That manifest is the audit trail.
   repository job ran but some outputs were not checked in (an output was
   checked out, or the user lacks write permission). The Check-in failures group
   lists them.
-- Jobs with several programs cannot be created or edited in Positron yet, and
-  schedules are not shown. Point the user to SAS Clinical Acceleration for that.
+- Schedules are not shown and cannot be changed in Positron. Point the user to
+  SAS Clinical Acceleration for that.
 
 The Clinical Jobs view appears only when the server also runs SAS Clinical Job
 Management.
