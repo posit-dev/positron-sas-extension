@@ -7,7 +7,7 @@ import { l10n } from "vscode";
 import { isAxiosError } from "axios";
 
 import type { PropertyLabels } from "./properties";
-import type { ValidationError } from "./utils";
+import type { CheckInBlock, ValidationError } from "./utils";
 
 export const Messages = {
   CheckOutError: l10n.t(
@@ -26,6 +26,22 @@ export const Messages = {
     "There was an error checking in the selected item(s). {message}",
   ),
   CheckInNoItems: l10n.t("None of the selected items can be checked in."),
+  CheckInNotCheckedOut: l10n.t(
+    "\"{name}\" is already in the repository and is not checked out to you, so it can't be checked in: a copy can't replace a repository version. Check the file out first; Check out to Workspace > Without Content leaves your workspace file as it is. If Check out to Workspace is missing, you have no write permission on the file: its Properties show your permissions.",
+  ),
+  CheckInCheckedOutByOther: l10n.t(
+    '"{name}" is checked out by {user}, so only they can check it in.',
+  ),
+  CheckInNotOffered: l10n.t(
+    '"{name}" has nothing to check in, or the server does not allow it.',
+  ),
+  CheckInBlockedMany: l10n.t(
+    "{count} of the selected files can't be checked in. The SAS Clinical Repository output lists the reasons.",
+  ),
+  CheckInSomeLeftOut: l10n.t(
+    "{count} file(s) were left out of the check-in. The SAS Clinical Repository output lists the reasons.",
+  ),
+  ShowDetails: l10n.t("Show Details"),
   CheckInSuccess: l10n.t("Successfully checked in the selected item(s)."),
   CheckInVersionPrompt: l10n.t("Enter the version to check in with."),
   CheckInWarning: l10n.t(
@@ -196,6 +212,11 @@ export const PropertyLabelText: PropertyLabels = {
   syncInSync: l10n.t("Synced"),
   syncNotSynced: l10n.t("Not synced"),
   syncUnknown: l10n.t("Unknown"),
+  permissions: l10n.t("Your permissions"),
+  privileges: l10n.t("Your versioning privileges"),
+  noPermissions: l10n.t("None"),
+  privilegeEnable: l10n.t("Enable versioning"),
+  privilegeManage: l10n.t("Manage versioning"),
 };
 
 const ValidationMessages: Record<ValidationError, string> = {
@@ -216,6 +237,21 @@ const ValidationMessages: Record<ValidationError, string> = {
     "Please enter a valid version (ex: 1.0), or MAJOR or MINOR.",
   ),
 };
+
+/** Why a file can't be checked in, in one sentence. */
+export function describeCheckInBlock(block: CheckInBlock): string {
+  switch (block.reason) {
+    case "notCheckedOut":
+      return l10n.t(Messages.CheckInNotCheckedOut, { name: block.name });
+    case "checkedOutByOther":
+      return l10n.t(Messages.CheckInCheckedOutByOther, {
+        name: block.name,
+        user: block.by ?? "?",
+      });
+    default:
+      return l10n.t(Messages.CheckInNotOffered, { name: block.name });
+  }
+}
 
 /** Adapt a pure validator to `showInputBox`'s validateInput. */
 export const toInputValidator =

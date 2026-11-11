@@ -45,6 +45,7 @@ import {
   buildVersionsUrl,
   collectPages,
   createLimiter,
+  parsePermissionNames,
   parsePrivileges,
   parseWritePermission,
 } from "./utils";
@@ -470,6 +471,26 @@ export class RepositoryModel {
       { responseType: "arraybuffer" },
     );
     return new Uint8Array(response.data);
+  }
+
+  /**
+   * The signed-in user's effective permissions on an item, such as READ and
+   * WRITE, read afresh for the Properties view; undefined when they can't be
+   * read. An empty list means the server grants none.
+   */
+  async getPermissionNames(id: string): Promise<string[] | undefined> {
+    try {
+      const connection = await this.getConnection();
+      const { data } = await connection.get<unknown>(
+        `${AUTHORIZATIONS}/${encodeURIComponent(id)}/permissions`,
+      );
+      return parsePermissionNames(data);
+    } catch (error) {
+      this.log(
+        `Permissions of ${id} are unavailable (${isAxiosError(error) ? `HTTP ${error.response?.status ?? "?"}` : String(error)}).`,
+      );
+      return undefined;
+    }
   }
 
   /**

@@ -6,6 +6,8 @@
 
 - SAS Clinical Acceleration: runs can be removed from the **Clinical Jobs** view. **Remove from List** hides the selected runs, and **Clear Finished Runs** in the title bar hides every finished run, also those on pages not loaded yet. Runs are only hidden in Positron, per user and server; the run history on the server stays. **Show Hidden Runs**, **Restore to List** and **Restore All Hidden Runs** bring them back
 - SAS Clinical Acceleration: **Show All Users' Schedules** in the **Clinical Job Schedules** view lists the schedules of all users that the server returns, marked with their owner. Other users' schedules can only have their ID copied
+- SAS Clinical Acceleration: **Clinical Repository Properties** shows **Your permissions** on the selected file or folder, such as `READ` and `WRITE`, and **Your versioning privileges**, as the server reports them. They explain why an action such as **Check out to Workspace** is missing
+- SAS Clinical Acceleration: **Check In** says why it leaves files out instead of "None of the selected items can be checked in": a copy of a repository file that is not checked out to you can't replace a repository version (check the file out first, **Without Content** keeps your copy), and a file checked out by someone else can only be checked in by them. The **SAS Clinical Repository** output channel lists every file left out
 
 ### Bug Fixes
 

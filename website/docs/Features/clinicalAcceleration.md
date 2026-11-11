@@ -74,6 +74,8 @@ When your changes are ready, right-click a file or folder in the **Clinical Work
 
 Select **Undo Check out** to give up your changes to a checked-out file. Only the person who checked out a file can check it in or undo the check-out.
 
+A copy from **Copy to Workspace** cannot replace a file that is already in the repository, because only a check-out lets you add a version. When you try, the extension says which files it left out and why: a copy that is not checked out to you, or a file checked out by someone else. To check in a changed copy, check the file out first with **Check out to Workspace > Without Content**, which leaves your workspace file as it is. The **SAS Clinical Repository** output channel lists every file that was left out.
+
 ## Versions
 
 Select a versioned file in the **Clinical Repository** view and the **Clinical Version History** view lists its versions, newest first. Point to a version to see who created it, when, its size, and its comment.
@@ -83,6 +85,8 @@ Click a version to open it read-only. Right-click a version to download it, comp
 To turn versioning on or off for a file, right-click it in the **Clinical Repository** view and select **Enable Versioning** or **Disable Versioning**. Changing versioning needs a versioning privilege on the server. The extension stops and tells you when the server reports that you have no such privilege.
 
 The **Clinical Repository Properties** view shows the details of the selected item. For a file, it lists the size, the lock state, the version, the check-out state, and whether the copy of the file in your workspace is in sync with the repository.
+
+For files and folders, it also lists **Your permissions**, the permissions the server grants you on the item, such as `READ` and `WRITE`, and **Your versioning privileges**. They explain a missing action: without `WRITE` on a file, for example, **Check out to Workspace** is not offered. Permissions can differ between folders, and adding new files to a folder is not the same as changing a file that is already there.
 
 ## Compare files and versions
 
@@ -224,7 +228,7 @@ The extension reads your permissions from the server and shows only the actions 
 
 :::info note
 
-A server can still refuse an action, such as a check-out without write permission or a versioning change without the privilege. This is the server enforcing its rules. The **SAS Clinical Repository** output channel lists the message from the server. Ask a SAS Clinical Acceleration administrator for the missing permission.
+A server can still refuse an action, such as a check-out without write permission or a versioning change without the privilege. This is the server enforcing its rules. The **SAS Clinical Repository** output channel lists the message from the server. **Clinical Repository Properties** shows your permissions on the selected item. Ask a SAS Clinical Acceleration administrator for the missing permission.
 
 :::
 

@@ -48,6 +48,12 @@ A file moves between them like this:
 A checked-out file shows a **CO** badge: highlighted for the user's own, dimmed for
 another user's. Only the person who checked a file out can check it in.
 
+A copy made with **Copy to Workspace** can't be checked in over the repository
+file: only a check-out lets the user add a version. The extension says so and
+lists the files it left out in the **SAS Clinical Repository** output channel.
+To keep the changed copy, check the file out with **Check out to Workspace >
+Without Content**, which leaves the workspace file as it is, then check in.
+
 ## Versions
 
 - **Enable Versioning...** and **Disable Versioning...** (Clinical Repository
@@ -59,7 +65,8 @@ another user's. Only the person who checked a file out can check it in.
   or versions, across the repository, the workspace and the history. With two
   items selected, **Compare Selected** compares them directly.
 - **Clinical Repository Properties** shows the details of the selected item,
-  including whether the workspace copy is in sync.
+  including whether the workspace copy is in sync, **Your permissions** on it
+  (such as `READ` and `WRITE`) and **Your versioning privileges**.
 
 An upload is versioned only if the user types a version in the prompt. An empty
 version uploads without versioning.
@@ -155,6 +162,12 @@ a versioning change without the privilege. That is the server enforcing its
 rules and not a fault in the extension. The **SAS Clinical Repository** output
 channel lists what the server said. Ask the user to read it out, then suggest
 asking a Clinical Acceleration administrator for the permission.
+
+If an action is missing from a menu, such as **Check out to Workspace**, ask the
+user to select the item and read **Your permissions** in Clinical Repository
+Properties. Without `WRITE` on the file, check-out isn't offered, in SAS Studio
+either. Being able to add new files to a folder doesn't mean the user may change
+files that are already there.
 
 Delete in the Clinical Repository moves items to a recycle bin; they can be
 restored with the Manage Data Repository application of SAS Clinical

@@ -3,6 +3,7 @@
 import { expect } from "chai";
 
 import {
+  ItemAccess,
   PropertyLabels,
   buildPropertyRows,
   formatBytes,
@@ -41,6 +42,11 @@ const labels: PropertyLabels = {
   syncInSync: "syncInSync",
   syncNotSynced: "syncNotSynced",
   syncUnknown: "syncUnknown",
+  permissions: "permissions",
+  privileges: "privileges",
+  noPermissions: "noPermissions",
+  privilegeEnable: "privilegeEnable",
+  privilegeManage: "privilegeManage",
 };
 
 const file = (extra: Partial<RepositoryItem> = {}): RepositoryItem => ({
@@ -176,5 +182,49 @@ describe("buildPropertyRows", () => {
       primaryType: "FOLDER",
     });
     expect(r).to.not.have.any.keys("size", "locked", "checkedOut");
+  });
+
+  describe("the user's access", () => {
+    const access = (item: RepositoryItem, value?: ItemAccess) =>
+      Object.fromEntries(
+        buildPropertyRows(item, undefined, labels, "en-US", value).map(
+          (row) => [row.key, row.value],
+        ),
+      );
+
+    it("lists the permissions the server grants", () => {
+      const r = access(file(), { permissions: ["READ", "WRITE"] });
+      expect(r.permissions).to.equal("READ, WRITE");
+    });
+
+    it("says None when only read is missing too, and shows folders", () => {
+      const folder: RepositoryItem = {
+        id: "10",
+        name: "programs",
+        path: "/Acme/programs",
+        typeId: "folder",
+        primaryType: "FOLDER",
+      };
+      expect(access(folder, { permissions: [] }).permissions).to.equal(
+        "noPermissions",
+      );
+    });
+
+    it("lists the versioning privileges, or None", () => {
+      expect(
+        access(file(), {
+          privileges: { enableVersioning: true, manageVersioning: true },
+        }).privileges,
+      ).to.equal("privilegeEnable, privilegeManage");
+      expect(
+        access(file(), {
+          privileges: { enableVersioning: false, manageVersioning: false },
+        }).privileges,
+      ).to.equal("noPermissions");
+    });
+
+    it("leaves the rows out until the access is known", () => {
+      expect(access(file())).to.not.have.any.keys("permissions", "privileges");
+    });
   });
 });

@@ -15,7 +15,12 @@ import {
 
 import { PROPERTIES_VIEW_ID } from "./const";
 import { Messages, PropertyLabelText } from "./messages";
-import { PropertyKind, PropertyRow, buildPropertyRows } from "./properties";
+import {
+  ItemAccess,
+  PropertyKind,
+  PropertyRow,
+  buildPropertyRows,
+} from "./properties";
 import type { RepositoryItem } from "./types";
 
 const ICONS: Record<PropertyKind, string> = {
@@ -24,6 +29,7 @@ const ICONS: Record<PropertyKind, string> = {
   date: "calendar",
   number: "symbol-number",
   sync: "sync",
+  access: "shield",
 };
 
 /** The Properties view: details of the item selected in the repository. */
@@ -44,13 +50,21 @@ export class PropertyProvider
     this.clear();
   }
 
-  /** Show an item's properties. `typeName` is its readable object type. */
-  show(item: RepositoryItem, typeName: string | undefined): void {
+  /**
+   * Show an item's properties. `typeName` is its readable object type;
+   * `access` the user's permissions, once they are known.
+   */
+  show(
+    item: RepositoryItem,
+    typeName: string | undefined,
+    access?: ItemAccess,
+  ): void {
     this.rows = buildPropertyRows(
       item,
       typeName,
       PropertyLabelText,
       env.language,
+      access,
     );
     this.treeView.description = item.name;
     this.treeView.message = undefined;
