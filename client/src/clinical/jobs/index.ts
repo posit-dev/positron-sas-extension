@@ -25,6 +25,7 @@ import { type LoadedManifest, ManifestReports } from "./ManifestReports";
 import type { JobNode } from "./manifestTree";
 import { JobMessages, errorStatus, jobErrorMessage } from "./messages";
 import { valuesForRerun } from "./parameterValues";
+import { ProgramJobs } from "./programJobs";
 import { resourceForItem, resourceForUri, uriForResource } from "./resources";
 import { isTerminal } from "./state";
 import type { JobResource, Submission } from "./types";
@@ -57,6 +58,8 @@ export function registerClinicalJobs(
     }
   });
 
+  const programs = new ProgramJobs(model, runner, output, refreshTrees);
+
   const runOf = (node: JobNode | undefined): Submission | undefined =>
     node?.kind === "run" ? node.submission : undefined;
 
@@ -70,6 +73,17 @@ export function registerClinicalJobs(
       }
       return runner.run(resource);
     }),
+    commands.registerCommand(
+      "SAS.clinical.job.runProgram",
+      (target: RunTarget) => {
+        const path = programPath(target);
+        if (!path) {
+          window.showInformationMessage(JobMessages.NotAProgram);
+          return;
+        }
+        return programs.run(path);
+      },
+    ),
     commands.registerCommand("SAS.clinical.jobs.refresh", () => view.refresh()),
     commands.registerCommand("SAS.clinical.jobs.loadMore", () =>
       view.loadMore(),
@@ -203,4 +217,24 @@ function jobResource(target: RunTarget): JobResource | undefined {
     resource = uri && resourceForUri(uri);
   }
   return resource?.name.toLowerCase().endsWith(".cjob") ? resource : undefined;
+}
+
+/**
+ * The workspace SAS program a command was invoked on: a Workspace view item,
+ * an editor's URI, or else the active editor's file.
+ */
+function programPath(target: RunTarget): string | undefined {
+  let resource: JobResource | undefined;
+  if (target instanceof Uri) {
+    resource = resourceForUri(target);
+  } else if (target && "path" in target) {
+    resource = resourceForItem(target);
+  } else {
+    const uri = window.activeTextEditor?.document.uri;
+    resource = uri && resourceForUri(uri);
+  }
+  return resource?.resourceLocation === "WORKSPACE" &&
+    resource.name.toLowerCase().endsWith(".sas")
+    ? resource.path
+    : undefined;
 }

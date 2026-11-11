@@ -1209,6 +1209,12 @@
         "icon": "$(play)"
       },
       {
+        "command": "SAS.clinical.job.runProgram",
+        "title": "%clinical.commands.runProgram%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(play-circle)"
+      },
+      {
         "command": "SAS.clinical.jobs.refresh",
         "title": "%commands.SAS.refresh%",
         "category": "SAS Clinical Acceleration",
@@ -1727,6 +1733,11 @@
           "group": "0_run@0"
         },
         {
+          "command": "SAS.clinical.job.runProgram",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;sasProgram;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@0"
+        },
+        {
           "command": "SAS.clinical.job.openLog",
           "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
           "group": "inline@1"
@@ -1819,11 +1830,20 @@
       ],
       "editor/title/run": [
         {
+          "when": "resourceExtname == .sas && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
+          "command": "SAS.clinical.job.runProgram"
+        },
+        {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
           "command": "SAS.runSelected"
         }
       ],
       "editor/context": [
+        {
+          "when": "resourceExtname == .sas && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
+          "command": "SAS.clinical.job.runProgram",
+          "group": "navigation@3"
+        },
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
           "command": "SAS.run",
@@ -2223,6 +2243,10 @@
         {
           "when": "false",
           "command": "SAS.clinical.job.copyId"
+        },
+        {
+          "when": "resourceExtname == .sas && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
+          "command": "SAS.clinical.job.runProgram"
         },
         {
           "when": "resourceExtname == .cmnf && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",

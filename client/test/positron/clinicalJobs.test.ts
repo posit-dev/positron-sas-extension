@@ -44,12 +44,15 @@ import type {
   RawSubmission,
 } from "../../src/clinical/jobs/types";
 import {
+  jobPathForProgram,
   manifestSubmissionId,
   normalizeSubmission,
   parentPath,
   parseJobFile,
+  programJob,
   resolveJobPath,
   resourceFromPath,
+  runsOnlyProgram,
   submittedByFilter,
   toRunInfo,
 } from "../../src/clinical/jobs/utils";
@@ -762,5 +765,46 @@ describe("renderManifestReport", () => {
     expect(html).to.include(
       "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;",
     );
+  });
+});
+
+describe("program jobs", () => {
+  it("names the job after the program", () => {
+    expect(jobPathForProgram("/study/adsl.sas")).to.equal("/study/adsl.cjob");
+    expect(jobPathForProgram("/study/adsl.sas", 2)).to.equal(
+      "/study/adsl-2.cjob",
+    );
+    expect(jobPathForProgram("/t.final.sas")).to.equal("/t.final.cjob");
+  });
+
+  it("recognizes a job that runs only the program", () => {
+    const resource = resourceFromPath("/probe-jobs/probe.cjob", "WORKSPACE");
+    const job = parseJobFile(fixture("probe.cjob"), resource);
+    // The file stores "./probe.sas", relative to the job's folder.
+    expect(runsOnlyProgram(job, "/probe-jobs/probe.sas")).to.equal(true);
+    expect(runsOnlyProgram(job, "/probe-jobs/other.sas")).to.equal(false);
+    expect(
+      runsOnlyProgram(
+        { ...job, programs: [...(job.programs ?? []), { path: "./b.sas" }] },
+        "/probe-jobs/probe.sas",
+      ),
+    ).to.equal(false);
+    expect(runsOnlyProgram({ resource }, "/probe-jobs/probe.sas")).to.equal(
+      false,
+    );
+  });
+
+  it("creates a workspace job for one program", () => {
+    expect(programJob("/study/adsl.sas", "/study/adsl.cjob")).to.deep.equal({
+      resource: {
+        name: "adsl.cjob",
+        path: "/study/adsl.cjob",
+        location: "/study",
+        resourceLocation: "WORKSPACE",
+      },
+      programs: [
+        { path: "/study/adsl.sas", name: "adsl.sas", location: "/study" },
+      ],
+    });
   });
 });
