@@ -456,4 +456,6 @@ export interface WindowManager {
   ): PreviewPanel;
   /** Open an HTML file in the Viewer, served through positron-proxy. */
   previewHtml(path: string): PreviewPanel;
+  /** Open a URL in the Viewer. */
+  previewUrl(url: vscode.Uri): PreviewPanel;
 }

@@ -155,9 +155,9 @@ To show the report, do one of the following:
 - Click **Show Manifest** in the notification at the end of a run.
 - Right-click a `.cmnf` file in the **Clinical Workspace** or **Clinical Repository** view and select **Show Manifest Report**.
 
-In Positron, the report opens in the Viewer, where Posit Assistant can read it. Ask the Assistant, for example, which version of a dataset a run read.
+In Positron, the report opens in the Viewer, where Posit Assistant can read it. Click a path in the report to open that file. A versioned repository file opens at the version the run used. Ask the Assistant, for example, which version of a dataset a run read.
 
-To save the report, select **Export Manifest...** in the same places. Save it as an `.html` file for the report, or as a `.json` file for the manifest as the server returns it.
+To save the report, select **Export Manifest...** in the same places. Save it as an `.html` file for the report, or as a `.json` file for the manifest as the server returns it. The paths in an exported report are not links.
 
 :::info note
 

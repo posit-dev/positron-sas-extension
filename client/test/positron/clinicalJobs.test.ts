@@ -753,6 +753,29 @@ describe("renderManifestReport", () => {
     ]);
   });
 
+  it("links the run's files when asked to, and only then", () => {
+    const manifest = json<Manifest>("manifest-workspace.json");
+    const linked = renderManifestReport(manifest, labels, {
+      generatedAt,
+      linkFor: (resource) =>
+        resource.name.endsWith(".cmnf")
+          ? undefined
+          : `open?f=${resource.path}&x="`,
+    });
+    expect(linked).to.include(
+      '<a href="open?f=/probe-jobs/probe.log&amp;x=&quot;"><code>/probe-jobs/probe.log</code></a>',
+    );
+    expect(linked).to.include(
+      '<a href="open?f=/probe-jobs/probe.cjob&amp;x=&quot;"><code>/probe-jobs/probe.cjob</code></a>',
+    );
+    // The manifest file itself was given no link.
+    expect(linked).to.include("<code>/probe-jobs/probe.cmnf</code>");
+    expect(linked).to.not.include('href="open?f=/probe-jobs/probe.cmnf');
+    expect(
+      renderManifestReport(manifest, labels, { generatedAt }),
+    ).to.not.include("<a href");
+  });
+
   it("marks canceled programs and escapes text from the server", () => {
     const manifest = json<Manifest>("manifest-canceled.json");
     manifest.job = {
