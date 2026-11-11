@@ -218,6 +218,11 @@ export class WorkspaceModel {
     return this.runAction("CHECK_IN", body, isCancelled);
   }
 
+  /** The signed-in user, to tell their own check-outs apart. */
+  getCurrentUserId(): Promise<string | undefined> {
+    return this.repository.getCurrentUserId();
+  }
+
   /** The files below `paths` that can be checked in. */
   async getCheckInCandidates(paths: string[]): Promise<SynchronizationItem[]> {
     const connection = await this.repository.getConnection();

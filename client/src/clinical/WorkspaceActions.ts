@@ -26,7 +26,12 @@ import { WorkspaceModel } from "./WorkspaceModel";
 import { BatchMessages, performBatchAction } from "./batchAction";
 import { WORKSPACE_SCHEME } from "./const";
 import { closeEditors } from "./editors";
-import { Messages, errorMessage, toInputValidator } from "./messages";
+import {
+  Messages,
+  describeCheckInBlock,
+  errorMessage,
+  toInputValidator,
+} from "./messages";
 import type { RepositoryItem, VersionRow, WorkspaceItem } from "./types";
 import {
   CheckInAnswers,
@@ -36,6 +41,7 @@ import {
   isWorkspaceFolder,
   joinWorkspacePath,
   planCheckIn,
+  sortCheckInCandidates,
   validateComment,
   validateFileName,
   validateFolderName,
@@ -370,22 +376,51 @@ export class WorkspaceActions {
       return;
     }
     let plan;
+    let blocked;
     try {
-      plan = planCheckIn(
+      const sorted = sortCheckInCandidates(
+        items,
         await this.model.getCheckInCandidates(items.map((i) => i.path)),
+        await this.model.getCurrentUserId(),
       );
+      blocked = sorted.blocked;
+      plan = planCheckIn(sorted.candidates);
     } catch (error) {
       this.fail(
         l10n.t(Messages.StartActionError, { message: errorMessage(error) }),
       );
       return;
     }
+    for (const block of blocked) {
+      this.output.warn(describeCheckInBlock(block));
+    }
+    const showDetails = (answer: string | undefined) =>
+      answer === Messages.ShowDetails && this.output.show(true);
     if (
       plan.newFiles.length + plan.versioned.length + plan.unversioned.length ===
       0
     ) {
-      window.showErrorMessage(Messages.CheckInNoItems);
+      if (blocked.length === 1) {
+        window.showErrorMessage(describeCheckInBlock(blocked[0]));
+      } else if (blocked.length > 1) {
+        void window
+          .showErrorMessage(
+            l10n.t(Messages.CheckInBlockedMany, { count: blocked.length }),
+            Messages.ShowDetails,
+          )
+          .then(showDetails);
+      } else {
+        window.showErrorMessage(Messages.CheckInNoItems);
+      }
       return;
+    }
+    if (blocked.length) {
+      void window
+        .showWarningMessage(
+          l10n.t(Messages.CheckInSomeLeftOut, { count: blocked.length }),
+          Messages.ShowDetails,
+        )
+        .then(showDetails);
     }
 
     const answers: Partial<CheckInAnswers> = {};

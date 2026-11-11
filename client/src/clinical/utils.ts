@@ -22,6 +22,7 @@ import type {
   ObjectType,
   RepositoryItem,
   ResourceCollection,
+  SynchronizationInfo,
   SynchronizationItem,
   VersionHistoryItem,
   VersionRow,
@@ -560,6 +561,89 @@ export function planCheckIn(items: SynchronizationItem[]): CheckInPlan {
     }
   }
   return plan;
+}
+
+/** Why a file the user chose to check in can't be. */
+export type CheckInBlockReason =
+  /** A copy of a repository file the user hasn't checked out. */
+  | "notCheckedOut"
+  /** Checked out by someone else. */
+  | "checkedOutByOther"
+  /** Left out by the server for a reason the file doesn't show. */
+  | "notOffered";
+
+export interface CheckInBlock {
+  name: string;
+  path: string;
+  reason: CheckInBlockReason;
+  /** Who has it checked out, for checkedOutByOther. */
+  by?: string;
+}
+
+/**
+ * Whether a workspace file is a copy of a repository file (Copy to Workspace,
+ * or left behind by a check-in). Only a check-out lets it make a new version.
+ */
+const isRepositoryCopy = (info: SynchronizationInfo | undefined): boolean =>
+  info?.workspaceStatus === "IN_SYNC" ||
+  info?.workspaceStatus === "OUT_OF_SYNC";
+
+function blockReason(
+  info: SynchronizationInfo | undefined,
+  currentUserId: string | undefined,
+): Omit<CheckInBlock, "name" | "path"> | undefined {
+  if (info?.checkedOut) {
+    return currentUserId &&
+      info.checkedOutBy &&
+      info.checkedOutBy !== currentUserId
+      ? {
+          reason: "checkedOutByOther",
+          by: info.checkedOutByDisplayName ?? info.checkedOutBy,
+        }
+      : undefined;
+  }
+  return isRepositoryCopy(info) ? { reason: "notCheckedOut" } : undefined;
+}
+
+/**
+ * Split the server's check-in candidates into what can be checked in and the
+ * files that can't, with the reason, so the user is told why instead of
+ * getting a bare refusal. `selected` are the workspace items the user chose;
+ * a selected file the server left out is explained from its own status.
+ */
+export function sortCheckInCandidates(
+  selected: WorkspaceItem[],
+  candidates: SynchronizationItem[],
+  currentUserId: string | undefined,
+): { candidates: SynchronizationItem[]; blocked: CheckInBlock[] } {
+  const kept: SynchronizationItem[] = [];
+  const blocked: CheckInBlock[] = [];
+  for (const item of candidates) {
+    const block = blockReason(item.synchronizationInfo, currentUserId);
+    if (!block) {
+      kept.push(item);
+    } else if (
+      block.reason !== "notCheckedOut" ||
+      item.synchronizationInfo.workspaceStatus === "OUT_OF_SYNC"
+    ) {
+      // An unchanged copy has nothing to check in: leave it out quietly.
+      blocked.push({ name: item.name, path: item.path, ...block });
+    }
+  }
+  const listed = new Set(candidates.map((c) => c.path));
+  for (const item of selected) {
+    if (isWorkspaceFolder(item) || listed.has(item.path)) {
+      continue;
+    }
+    blocked.push({
+      name: item.name,
+      path: item.path,
+      ...(blockReason(item.synchronizationInfo, currentUserId) ?? {
+        reason: "notOffered",
+      }),
+    });
+  }
+  return { candidates: kept, blocked };
 }
 
 /** The next major ("2.3" -> "3.0") or minor ("2.3" -> "2.4") version. */

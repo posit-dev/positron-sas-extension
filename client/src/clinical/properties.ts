@@ -5,9 +5,10 @@
 //
 // The rows of the Properties view. Nothing here imports `vscode`: the labels
 // are passed in, so the logic can be unit tested outside the extension host.
-import type { RepositoryItem } from "./types";
+import type { ItemPrivileges, RepositoryItem } from "./types";
 
-export type PropertyKind = "string" | "user" | "date" | "number" | "sync";
+export type PropertyKind =
+  "string" | "user" | "date" | "number" | "sync" | "access";
 
 export interface PropertyRow {
   key: string;
@@ -47,6 +48,18 @@ export interface PropertyLabels {
   syncInSync: string;
   syncNotSynced: string;
   syncUnknown: string;
+  permissions: string;
+  privileges: string;
+  noPermissions: string;
+  privilegeEnable: string;
+  privilegeManage: string;
+}
+
+/** What the signed-in user may do with an item, as the server reports it. */
+export interface ItemAccess {
+  /** Effective permissions such as READ and WRITE. */
+  permissions?: string[];
+  privileges?: ItemPrivileges;
 }
 
 export function formatBytes(bytes: number | undefined, decimals = 0): string {
@@ -101,6 +114,7 @@ export function buildPropertyRows(
   typeName: string | undefined,
   labels: PropertyLabels,
   locale?: string,
+  access?: ItemAccess,
 ): PropertyRow[] {
   const rows: PropertyRow[] = [];
   const add = (
@@ -180,6 +194,29 @@ export function buildPropertyRows(
       "sync",
       labels.workspaceStatus,
       syncLabel(item.synchronizationInfo?.workspaceStatus, labels),
+    );
+  }
+  // What the server lets the user do: explains a missing Check Out, say.
+  if (access?.permissions) {
+    add(
+      "permissions",
+      "access",
+      labels.permissions,
+      access.permissions.join(", ") || labels.noPermissions,
+    );
+  }
+  if (access?.privileges) {
+    const { enableVersioning, manageVersioning } = access.privileges;
+    add(
+      "privileges",
+      "access",
+      labels.privileges,
+      [
+        enableVersioning ? labels.privilegeEnable : "",
+        manageVersioning ? labels.privilegeManage : "",
+      ]
+        .filter(Boolean)
+        .join(", ") || labels.noPermissions,
     );
   }
   return rows;

@@ -422,6 +422,7 @@ export class ClinicalRepository {
         return;
       }
       this.properties.show(fresh, type?.name);
+      void this.showAccess(fresh, type?.name, generation);
       await this.versions.show(fresh);
     } catch (error) {
       if (generation !== this.detailsGeneration) {
@@ -433,6 +434,21 @@ export class ClinicalRepository {
       this.output.error(message);
       this.properties.showError(message);
       this.versions.clear();
+    }
+  }
+
+  /** Add the user's permissions to the Properties once they are read. */
+  private async showAccess(
+    item: RepositoryItem,
+    typeName: string | undefined,
+    generation: number,
+  ): Promise<void> {
+    const [permissions, privileges] = await Promise.all([
+      this.model.getPermissionNames(item.id),
+      this.model.getPrivileges(item.id),
+    ]);
+    if (generation === this.detailsGeneration && (permissions || privileges)) {
+      this.properties.show(item, typeName, { permissions, privileges });
     }
   }
 

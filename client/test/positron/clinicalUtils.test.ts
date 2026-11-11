@@ -40,6 +40,7 @@ import {
   parsePrivileges,
   parseWritePermission,
   planCheckIn,
+  sortCheckInCandidates,
   sortVersions,
   validateFileName,
   validateFolderName,
@@ -1083,6 +1084,112 @@ describe("check in", () => {
       "unversioned2.sas",
     ]);
     expect(plan.versioned.map((i) => i.name)).to.deep.equal(["versioned.sas"]);
+  });
+
+  describe("files that can't be checked in", () => {
+    const ws = (
+      name: string,
+      synchronizationInfo?: WorkspaceItem["synchronizationInfo"],
+    ): WorkspaceItem => ({
+      name,
+      path: `/Acme/${name}`,
+      type: "FILE",
+      synchronizationInfo,
+    });
+
+    it("keeps new files and the user's own check-outs", () => {
+      const result = sortCheckInCandidates(
+        [],
+        [
+          candidate("new.sas", { workspaceStatus: "NOT_SYNCED" }),
+          candidate("mine.sas", {
+            checkedOut: true,
+            checkedOutBy: "me",
+            workspaceStatus: "OUT_OF_SYNC",
+          }),
+        ],
+        "me",
+      );
+      expect(result.candidates.map((c) => c.name)).to.deep.equal([
+        "new.sas",
+        "mine.sas",
+      ]);
+      expect(result.blocked).to.be.empty;
+    });
+
+    it("explains a changed copy that isn't checked out", () => {
+      const result = sortCheckInCandidates(
+        [],
+        [candidate("copy.sas", { workspaceStatus: "OUT_OF_SYNC" })],
+        "me",
+      );
+      expect(result.candidates).to.be.empty;
+      expect(result.blocked).to.deep.equal([
+        { name: "copy.sas", path: "/Acme/copy.sas", reason: "notCheckedOut" },
+      ]);
+    });
+
+    it("leaves out an unchanged copy quietly", () => {
+      const result = sortCheckInCandidates(
+        [],
+        [candidate("same.sas", { workspaceStatus: "IN_SYNC" })],
+        "me",
+      );
+      expect(result.candidates).to.be.empty;
+      expect(result.blocked).to.be.empty;
+    });
+
+    it("names who has a file checked out", () => {
+      const result = sortCheckInCandidates(
+        [],
+        [
+          candidate("theirs.sas", {
+            checkedOut: true,
+            checkedOutBy: "bob",
+            checkedOutByDisplayName: "Bob B",
+            workspaceStatus: "OUT_OF_SYNC",
+          }),
+        ],
+        "me",
+      );
+      expect(result.blocked).to.deep.equal([
+        {
+          name: "theirs.sas",
+          path: "/Acme/theirs.sas",
+          reason: "checkedOutByOther",
+          by: "Bob B",
+        },
+      ]);
+    });
+
+    it("explains selected files the server left out", () => {
+      const result = sortCheckInCandidates(
+        [
+          ws("copy.sas", { workspaceStatus: "IN_SYNC" }),
+          ws("odd.sas", { workspaceStatus: "NOT_SYNCED" }),
+          ws("listed.sas"),
+          { name: "folder", path: "/Acme/folder", type: "FOLDER" },
+        ],
+        [candidate("listed.sas", {})],
+        "me",
+      );
+      expect(result.candidates.map((c) => c.name)).to.deep.equal([
+        "listed.sas",
+      ]);
+      expect(result.blocked.map((b) => [b.name, b.reason])).to.deep.equal([
+        ["copy.sas", "notCheckedOut"],
+        ["odd.sas", "notOffered"],
+      ]);
+    });
+
+    it("trusts the server when the user is unknown", () => {
+      const result = sortCheckInCandidates(
+        [],
+        [candidate("x.sas", { checkedOut: true, checkedOutBy: "bob" })],
+        undefined,
+      );
+      expect(result.candidates).to.have.length(1);
+    });
   });
 
   it("raises the major or minor version", () => {
