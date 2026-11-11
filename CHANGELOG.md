@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- SAS Clinical Acceleration: runs can be removed from the **Clinical Jobs** view. **Remove from List** hides the selected runs, and **Clear Finished Runs** in the title bar hides every finished run, also those on pages not loaded yet. Runs are only hidden in Positron, per user and server; the run history on the server stays. **Show Hidden Runs**, **Restore to List** and **Restore All Hidden Runs** bring them back
+- SAS Clinical Acceleration: **Show All Users' Schedules** in the **Clinical Job Schedules** view lists the schedules of all users that the server returns, marked with their owner. Other users' schedules can only have their ID copied
+
+### Bug Fixes
+
+- SAS Clinical Acceleration: the **Clinical Job Schedules** view listed other users' schedules and offered to run, change and delete them. The service returns other users' schedules too, although its documentation says it returns the current user's. The view now lists the schedules that run as you, like the **Clinical Jobs** view lists your runs
+
 ## 0.6.0 - 2026-11-11
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

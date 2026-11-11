@@ -17,7 +17,10 @@ import {
   window,
 } from "vscode";
 
-import type { RepositoryModel } from "../RepositoryModel";
+import {
+  type RepositoryModel,
+  getActiveViyaEndpoint,
+} from "../RepositoryModel";
 import { getWorkspaceUri } from "../WorkspaceDataProvider";
 import type { WorkspaceModel } from "../WorkspaceModel";
 import { toInputValidator } from "../messages";
@@ -36,6 +39,7 @@ import {
   type ScheduleNode,
   SchedulesDataProvider,
 } from "./SchedulesDataProvider";
+import { HiddenRuns } from "./hiddenRuns";
 import type { JobNode } from "./manifestTree";
 import { JobMessages, errorStatus, jobErrorMessage } from "./messages";
 import { valuesForRerun } from "./parameterValues";
@@ -66,7 +70,14 @@ export function registerClinicalJobs(
   const log = (message: string) => output.info(message);
   const model = new JobsModel(repositoryModel, workspaceModel);
   const picker = new ItemPicker(repositoryModel, workspaceModel);
-  const view = new JobsDataProvider(model, log);
+  const currentUser = () => repositoryModel.getCurrentUserId();
+  // Runs removed from the view, per server and user.
+  const hidden = new HiddenRuns(
+    context.globalState,
+    async () =>
+      `${getActiveViyaEndpoint() ?? ""}|${(await currentUser()) ?? ""}`,
+  );
+  const view = new JobsDataProvider(model, log, hidden);
   const reports = new ManifestReports(model, output);
   const runner = new JobRunner(model, picker, output, (submission) => {
     view.upsert(submission);
@@ -76,7 +87,13 @@ export function registerClinicalJobs(
   });
 
   const programs = new ProgramJobs(model, runner, output, refreshTrees);
-  const schedules = new SchedulesDataProvider(model, log);
+  const schedules = new SchedulesDataProvider(model, log, currentUser);
+
+  /** The runs a command acts on: the clicked one, or the whole selection. */
+  const runsOf = (node: JobNode, selected?: JobNode[]): Submission[] =>
+    (selected?.length ? selected : [node]).flatMap((n) =>
+      n.kind === "run" ? [n.submission] : [],
+    );
 
   const scheduleOf = (node: ScheduleNode | undefined): Schedule | undefined =>
     node?.kind === "schedule" ? node.schedule : undefined;
@@ -435,6 +452,49 @@ export function registerClinicalJobs(
         }
         await runner.submit(submission.job, values);
       },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.job.hide",
+      async (node: JobNode, selected?: JobNode[]) => {
+        await hidden.hide(runsOf(node, selected));
+        view.redraw();
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.job.restore",
+      async (node: JobNode, selected?: JobNode[]) => {
+        await hidden.restore(runsOf(node, selected));
+        view.redraw();
+      },
+    ),
+    commands.registerCommand("SAS.clinical.jobs.clearFinished", async () => {
+      const before = hidden.snapshot();
+      await hidden.clearFinished();
+      view.redraw();
+      const choice = await window.showInformationMessage(
+        JobMessages.ClearedRuns,
+        JobMessages.Undo,
+      );
+      if (choice === JobMessages.Undo) {
+        await hidden.set(before);
+        view.redraw();
+      }
+    }),
+    commands.registerCommand("SAS.clinical.jobs.restoreAll", async () => {
+      await hidden.restoreAll();
+      view.redraw();
+    }),
+    commands.registerCommand("SAS.clinical.jobs.showHidden", () =>
+      view.setShowHidden(true),
+    ),
+    commands.registerCommand("SAS.clinical.jobs.hideHidden", () =>
+      view.setShowHidden(false),
+    ),
+    commands.registerCommand("SAS.clinical.schedules.showAll", () =>
+      schedules.setShowAll(true),
+    ),
+    commands.registerCommand("SAS.clinical.schedules.showMine", () =>
+      schedules.setShowAll(false),
     ),
     commands.registerCommand("SAS.clinical.job.copyId", (node: JobNode) => {
       const submission = runOf(node);

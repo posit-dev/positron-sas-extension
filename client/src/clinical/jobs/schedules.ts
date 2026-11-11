@@ -327,11 +327,24 @@ export function scheduleValues(schedule: Schedule): ParameterValue[] {
   );
 }
 
-/** Context value of a schedule in the view: its status and job. */
-export function scheduleContextValue(schedule: Schedule): string {
+/**
+ * Whether a schedule is the user's: it runs as its owner. The service lists
+ * other users' schedules too, although its documentation says it lists the
+ * current user's. Without a known user, every schedule counts as the user's.
+ */
+export function isOwnSchedule(
+  schedule: Schedule,
+  userId: string | undefined,
+): boolean {
+  const owner = schedule.runAs ?? schedule.createdBy;
+  return !userId || !owner || owner === userId;
+}
+
+/** Context value of a schedule in the view: status, job and owner. */
+export function scheduleContextValue(schedule: Schedule, own = true): string {
   return `;schedule;${schedule.status === "DISABLED" ? "disabled" : "enabled"};${
     schedule.jobAvailable === false ? "jobMissing" : "jobOk"
-  };`;
+  };${own ? "mine" : "others"};`;
 }
 
 /** Today in a time zone, as YYYY-MM-DD (en-CA formats dates that way). */

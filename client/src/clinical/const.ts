@@ -53,6 +53,9 @@ export const JOB_SCHEDULES = `${JOBS_ROOT}/schedules`;
 export const JOBS_PROBE = `${JOB_SUBMISSIONS}?limit=1`;
 export const JOBS_AVAILABLE_CONTEXT_KEY = "SAS.clinical.jobsAvailable";
 export const JOBS_VIEW_ID = "clinicaljobsprovider";
+/** Context keys of the view toggles: hidden runs, everyone's schedules. */
+export const SHOW_HIDDEN_RUNS_KEY = "SAS.clinical.showHiddenRuns";
+export const SHOW_ALL_SCHEDULES_KEY = "SAS.clinical.showAllSchedules";
 /** Page size of the submissions list. */
 export const SUBMISSIONS_PAGE_LIMIT = 25;
 
