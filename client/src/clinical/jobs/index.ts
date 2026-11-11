@@ -49,7 +49,7 @@ import { resourceForItem, resourceForUri, uriForResource } from "./resources";
 import { scheduleJob, scheduleValues } from "./schedules";
 import { isTerminal } from "./state";
 import type { ClinicalJob, JobResource, Schedule, Submission } from "./types";
-import { resourceFromPath } from "./utils";
+import { resourceFromPath, runKindOf } from "./utils";
 
 export interface ClinicalJobs extends Disposable {
   /** Reload the Jobs view, after sign-in or a profile switch. */
@@ -511,7 +511,12 @@ export function registerClinicalJobs(
           );
           return;
         }
-        await runner.submit(submission.job, values);
+        // A test is repeated as a test, Run and populate as Run and populate.
+        await runner.submit(
+          submission.job,
+          values,
+          runKindOf(submission.jobRunContext),
+        );
       },
     ),
     commands.registerCommand(

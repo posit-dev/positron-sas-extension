@@ -12,6 +12,14 @@ import type { Outcome } from "./state";
 
 export const JobMessages = {
   RunTitle: l10n.t("Running {name}"),
+  TestTitle: l10n.t("Testing {name} as a repository run"),
+  KindTest: l10n.t("Test"),
+  KindPopulate: l10n.t("Run and populate"),
+  KindPopulateRelative: l10n.t("Run and populate, relative paths"),
+  KindScheduled: l10n.t("Scheduled"),
+  KindTestDetail: l10n.t(
+    "Test run: the programs and inputs were read from the repository, only the log, listing and manifest were written, and nothing was checked in.",
+  ),
   RunState: l10n.t("{state}"),
   RunStateProgram: l10n.t("{state}: {program}"),
   Starting: l10n.t("Starting {name}..."),

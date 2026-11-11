@@ -37,6 +37,22 @@ import type { Manifest, ManifestFile, Submission } from "./types";
 /** How often runs that have not ended are checked while the view is visible. */
 const REFRESH_INTERVAL_MS = 5000;
 
+/** The kind of a run, for its description; empty for a plain run. */
+function runKindLabel(context: string | undefined): string {
+  switch (context) {
+    case "INTERACTIVE_TEST":
+      return JobMessages.KindTest;
+    case "INTERACTIVE_RUN_AND_POPULATE":
+      return JobMessages.KindPopulate;
+    case "INTERACTIVE_RUN_AND_POPULATE_RELATIVE":
+      return JobMessages.KindPopulateRelative;
+    case "SCHEDULER":
+      return JobMessages.KindScheduled;
+    default:
+      return "";
+  }
+}
+
 export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
   private readonly changed = new EventEmitter<JobNode | undefined>();
   readonly onDidChangeTreeData = this.changed.event;
@@ -347,7 +363,8 @@ export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
     );
     item.id = `run:${submission.id}`;
     const when = formatTime(submission.submittedTimeStamp);
-    item.description = [humanizeState(submission.state), when]
+    const kind = runKindLabel(submission.jobRunContext);
+    item.description = [kind, humanizeState(submission.state), when]
       .filter(Boolean)
       .join(" · ");
     const outcome = outcomeOf(submission.state);
@@ -364,6 +381,9 @@ export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
     item.tooltip = new MarkdownString(
       [
         `**${submission.job.path}** (${submission.job.resourceLocation.toLowerCase()})`,
+        submission.jobRunContext === "INTERACTIVE_TEST"
+          ? JobMessages.KindTestDetail
+          : kind,
         humanizeState(submission.state),
         submission.info ?? "",
         `${submission.submittedByDisplayName ?? submission.submittedBy ?? ""} · ${when}`,
