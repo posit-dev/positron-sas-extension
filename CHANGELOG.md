@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.6.1 - 2026-11-11
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+This release extends the SAS Clinical Acceleration support: runs can be removed from the Clinical Jobs view and the Clinical Job Schedules view lists only your schedules ([#120](https://github.com/posit-dev/positron-sas-extension/pull/120)), Properties show your permissions and Check In explains refused files ([#122](https://github.com/posit-dev/positron-sas-extension/pull/122)), and clinical jobs can be run and populated and tested as repository runs ([#123](https://github.com/posit-dev/positron-sas-extension/pull/123), [#124](https://github.com/posit-dev/positron-sas-extension/pull/124)).
 
 ### Features
 
