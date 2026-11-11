@@ -17,6 +17,10 @@ import {
   JobsModel,
 } from "../../src/clinical/jobs/JobsModel";
 import {
+  type ReportLabels,
+  renderManifestReport,
+} from "../../src/clinical/jobs/manifestReport";
+import {
   describeValue,
   manifestNodes,
 } from "../../src/clinical/jobs/manifestTree";
@@ -603,5 +607,160 @@ describe("manifestNodes", () => {
     expect(
       describeValue({ name: "f", type: "FILE", value: { path: "/x.sas" } }),
     ).to.equal("/x.sas");
+  });
+});
+
+describe("renderManifestReport", () => {
+  const labels: ReportLabels = {
+    title: "Clinical job manifest",
+    summary: "Summary",
+    job: "Job",
+    description: "Description",
+    state: "State",
+    info: "Information",
+    runId: "Run ID",
+    runContext: "Run context",
+    submitted: "Submitted",
+    completed: "Completed",
+    runAs: "Run as",
+    owner: "Job owner",
+    totalTime: "Total time",
+    manifestFile: "Manifest file",
+    parameters: "Parameters",
+    programs: "Programs",
+    inputs: "Inputs",
+    externalInputs: "External inputs",
+    outputs: "Outputs",
+    externalOutputs: "External outputs",
+    logs: "Logs",
+    results: "Results",
+    checkin: "Check-in",
+    checkinFailures: "Check-in failures",
+    metrics: "File transfer",
+    name: "Name",
+    label: "Label",
+    type: "Type",
+    value: "Value",
+    path: "Path",
+    version: "Version",
+    size: "Size",
+    modified: "Modified",
+    md5: "MD5",
+    usedBy: "Used by",
+    location: "Location",
+    executionState: "Result",
+    executionTime: "Time",
+    item: "Item",
+    message: "Message",
+    versioning: "Output versioning",
+    versionNewFiles: "Version new files",
+    checkinLocations: "Check-in locations",
+    files: "Files",
+    time: "Time",
+    yes: "Yes",
+    no: "No",
+    none: "None",
+    generated: "Generated on",
+  };
+  const generatedAt = new Date("2026-11-11T10:00:00Z");
+  // Rows of a section, as text: the cells of each row joined with "|".
+  const rows = (html: string, heading: string): string[] => {
+    const start = html.indexOf(`<h2>${heading}</h2>`);
+    expect(start, heading).to.be.greaterThan(-1);
+    const end = html.indexOf("<h2>", start + 1);
+    const section = html.slice(start, end < 0 ? undefined : end);
+    return [...section.matchAll(/<tr>(.*?)<\/tr>/g)].map((m) =>
+      m[1]
+        .split(/<\/t[dh]>/)
+        .map((cell) => cell.replace(/<[^>]*>/g, "").trim())
+        .filter(Boolean)
+        .join("|"),
+    );
+  };
+
+  it("renders a workspace run as a complete page", () => {
+    const html = renderManifestReport(json("manifest-workspace.json"), labels, {
+      generatedAt,
+    });
+    expect(html).to.match(/^<!DOCTYPE html>/);
+    expect(html).to.include("<title>Clinical job manifest: probe.cjob</title>");
+    expect(html).to.include(
+      '<span class="badge success">Completed successful</span>',
+    );
+    expect(html).to.include("eba8e748-2de6-4ef0-b3f7-e83d32cb7055");
+    expect(rows(html, "Parameters")).to.deep.equal([
+      "Name|Label|Type|Value",
+      "probe_char|Probe text|CHARACTER|from-probe",
+    ]);
+    expect(rows(html, "Programs")[1]).to.match(
+      /^\/probe-jobs\/probe\.sas\|Successful\|0\.04 s$/,
+    );
+    // The log and listing are in their own sections, not under Outputs.
+    expect(html).to.include('<p class="empty">None</p>');
+    expect(rows(html, "Logs")[1]).to.match(
+      /^\/probe-jobs\/probe\.log\|3\.3 KB\|/,
+    );
+    // A workspace run checks nothing in.
+    expect(html).to.not.include("<h2>Check-in</h2>");
+  });
+
+  it("shows the check-in of a repository run and its failures", () => {
+    const manifest: Manifest = {
+      ...json<Manifest>("manifest-workspace.json"),
+      type: "REPOSITORY",
+      checkinSpecification: {
+        fileVersion: "MINOR",
+        enableVersioningOnNewFiles: true,
+        locations: [{ path: "/study/output", includeSubfolders: true }],
+      },
+      inputs: [
+        {
+          resource: {
+            name: "adsl.sas7bdat",
+            path: "/study/adam/adsl.sas7bdat",
+            location: "/study/adam",
+            resourceLocation: "REPOSITORY",
+            id: "1",
+            fileVersion: "2.0",
+          },
+          size: 196608,
+          digest: "0FA3713F9BA4E15AC2B51D9E659C4D4B",
+          referencingProgram: "/study/programs/t.sas",
+        },
+      ],
+    };
+    const html = renderManifestReport(manifest, labels, {
+      generatedAt,
+      checkinFailures: [
+        {
+          itemIdentifier: "/study/output",
+          itemName: "t.lst",
+          message: "checked out",
+        },
+      ],
+    });
+    expect(rows(html, "Inputs")[1]).to.equal(
+      "/study/adam/adsl.sas7bdat|2.0|192 KB|0FA3713F9BA4E15AC2B51D9E659C4D4B|/study/programs/t.sas",
+    );
+    expect(rows(html, "Check-in")).to.include.members([
+      "Output versioning|MINOR",
+      "Version new files|Yes",
+      "Check-in locations|/study/output +",
+      "/study/output/t.lst|checked out",
+    ]);
+  });
+
+  it("marks canceled programs and escapes text from the server", () => {
+    const manifest = json<Manifest>("manifest-canceled.json");
+    manifest.job = {
+      ...manifest.job!,
+      description: '<script>alert("x")</script>',
+    };
+    const html = renderManifestReport(manifest, labels, { generatedAt });
+    expect(html).to.include('<span class="badge canceled">Canceled</span>');
+    expect(html).to.not.include("<script>");
+    expect(html).to.include(
+      "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;",
+    );
   });
 });

@@ -106,7 +106,7 @@ To run a job:
 2. Enter a value for each parameter of the job. The prompts start with the default values of the job. For a file or folder parameter, pick the file or folder from the view the job is in.
 3. A notification shows the state of the run. To cancel the run, click **Cancel** in the notification.
 
-When the run ends, a notification says how it ended, with buttons to open the log and the results. A job writes its log (`.log`), listing (`.lst`), and manifest next to the job file unless the job names other locations.
+When the run ends, a notification says how it ended, with buttons to open the log, the results, and the manifest report. A job writes its log (`.log`), listing (`.lst`), and manifest next to the job file unless the job names other locations.
 
 ### The Clinical Jobs view
 
@@ -124,6 +124,7 @@ Click a file to open it. A versioned repository file opens at the version the ru
 
 Right-click a run for more actions:
 
+- **Show Manifest Report** and **Export Manifest...**: show or save the manifest report, described in the next section.
 - **Open Log** and **Open Results**: open the log or the results of the run.
 - **Open Job**: open the job file.
 - **Run Again**: run the job again with the same parameter values, without prompts.
@@ -133,6 +134,26 @@ Right-click a run for more actions:
 :::info note
 
 A run of a repository job checks its outputs in to the repository. If an output file is checked out, or you lack write permission for its folder, the run ends with a check-in error, and **Check-in failures** lists the files. The outputs of a workspace job stay in your workspace.
+
+:::
+
+### The manifest report
+
+The manifest report shows the manifest of a run as one page, for review or for a quality check. It lists the job, how the run ended, who ran it and when, the parameter values, the programs with their results and run times, and each input and output file with its version, size, modification time, and MD5 checksum. For a repository job, it also shows how outputs are checked in and which outputs failed to check in.
+
+To show the report, do one of the following:
+
+- Click **Show Manifest Report** on a run in the **Clinical Jobs** view.
+- Click **Show Manifest** in the notification at the end of a run.
+- Right-click a `.cmnf` file in the **Clinical Workspace** or **Clinical Repository** view and select **Show Manifest Report**.
+
+In Positron, the report opens in the Viewer, where Posit Assistant can read it. Ask the Assistant, for example, which version of a dataset a run read.
+
+To save the report, select **Export Manifest...** in the same places. Save it as an `.html` file for the report, or as a `.json` file for the manifest as the server returns it.
+
+:::info note
+
+The server returns the manifest of a run only while its `.cmnf` file is unchanged. The next run of the same job overwrites that file, so the report of the earlier run is no longer available. Export the report of a run to keep it.
 
 :::
 

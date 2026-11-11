@@ -39,6 +39,7 @@ import {
 } from "./consoleLog";
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
 import { OutputFiles } from "./outputFiles";
+import { showHtmlInViewer } from "./viewer";
 import { extractPngImages, htmlToText, pngSize } from "./sasOutput";
 import {
   type SessionIdentity,
@@ -85,7 +86,6 @@ import type {
   LanguageRuntimeSession,
   MetadataSchema,
   ObjectSchema,
-  PreviewPanel,
   RuntimeCodeExecutionMode,
   RuntimeErrorBehavior,
   RuntimeSessionMetadata,
@@ -133,29 +133,6 @@ function renderedPlot(plot: SasPlot) {
     mime_type: "image/png",
     settings: { size: plot.size, pixel_ratio: 1, format: "png" },
   };
-}
-
-/**
- * Resolve once a Viewer panel is visible, or after `timeoutMs`, whichever
- * comes first: a slow or failed Viewer must not hold up the run.
- */
-function waitUntilVisible(panel: PreviewPanel, timeoutMs = 3000): Promise<void> {
-  if (panel.visible) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    const done = () => {
-      clearTimeout(timer);
-      listener.dispose();
-      resolve();
-    };
-    const timer = setTimeout(done, timeoutMs);
-    const listener = panel.onDidChangeViewState(() => {
-      if (panel.visible) {
-        done();
-      }
-    });
-  });
 }
 
 // Console submissions are appended here when SAS.audit.logFile is set
@@ -1535,30 +1512,11 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    * Resolves once the report is showing (or after a timeout); never rejects.
    */
   private async emitViewerOutput(htmlContent: string, _parent_id: string = ""): Promise<void> {
-    const api = getPositronApi();
-    if (!api) {
-      return;
-    }
-
-    const showAsWebview = () => {
-      const panel = api.window.createPreviewPanel(
-        "sas.output",
-        "SAS Output",
-        true, // preserveFocus — keep cursor in the console
-      );
-      panel.webview.html = htmlContent;
-    };
-    if (typeof api.window.previewHtml !== "function") {
-      showAsWebview();
-      return;
-    }
-    try {
-      const file = await this._outputFiles.write(htmlContent);
-      await waitUntilVisible(api.window.previewHtml(file));
-    } catch (error) {
-      console.error("SAS output: cannot open the report file:", error);
-      showAsWebview();
-    }
+    await showHtmlInViewer(htmlContent, this._outputFiles, {
+      viewType: "sas.output",
+      title: "SAS Output",
+      preserveFocus: true, // keep cursor in the console
+    });
   }
 
   /**

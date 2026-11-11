@@ -21,11 +21,16 @@ export class OutputFiles {
     private readonly parent = tmpdir(),
   ) {}
 
-  /** Write `html` to a new file and return its path. */
-  async write(html: string): Promise<string> {
+  /**
+   * Write `html` to a new file and return its path. `name` (letters, digits,
+   * dots, dashes and underscores; anything else becomes a dash) starts the
+   * file name, which ends with a counter.
+   */
+  async write(html: string, name = "sas-output"): Promise<string> {
     this._dir ??= mkdtemp(join(this.parent, "positron-sas-"));
     const dir = await this._dir;
-    const file = join(dir, `sas-output-${++this._count}.html`);
+    const safe = name.replace(/[^\w.-]+/g, "-") || "sas-output";
+    const file = join(dir, `${safe}-${++this._count}.html`);
     await writeFile(file, html, "utf8");
     this._files.push(file);
     while (this._files.length > this.keep) {

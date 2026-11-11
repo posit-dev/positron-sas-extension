@@ -96,6 +96,15 @@ That manifest is the audit trail.
   versioned repository file opens at the version the run used. Right-click a
   run for **Run Again** (same values, no prompts), **Open Job**, **Cancel Run**
   and **Copy Run ID**.
+- **Manifest report:** **Show Manifest Report** (on a run in the Clinical Jobs
+  view, on a `.cmnf` file, or in the end-of-run notification) opens the
+  manifest as an HTML page in the Viewer, which you can read: the job, state,
+  who ran it, parameter values, programs with result and time, and each input
+  and output with path, version, size, modification time and MD5. Use it to
+  answer audit questions such as "which version of adsl did this run read?".
+  **Export Manifest...** saves it as `.html` or `.json`. A run's manifest is
+  only available while its `.cmnf` is unchanged; the next run of the same job
+  overwrites it, so suggest exporting reports that must be kept.
 - **States:** a run ends as successful, with program warnings or errors,
   failed, canceled, or with a *check-in error*. A check-in error means a
   repository job ran but some outputs were not checked in (an output was

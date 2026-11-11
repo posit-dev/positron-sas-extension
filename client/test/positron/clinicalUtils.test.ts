@@ -609,6 +609,20 @@ describe("buildContextValue", () => {
       ).to.include("SAS.clinical.job.run");
     });
 
+    it("offers the manifest report on .cmnf files", () => {
+      const keys = ["SAS.clinical.jobsAvailable"];
+      const cmnf = file({ name: "t.cmnf", path: "/Acme/t.cmnf" });
+      const value = buildContextValue(cmnf, undefined, "me", "read");
+      expect(shown(value, { keys })).to.include.members([
+        "SAS.clinical.job.showManifest",
+        "SAS.clinical.job.exportManifest",
+      ]);
+      expect(shown(value)).to.not.include("SAS.clinical.job.showManifest");
+      expect(
+        shown(buildContextValue(file(), undefined, "me", "read"), { keys }),
+      ).to.not.include("SAS.clinical.job.showManifest");
+    });
+
     it("declares every command it uses", () => {
       const declared = new Set(
         pkg.contributes.commands.map((c: { command: string }) => c.command),
