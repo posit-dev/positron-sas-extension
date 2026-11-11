@@ -9,6 +9,7 @@ import { describeValue } from "./manifestTree";
 import { humanizeState, outcomeOf } from "./state";
 import type {
   CheckinFailure,
+  JobResource,
   Manifest,
   ManifestExternalReference,
   ManifestFile,
@@ -73,6 +74,11 @@ export interface ReportOptions {
   /** For the footer; tests pass a fixed date. */
   generatedAt?: Date;
   locale?: string;
+  /**
+   * The href that opens a file of the run, if any. Without it (exports) the
+   * paths are plain text.
+   */
+  linkFor?: (resource: JobResource) => string | undefined;
 }
 
 const escape = (text: unknown): string =>
@@ -115,8 +121,16 @@ export function renderManifestReport(
     checkinFailures = [],
     generatedAt = new Date(),
     locale,
+    linkFor,
   }: ReportOptions = {},
 ): string {
+  // A file path, as a link that opens the file when the report has links.
+  const file = (resource: JobResource | undefined): string => {
+    const href = resource && linkFor?.(resource);
+    return href
+      ? `<a href="${escape(href)}">${code(resource.path)}</a>`
+      : code(resource?.path);
+  };
   const run = manifest.jobSubmission ?? {};
   const job = manifest.job;
   const jobName = job?.resource.name ?? "";
@@ -128,7 +142,7 @@ export function renderManifestReport(
 
   const fileRows = (files: ManifestFile[] | undefined, withUser: boolean) =>
     (files ?? []).map((f) => [
-      code(f.resource.path),
+      file(f.resource),
       escape(version(f)),
       escape(f.size !== undefined ? formatBytes(f.size, 1) : ""),
       date(f.lastModifiedTimeStamp),
@@ -164,7 +178,7 @@ export function renderManifestReport(
   const summary: [string, string][] = [
     [
       labels.job,
-      `${code(job?.resource.path)} <span class="muted">${escape(
+      `${file(job?.resource)} <span class="muted">${escape(
         (job?.resource.resourceLocation ?? manifest.type ?? "").toLowerCase(),
       )}${job && version(job) ? ` · v${escape(version(job))}` : ""}</span>`,
     ],
@@ -190,7 +204,7 @@ export function renderManifestReport(
     [
       labels.manifestFile,
       manifest.manifest
-        ? `${code(manifest.manifest.resource.path)}${version(manifest.manifest) ? ` v${escape(version(manifest.manifest))}` : ""}`
+        ? `${file(manifest.manifest.resource)}${version(manifest.manifest) ? ` v${escape(version(manifest.manifest))}` : ""}`
         : "",
     ],
   ];
@@ -224,7 +238,7 @@ export function renderManifestReport(
         labels.info,
       ],
       (manifest.programs ?? []).map((p) => [
-        code(p.resource.path),
+        file(p.resource),
         escape(version(p)),
         `<span class="badge ${programOutcome(p.executionState)}">${escape(humanizeState(p.executionState))}</span>`,
         escape(seconds(p.executionTime)),
@@ -370,6 +384,8 @@ table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { text-align: left; vertical-align: top; padding: 4px 8px; border-bottom: 1px solid var(--line); }
 thead th { background: var(--head); font-weight: 600; }
 table.summary th { width: 12em; font-weight: 600; color: var(--muted); }
+a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+a:hover { text-decoration-style: solid; }
 code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; }
 .badge { display: inline-block; padding: 0 8px; border-radius: 10px; border: 1px solid currentColor; font-size: 12px; white-space: nowrap; }
 .badge.success { color: var(--ok); } .badge.warning { color: var(--warn); }

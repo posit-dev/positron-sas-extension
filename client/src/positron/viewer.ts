@@ -3,7 +3,7 @@
 //
 // Show HTML in Positron's Viewer pane, as a file that Posit Assistant can read
 // (#74), unlike a webview set to an HTML string.
-import { extensions } from "vscode";
+import { Uri, env, extensions } from "vscode";
 
 import { getPositronApi } from "./index";
 import type { OutputFiles } from "./outputFiles";
@@ -98,4 +98,30 @@ export async function showHtmlInViewer(
     showAsWebview();
   }
   return true;
+}
+
+/**
+ * Show the page at `url` (a URL on this machine, such as one of a
+ * ViewerServer) in the Viewer, reached through env.asExternalUri so it also
+ * works in Posit Workbench. Resolves true once it is showing; false outside
+ * Positron or when the Viewer does not show it, and the caller falls back.
+ */
+export async function showUrlInViewer(url: string): Promise<boolean> {
+  const api = getPositronApi();
+  if (!api || typeof api.window.previewUrl !== "function") {
+    return false;
+  }
+  try {
+    const external = await env.asExternalUri(Uri.parse(url));
+    await activateProxy();
+    const panel = api.window.previewUrl(external);
+    if (await waitUntilVisible(panel, 10_000)) {
+      return true;
+    }
+    console.error(`The Viewer did not show ${url}.`);
+    panel.dispose();
+  } catch (error) {
+    console.error(`The Viewer cannot show ${url}:`, error);
+  }
+  return false;
 }
