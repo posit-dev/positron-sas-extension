@@ -57,6 +57,7 @@ interface Context {
   location: string;
   resourceLocation: ResourceLocation;
   canBrowse: boolean;
+  canSchedule: boolean;
   fileName: string;
 }
 
@@ -837,6 +838,7 @@ function App() {
             location: message.location,
             resourceLocation: message.resourceLocation,
             canBrowse: message.canBrowse,
+            canSchedule: message.canSchedule,
             fileName: message.fileName,
           });
           show(message.text);
@@ -873,6 +875,11 @@ function App() {
           <button className="primary" onClick={() => send({ type: "run" })}>
             ▶ {ctx.labels.run}
           </button>
+          {ctx.canSchedule && (
+            <button onClick={() => send({ type: "schedule" })}>
+              {ctx.labels.schedule}
+            </button>
+          )}
           <button onClick={() => send({ type: "openText" })}>
             {ctx.labels.openAsJson}
           </button>

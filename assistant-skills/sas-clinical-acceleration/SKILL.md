@@ -126,11 +126,21 @@ That manifest is the audit trail.
   repository job ran but some outputs were not checked in (an output was
   checked out, or the user lacks write permission). The Check-in failures group
   lists them.
-- Schedules are not shown and cannot be changed in Positron. Point the user to
-  SAS Clinical Acceleration for that.
+- **Schedules:** **New Schedule...** on a `.cjob` (Clinical Workspace or
+  Clinical Repository view, the job editor's **Schedule...** button, or the +
+  of the **Clinical Job Schedules** view) asks for a name, when to run (once,
+  several dates, every few minutes, hourly, daily, weekly, monthly or yearly,
+  by day number or by weekday such as the first Monday), the first day and
+  end for repeated runs, the time zone (default: the computer's) and the
+  parameter values. The **Clinical Job Schedules** view lists schedules with
+  their timing; expanding one shows its job, values and next runs as the
+  server calculates them, which is how to check that a schedule does what
+  was meant. Right-click for **Run Now**, **Edit Schedule...**, **Disable** /
+  **Enable Schedule**, **Delete Schedule...** (keeps the job) and **Copy
+  Schedule ID**. Schedules run under the user who created them.
 
-The Clinical Jobs view appears only when the server also runs SAS Clinical Job
-Management.
+The Clinical Jobs and Clinical Job Schedules views appear only when the server
+also runs SAS Clinical Job Management.
 
 ## When something is refused
 

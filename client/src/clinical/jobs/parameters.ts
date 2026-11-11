@@ -23,9 +23,13 @@ export async function promptParameterValues(
   job: ClinicalJob,
   resource: JobResource,
   picker: ItemPicker,
+  /** Values to start with instead of the defaults, such as a schedule's. */
+  current: ParameterValue[] = [],
 ): Promise<ParameterValue[] | undefined> {
   const values: ParameterValue[] = [];
-  for (const param of job.parameters ?? []) {
+  for (const declared of job.parameters ?? []) {
+    const known = current.find((v) => v.name === declared.name);
+    const param = known ? { ...declared, defaultValue: known.value } : declared;
     const label = param.label || param.name;
     const title = l10n.t(JobMessages.ParameterTitle, {
       name: resource.name,

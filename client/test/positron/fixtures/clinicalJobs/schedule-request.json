@@ -1,0 +1,28 @@
+{
+  "name": "positron-probe-schedule",
+  "description": "Test schedule from the positron-sas-extension probe; safe to delete",
+  "jobInfo": {
+    "job": {
+      "name": "probe.cjob",
+      "path": "/probe-jobs/probe.cjob",
+      "location": "/probe-jobs",
+      "resourceLocation": "WORKSPACE"
+    },
+    "parameterValues": [
+      {
+        "name": "probe_char",
+        "type": "CHARACTER",
+        "value": "from-schedule"
+      }
+    ]
+  },
+  "trigger": {
+    "type": "DATELIST",
+    "dates": [
+      "2027-06-01"
+    ],
+    "hours": "3",
+    "minutes": "0",
+    "timeZone": "Europe/Berlin"
+  }
+}

@@ -331,6 +331,7 @@ describe("JobsModel", () => {
     post: (url, data, config) => record("POST", url, data, config),
     put: (url, data, config) => record("PUT", url, data, config),
     patch: (url, data, config) => record("PATCH", url, data, config),
+    delete: (url, config) => record("DELETE", url, undefined, config),
   };
   const contents: Record<string, string> = {};
   const model = new JobsModel(
