@@ -36,6 +36,24 @@ export const isVersionRow = (
 export const isContainer = (item: RepositoryItem): boolean =>
   item.primaryType === "CONTEXT" || item.primaryType === "FOLDER";
 
+/**
+ * Context token for the file types with their own commands: clinical jobs
+ * (`job`), job manifests (`manifest`) and SAS programs (`sasProgram`).
+ */
+export function fileKindToken(
+  name: string,
+  primaryType?: RepositoryItem["primaryType"],
+): "job" | "manifest" | "sasProgram" | undefined {
+  const ext = name.slice(name.lastIndexOf(".") + 1).toLowerCase();
+  if (primaryType === "JOB_FILE" || ext === "cjob") {
+    return "job";
+  }
+  if (ext === "cmnf") {
+    return "manifest";
+  }
+  return ext === "sas" ? "sasProgram" : undefined;
+}
+
 /** Top-level contexts (organizations) are managed by administrators. */
 export const isTopLevelContext = (
   item: RepositoryItem,
@@ -226,6 +244,10 @@ export function buildContextValue(
       CHECKOUT_TOKENS[getCheckoutState(item, currentUserId)],
       item.versioned ? "versioned" : "unversioned",
     );
+    const kind = fileKindToken(item.name, item.primaryType);
+    if (kind) {
+      tokens.push(kind);
+    }
   }
   if (!isTopLevelContext(item, type)) {
     tokens.push("canRename");
@@ -483,6 +505,10 @@ export function buildWorkspaceContextValue(
     }
     if (state === "self") {
       tokens.push("canUndo");
+    }
+    const kind = fileKindToken(item.name);
+    if (kind) {
+      tokens.push(kind);
     }
   }
   return `;${tokens.join(";")};`;

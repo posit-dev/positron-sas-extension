@@ -4,14 +4,15 @@ sidebar_position: 10
 
 # SAS Clinical Acceleration
 
-SAS Clinical Acceleration stores clinical study files in a controlled repository on a SAS Viya server. The Positron SAS extension adds four views to their own **Clinical Acceleration** sidebar, next to the **SAS** one in the activity bar, so that you can browse the repository, work on files in your own workspace, and check them back in.
+SAS Clinical Acceleration stores clinical study files in a controlled repository on a SAS Viya server. The Positron SAS extension adds views to their own **Clinical Acceleration** sidebar, next to the **SAS** one in the activity bar, so that you can browse the repository, work on files in your own workspace, check them back in, and run clinical jobs.
 
 The **Clinical Acceleration** icon appears in the activity bar, and the views with it, when the active SAS profile is a SAS Viya profile, you are signed in, and the server runs the Clinical Repository service. The extension finds the service on its own and uses your SAS Viya sign-in, so there is nothing to configure.
 
-## The four views
+## The views
 
 - **Clinical Repository**: the shared store. Files open read-only.
 - **Clinical Workspace**: your own area on the server. Files open for editing, and saving a file saves it to your workspace.
+- **Clinical Jobs**: your clinical job runs and what each run used and wrote. This view appears when the server also runs SAS Clinical Job Management.
 - **Clinical Repository Properties** (collapsed at first): the details of the item you select in the **Clinical Repository** view.
 - **Clinical Version History** (collapsed at first): the versions of the file you select in the **Clinical Repository** view.
 
@@ -91,9 +92,49 @@ To compare two items in the same view, select both, right-click one of them, and
 
 ## Run programs and open datasets
 
-Open a `.sas` file from the **Clinical Workspace** or **Clinical Repository** view and run it as you run any SAS program. The program runs in the SAS console session of the active profile. Running a program does not write its results to your workspace. To keep a result file, save it on your computer and upload it.
+Open a `.sas` file from the **Clinical Workspace** or **Clinical Repository** view and run it as you run any SAS program. The program runs in the SAS console session of the active profile. Running a program does not write its results to your workspace, and SAS Clinical Acceleration keeps no record of the run. To keep a result file, save it on your computer and upload it. To run programs with a record of their inputs and outputs, run them as a clinical job, as described in [Run clinical jobs](#run-clinical-jobs).
 
 A `.sas7bdat` or `.xpt` file from the **Clinical Repository** or **Clinical Workspace** view opens in the Data Explorer. The extension copies the file into the WORK library of the SAS session first, so a SAS session must be running. See [Positron SAS Extension Features](./positron.md) for more about the Data Explorer.
+
+## Run clinical jobs
+
+A clinical job is a `.cjob` file that lists SAS programs to run, in order, and the parameters they take. A job in the repository can also list the repository files it reads and where its outputs are checked in. SAS Clinical Acceleration runs the job on the server and writes a manifest (a `.cmnf` file) next to it. The manifest is the audit record of the run: which programs ran and how they ended, the parameter values, and every file the run read and wrote, with its version.
+
+To run a job:
+
+1. Right-click a `.cjob` file in the **Clinical Workspace** or **Clinical Repository** view and select **Run Clinical Job**. With a `.cjob` file open in the editor, you can also click **Run Clinical Job** in the editor title bar.
+2. Enter a value for each parameter of the job. The prompts start with the default values of the job. For a file or folder parameter, pick the file or folder from the view the job is in.
+3. A notification shows the state of the run. To cancel the run, click **Cancel** in the notification.
+
+When the run ends, a notification says how it ended, with buttons to open the log and the results. A job writes its log (`.log`), listing (`.lst`), and manifest next to the job file unless the job names other locations.
+
+### The Clinical Jobs view
+
+The **Clinical Jobs** view lists your runs, newest first, with their state. Runs that have not ended update on their own while the view is visible. Click **Load more...** at the end of the list for older runs.
+
+Expand a run to see its manifest:
+
+- **Programs**: each program with its result (such as successful, warnings, or errors) and run time.
+- **Parameters**: the values the run used.
+- **Inputs** and **Outputs**: the files the run read and wrote. Hover over a file to see its path, version, size and checksum (MD5, repository files only).
+- **Logs** and **Results**: the log and listing of the run.
+- **Check-in failures**: outputs of a repository job that were not checked in.
+
+Click a file to open it. A versioned repository file opens at the version the run used.
+
+Right-click a run for more actions:
+
+- **Open Log** and **Open Results**: open the log or the results of the run.
+- **Open Job**: open the job file.
+- **Run Again**: run the job again with the same parameter values, without prompts.
+- **Cancel Run**: cancel a run that has not ended.
+- **Copy Run ID**: copy the ID of the run, for example for an administrator.
+
+:::info note
+
+A run of a repository job checks its outputs in to the repository. If an output file is checked out, or you lack write permission for its folder, the run ends with a check-in error, and **Check-in failures** lists the files. The outputs of a workspace job stay in your workspace.
+
+:::
 
 ## Permissions and errors
 
@@ -110,3 +151,4 @@ A server can still refuse an action, such as a check-out without write permissio
 - The views use the active SAS Viya profile. Switch profiles to work with another server.
 - The views do not detect changes made by other users or other applications. Click **Refresh** to see them.
 - You cannot search the repository, restore deleted items, or change permissions. Use SAS Clinical Acceleration for those tasks.
+- You cannot create or edit clinical jobs in Positron yet, and job schedules are not shown. Use SAS Clinical Acceleration for those tasks. You can run existing jobs and review their runs.

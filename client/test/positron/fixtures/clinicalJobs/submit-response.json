@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "manifest": {
+    "name": "probe.cmnf",
+    "path": "/probe-jobs/probe.cmnf",
+    "location": "/probe-jobs",
+    "resourceLocation": "WORKSPACE"
+  },
+  "state": "STARTED",
+  "summaryState": "STARTED",
+  "id": "eba8e748-2de6-4ef0-b3f7-e83d32cb7055",
+  "name": "probe.cjob",
+  "jobRunContext": "INTERACTIVE",
+  "submittedTimeStamp": "2026-11-11T09:41:45.099Z",
+  "submittedBy": "test1",
+  "submittedByDisplayName": "test1 (test1)",
+  "jobPath": "/probe-jobs/probe.cjob",
+  "jobLocation": "/probe-jobs",
+  "jobOwner": "test1",
+  "jobOwnerDisplayName": "test1 (test1)",
+  "jobResourceLocation": "WORKSPACE",
+  "jobRunAsOwner": false,
+  "runAsUser": "test1",
+  "runAsUserDisplayName": "test1 (test1)",
+  "type": "WORKSPACE"
+}

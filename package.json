@@ -1203,6 +1203,56 @@
         "category": "SAS Clinical Acceleration"
       },
       {
+        "command": "SAS.clinical.job.run",
+        "title": "%clinical.commands.runJob%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(play)"
+      },
+      {
+        "command": "SAS.clinical.jobs.refresh",
+        "title": "%commands.SAS.refresh%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.clinical.jobs.loadMore",
+        "title": "%clinical.commands.loadMore%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.job.cancel",
+        "title": "%clinical.commands.cancelRun%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "SAS.clinical.job.openLog",
+        "title": "%clinical.commands.openLog%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(output)"
+      },
+      {
+        "command": "SAS.clinical.job.openResults",
+        "title": "%clinical.commands.openResults%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.job.openJob",
+        "title": "%clinical.commands.openJob%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.job.runAgain",
+        "title": "%clinical.commands.runAgain%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(debug-rerun)"
+      },
+      {
+        "command": "SAS.clinical.job.copyId",
+        "title": "%clinical.commands.copyRunId%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.workspace.checkIn",
         "title": "%clinical.commands.checkIn%",
         "category": "SAS Clinical Acceleration"
@@ -1252,6 +1302,13 @@
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "command": "SAS.clinical.job.run",
+          "when": "resourceExtname == .cjob && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",
+          "group": "navigation@0"
+        }
+      ],
       "webview/context": [
         {
           "command": "SAS.saveHTML",
@@ -1259,6 +1316,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "SAS.clinical.jobs.refresh",
+          "when": "view == clinicaljobsprovider",
+          "group": "navigation@0"
+        },
         {
           "command": "SAS.content.refreshContent",
           "when": "view == contentdataprovider",
@@ -1637,6 +1699,56 @@
           "command": "SAS.clinical.workspace.uploadAndExpand",
           "when": "view == clinicalworkspaceprovider && viewItem =~ /;container;/ && !listMultiSelection",
           "group": "5_transfer@2"
+        },
+        {
+          "command": "SAS.clinical.job.run",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@0"
+        },
+        {
+          "command": "SAS.clinical.job.run",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@0"
+        },
+        {
+          "command": "SAS.clinical.job.openLog",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
+          "group": "inline@0"
+        },
+        {
+          "command": "SAS.clinical.job.cancel",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;active;/",
+          "group": "inline@1"
+        },
+        {
+          "command": "SAS.clinical.job.openLog",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
+          "group": "1_open@0"
+        },
+        {
+          "command": "SAS.clinical.job.openResults",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "SAS.clinical.job.openJob",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "SAS.clinical.job.runAgain",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
+          "group": "2_run@0"
+        },
+        {
+          "command": "SAS.clinical.job.cancel",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;active;/",
+          "group": "2_run@1"
+        },
+        {
+          "command": "SAS.clinical.job.copyId",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/",
+          "group": "3_copy@0"
         },
         {
           "command": "SAS.clinical.selectForCompare",
@@ -2026,6 +2138,42 @@
           "command": "SAS.clinical.workspace.uploadAndExpand"
         },
         {
+          "when": "resourceExtname == .cjob && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",
+          "command": "SAS.clinical.job.run"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.jobs.refresh"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.jobs.loadMore"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.job.cancel"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.job.openLog"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.job.openResults"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.job.openJob"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.job.runAgain"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.job.copyId"
+        },
+        {
           "when": "false",
           "command": "SAS.clinical.workspace.checkIn"
         },
@@ -2159,6 +2307,11 @@
           "id": "clinicalworkspaceprovider",
           "name": "%clinical.views.workspace%",
           "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable"
+        },
+        {
+          "id": "clinicaljobsprovider",
+          "name": "%clinical.views.jobs%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable && SAS.clinical.jobsAvailable"
         },
         {
           "id": "clinicalpropertyprovider",

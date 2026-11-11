@@ -28,6 +28,7 @@ import {
   downloadFileName,
   encodePath,
   extractSingleZipEntry,
+  fileKindToken,
   getNextVersion,
   getWorkspaceCheckoutState,
   isAvailable,
@@ -200,7 +201,7 @@ describe("buildContextValue", () => {
 
   it("reflects who has a file checked out", () => {
     expect(buildContextValue(file(), undefined, "me", "write")).to.equal(
-      ";clinical;canWrite;file;coNone;unversioned;canRename;canDelete;",
+      ";clinical;canWrite;file;coNone;unversioned;sasProgram;canRename;canDelete;",
     );
     expect(
       buildContextValue(
@@ -586,6 +587,28 @@ describe("buildContextValue", () => {
       ).to.include("SAS.clinical.copySpecificVersion");
     });
 
+    it("offers Run Clinical Job on jobs when the service is there", () => {
+      const keys = ["SAS.clinical.jobsAvailable"];
+      const job = file({ name: "t.cjob", path: "/Acme/t.cjob" });
+      const repoJob = buildContextValue(job, undefined, "me", "read");
+      expect(shown(repoJob, { keys })).to.include("SAS.clinical.job.run");
+      // Not without the service, not on programs, not for multi-selections.
+      expect(shown(repoJob)).to.not.include("SAS.clinical.job.run");
+      expect(
+        shown(buildContextValue(file(), undefined, "me", "read"), { keys }),
+      ).to.not.include("SAS.clinical.job.run");
+      expect(shown(repoJob, { keys, multi: true })).to.not.include(
+        "SAS.clinical.job.run",
+      );
+      const wsJob = buildWorkspaceContextValue(
+        wsFile({ name: "t.cjob", path: "/Acme/t.cjob" }),
+        "me",
+      );
+      expect(
+        shown(wsJob, { keys, view: "clinicalworkspaceprovider" }),
+      ).to.include("SAS.clinical.job.run");
+    });
+
     it("declares every command it uses", () => {
       const declared = new Set(
         pkg.contributes.commands.map((c: { command: string }) => c.command),
@@ -596,6 +619,18 @@ describe("buildContextValue", () => {
         }
       }
     });
+  });
+});
+
+describe("fileKindToken", () => {
+  it("tells jobs, manifests and programs apart", () => {
+    expect(fileKindToken("t.cjob")).to.equal("job");
+    expect(fileKindToken("T.CJOB")).to.equal("job");
+    expect(fileKindToken("t", "JOB_FILE")).to.equal("job");
+    expect(fileKindToken("t.cmnf")).to.equal("manifest");
+    expect(fileKindToken("adsl.sas")).to.equal("sasProgram");
+    expect(fileKindToken("adsl.sas7bdat")).to.equal(undefined);
+    expect(fileKindToken("README")).to.equal(undefined);
   });
 });
 
@@ -954,13 +989,13 @@ describe("workspace check-out state", () => {
       ";workspace;container;canCheckIn;canUndo;",
     );
     expect(buildWorkspaceContextValue(wsFile(), "me")).to.equal(
-      ";workspace;file;coNone;canCheckIn;",
+      ";workspace;file;coNone;canCheckIn;sasProgram;",
     );
     expect(buildWorkspaceContextValue(checkedOut("me"), "me")).to.equal(
-      ";workspace;file;coSelf;canCheckIn;canUndo;",
+      ";workspace;file;coSelf;canCheckIn;canUndo;sasProgram;",
     );
     expect(buildWorkspaceContextValue(checkedOut("you"), "me")).to.equal(
-      ";workspace;file;coOther;",
+      ";workspace;file;coOther;sasProgram;",
     );
   });
 });

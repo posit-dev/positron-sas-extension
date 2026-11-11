@@ -1,0 +1,99 @@
+{
+  "type" : "WORKSPACE",
+  "job" : {
+    "type" : "JOB",
+    "file" : {
+      "resourceLocation" : "WORKSPACE",
+      "path" : "/probe-jobs/probe.cjob",
+      "name" : "probe.cjob",
+      "lastModified" : "2026-11-11T09:39:07.000Z",
+      "size" : 588,
+      "workspaceId" : "00000000-0000-4000-8000-000000000001"
+    },
+    "owner" : "test1",
+    "runAsOwner" : false,
+    "description" : "Probe job (patched)"
+  },
+  "jobSubmission" : {
+    "id" : "eba8e748-2de6-4ef0-b3f7-e83d32cb7055",
+    "workspaceId" : "00000000-0000-4000-8000-000000000001",
+    "sessionId" : "76649b27-e727-4177-bf21-7e1e824ce01b-ses0000",
+    "context" : "INTERACTIVE",
+    "submitted" : "2026-11-11T09:41:53.622Z",
+    "submittedBy" : "test1",
+    "completed" : "2026-11-11T09:41:54.047Z",
+    "state" : "COMPLETED_SUCCESSFUL",
+    "info" : "Clinical job completed successfully.",
+    "runAsUser" : "test1"
+  },
+  "programs" : [ {
+    "type" : "PROGRAM",
+    "file" : {
+      "resourceLocation" : "WORKSPACE",
+      "path" : "/probe-jobs/probe.sas",
+      "name" : "probe.sas",
+      "lastModified" : "2026-11-11T09:39:07.000Z",
+      "size" : 81,
+      "workspaceId" : "00000000-0000-4000-8000-000000000001"
+    },
+    "executionState" : "SUCCESSFUL",
+    "executionTime" : 41
+  } ],
+  "parameters" : [ {
+    "name" : "probe_char",
+    "label" : "Probe text",
+    "value" : "from-probe",
+    "type" : "CHARACTER"
+  } ],
+  "inputs" : [ ],
+  "externalInputs" : [ ],
+  "checkinSpecification" : {
+    "enableVersioningOnNewFiles" : false,
+    "fileVersion" : "MAJOR",
+    "locations" : [ ]
+  },
+  "outputs" : [ {
+    "type" : "OUTPUT",
+    "file" : {
+      "resourceLocation" : "WORKSPACE",
+      "path" : "/probe-jobs/probe.log",
+      "name" : "probe.log",
+      "lastModified" : "2026-11-11T09:41:53.000Z",
+      "size" : 3385,
+      "workspaceId" : "00000000-0000-4000-8000-000000000001"
+    }
+  }, {
+    "type" : "OUTPUT",
+    "file" : {
+      "resourceLocation" : "WORKSPACE",
+      "path" : "/probe-jobs/probe.lst",
+      "name" : "probe.lst",
+      "lastModified" : "2026-11-11T09:41:54.000Z",
+      "size" : 0,
+      "workspaceId" : "00000000-0000-4000-8000-000000000001"
+    }
+  } ],
+  "externalOutputs" : [ ],
+  "logs" : [ {
+    "type" : "SYSTEM_FILE",
+    "file" : {
+      "resourceLocation" : "WORKSPACE",
+      "path" : "/probe-jobs/probe.log",
+      "name" : "probe.log",
+      "lastModified" : "2026-11-11T09:41:53.000Z",
+      "size" : 3385,
+      "workspaceId" : "00000000-0000-4000-8000-000000000001"
+    }
+  } ],
+  "results" : [ {
+    "type" : "SYSTEM_FILE",
+    "file" : {
+      "resourceLocation" : "WORKSPACE",
+      "path" : "/probe-jobs/probe.lst",
+      "name" : "probe.lst",
+      "lastModified" : "2026-11-11T09:41:54.000Z",
+      "size" : 0,
+      "workspaceId" : "00000000-0000-4000-8000-000000000001"
+    }
+  } ]
+}

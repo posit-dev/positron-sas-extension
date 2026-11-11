@@ -42,6 +42,20 @@ export const ACTION_STATUS = "/clinicalActionStatus/actionstatus";
 // Clinical Acceleration extension.
 export const AUTHORIZATIONS = "/clinicalRepository/authorizations";
 
+// SAS Clinical Job Management. Its root (/clinicalJobs/) answers 404, so
+// availability is probed with a one-item page of the user's submissions.
+export const JOBS_ROOT = "/clinicalJobs";
+export const JOB_DEFINITIONS = `${JOBS_ROOT}/definitions`;
+export const JOB_REPOSITORY_DEFINITIONS = `${JOBS_ROOT}/repository/definitions`;
+export const JOB_REPOSITORY_MANIFESTS = `${JOBS_ROOT}/repository/manifests`;
+export const JOB_SUBMISSIONS = `${JOBS_ROOT}/submissions`;
+export const JOB_SCHEDULES = `${JOBS_ROOT}/schedules`;
+export const JOBS_PROBE = `${JOB_SUBMISSIONS}?limit=1`;
+export const JOBS_AVAILABLE_CONTEXT_KEY = "SAS.clinical.jobsAvailable";
+export const JOBS_VIEW_ID = "clinicaljobsprovider";
+/** Page size of the submissions list. */
+export const SUBMISSIONS_PAGE_LIMIT = 25;
+
 export const API_MEDIA_TYPE = "application/vnd.sas.api+json";
 export const REPOSITORY_ITEM_MEDIA_TYPE =
   "application/vnd.sas.clinical.repository.item+json";
