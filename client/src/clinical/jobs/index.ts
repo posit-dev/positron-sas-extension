@@ -15,6 +15,7 @@ import {
   env,
   l10n,
   window,
+  workspace,
 } from "vscode";
 
 import {
@@ -66,6 +67,8 @@ export function registerClinicalJobs(
   output: LogOutputChannel,
   /** Refresh the Repository and Workspace views: runs write outputs. */
   refreshTrees: () => void,
+  /** Tell open editors that a workspace file changed on the server. */
+  notifyWorkspaceFileChanged: (path: string) => void = () => undefined,
 ): ClinicalJobs {
   const log = (message: string) => output.info(message);
   const model = new JobsModel(repositoryModel, workspaceModel);
@@ -79,12 +82,18 @@ export function registerClinicalJobs(
   );
   const view = new JobsDataProvider(model, log, hidden);
   const reports = new ManifestReports(model, output);
-  const runner = new JobRunner(model, picker, output, (submission) => {
-    view.upsert(submission);
-    if (isTerminal(submission.state)) {
-      refreshTrees();
-    }
-  });
+  const runner = new JobRunner(
+    model,
+    picker,
+    output,
+    (submission) => {
+      view.upsert(submission);
+      if (isTerminal(submission.state)) {
+        refreshTrees();
+      }
+    },
+    (resource) => notifyWorkspaceFileChanged(resource.path),
+  );
 
   const programs = new ProgramJobs(model, runner, output, refreshTrees);
   const schedules = new SchedulesDataProvider(model, log, currentUser);
@@ -347,6 +356,32 @@ export function registerClinicalJobs(
       }
       return runner.run(resource);
     }),
+    commands.registerCommand(
+      "SAS.clinical.job.runAndPopulate",
+      async (target: RunTarget) => {
+        const resource = jobResource(target);
+        if (!resource) {
+          window.showInformationMessage(JobMessages.NotAJob);
+          return;
+        }
+        // The service refuses repository jobs (error 145526).
+        if (resource.resourceLocation !== "WORKSPACE") {
+          window.showInformationMessage(
+            l10n.t(JobMessages.PopulateWorkspaceOnly, { name: resource.name }),
+          );
+          return;
+        }
+        // The run reads the saved job, as in SAS Studio.
+        const uri = uriForResource(resource);
+        const open = workspace.textDocuments.find(
+          (d) => d.uri.toString() === uri?.toString(),
+        );
+        if (open?.isDirty && !(await open.save())) {
+          return;
+        }
+        return runner.runAndPopulate(resource);
+      },
+    ),
     commands.registerCommand(
       "SAS.clinical.job.runProgram",
       (target: RunTarget) => {

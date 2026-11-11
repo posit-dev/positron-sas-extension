@@ -6,8 +6,8 @@
 // sign-in and its 401 retry.
 //
 // Request shapes were checked against a live server (2026-11-11) where the
-// public spec is wrong: runs need ?action=RUN and a body of only `job` and
-// `parameterValues`; the state accepts only application/json; cancel is
+// public spec is wrong: runs need ?action=RUN (RUN_AND_POPULATE for Run and
+// populate) and a body of only `job` and `parameterValues`; the state accepts only application/json; cancel is
 // PUT .../state?value=canceled (lowercase).
 import { pollUntil } from "../actionStatus";
 import {
@@ -25,6 +25,7 @@ import type {
   ClinicalJob,
   JobResource,
   Manifest,
+  PopulatePaths,
   RawSubmission,
   RunInfo,
   Schedule,
@@ -37,6 +38,7 @@ import {
   manifestSubmissionId,
   normalizeSubmission,
   parseJobFile,
+  runRequest,
   submittedByFilter,
 } from "./utils";
 
@@ -172,12 +174,18 @@ export class JobsModel {
     return response.data;
   }
 
-  /** Start a job. Returns the submission, usually in state STARTED. */
-  async submit(run: RunInfo): Promise<Submission> {
+  /**
+   * Start a job. Returns the submission, usually in state STARTED. With
+   * `populate`, it is a Run and populate: when the run succeeds, the service
+   * rewrites the job's Publish Setup from the files the programs read and
+   * wrote, and removes its check-in locations (workspace jobs only).
+   */
+  async submit(run: RunInfo, populate?: PopulatePaths): Promise<Submission> {
     const connection = await this.repository.getConnection();
+    const { action, body } = runRequest(run, populate);
     const response = await connection.post<RawSubmission>(
-      `${JOB_SUBMISSIONS}?action=RUN`,
-      run,
+      `${JOB_SUBMISSIONS}?action=${action}`,
+      body,
       { headers: JSON_HEADERS },
     );
     return normalizeSubmission(response.data);

@@ -104,6 +104,22 @@ That manifest is the audit trail.
   first. This is the quickest way to get an audited run of a program. The job
   and its outputs stay in the workspace; for a repository record, check in the
   job and program and run the job from the Clinical Repository view.
+- **Repository runs see only Publish Setup:** a job run from the repository
+  runs in a transient workspace that holds only the files and folders in the
+  job's Publish Setup ("Repository runs" in the job editor) and its file and
+  folder parameters. A job that works in the workspace but fails from the
+  repository with missing datasets or libraries usually lacks those inputs.
+  Paths in programs should use `&_SASWS_` (the workspace root, set in every
+  job run), such as `libname sdtm "&_SASWS_/Study/data/sdtm";`.
+- **Run and populate:** right-click a `.cjob` in the Clinical Workspace view
+  and choose **Run and Populate Clinical Job...** (or **Run and Populate...**
+  in the job editor). The user picks relative paths (`./`, `../`; the job can
+  be copied to a folder with the same structure) or absolute paths. If the run
+  succeeds, Publish Setup is replaced with the files the programs read and the
+  folders they wrote, and all check-in locations are removed (add them again
+  in the editor); programs and parameters stay. A failed run leaves the job
+  unchanged. Workspace jobs only: the service refuses repository jobs. Use it
+  before checking a job in, so its repository runs get their inputs.
 - **Create and edit jobs:** a `.cjob` opens in the clinical job editor, a form
   with General (description), Programs (ordered, optional version; empty means
   latest), Parameters (name, label, type, default; names must be valid SAS

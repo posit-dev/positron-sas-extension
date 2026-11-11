@@ -130,6 +130,7 @@
   "clinical.commands.restoreRun": "Restore to List",
   "clinical.commands.runAgain": "Run Again",
   "clinical.commands.runJob": "Run Clinical Job",
+  "clinical.commands.runAndPopulate": "Run and Populate Clinical Job...",
   "clinical.commands.runProgram": "Run as Clinical Job",
   "clinical.commands.runScheduleNow": "Run Now",
   "clinical.commands.selectForCompare": "Select for Compare",

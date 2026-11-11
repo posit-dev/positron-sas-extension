@@ -94,13 +94,23 @@ export interface ClinicalJob {
 }
 
 /**
- * Body of `POST /submissions?action=RUN`. The service accepts only these two
- * fields: a `version` field (in the spec) is rejected.
+ * Body of `POST /submissions?action=RUN`. The service accepts only `job`
+ * and `parameterValues`, plus `useRelativePaths` with
+ * `action=RUN_AND_POPULATE`: unknown fields, such as the spec's `version`,
+ * are rejected.
  */
 export interface RunInfo {
   job: Pick<JobResource, "name" | "path" | "location" | "resourceLocation">;
   parameterValues?: ParameterValue[];
+  /** Run and populate only: write relative paths into Publish Setup. */
+  useRelativePaths?: boolean;
 }
+
+/**
+ * How Run and populate writes the paths it finds into the job's Publish
+ * Setup: relative to the job's folder (./, ../) or from the workspace root.
+ */
+export type PopulatePaths = "relative" | "absolute";
 
 export type SubmissionState =
   | "NOT_STARTED"

@@ -5,6 +5,7 @@
 import type {
   ClinicalJob,
   JobResource,
+  PopulatePaths,
   RawSubmission,
   ResourceLocation,
   RunInfo,
@@ -143,6 +144,38 @@ export function toRunInfo(
       resourceLocation: job.resourceLocation,
     },
     ...(parameterValues.length ? { parameterValues } : {}),
+  };
+}
+
+/**
+ * The request of a run. Run and populate is `action=RUN_AND_POPULATE`, and
+ * relative paths are the body field `useRelativePaths` (a query parameter of
+ * that name is ignored). Both were found by probing a live server
+ * (2026-11-11); the public spec documents neither.
+ */
+export function runRequest(
+  run: RunInfo,
+  populate?: PopulatePaths,
+): { action: "RUN" | "RUN_AND_POPULATE"; body: RunInfo } {
+  if (!populate) {
+    return { action: "RUN", body: run };
+  }
+  return {
+    action: "RUN_AND_POPULATE",
+    body: populate === "relative" ? { ...run, useRelativePaths: true } : run,
+  };
+}
+
+/** What a job's Publish Setup and check-in options list, for messages. */
+export function publishCounts(job: ClinicalJob): {
+  files: number;
+  folders: number;
+  locations: number;
+} {
+  return {
+    files: job.publishSetup?.files?.length ?? 0,
+    folders: job.publishSetup?.folders?.length ?? 0,
+    locations: job.publishCheckin?.locations?.length ?? 0,
   };
 }
 
