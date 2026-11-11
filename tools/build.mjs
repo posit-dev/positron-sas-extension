@@ -54,6 +54,8 @@ const browserBuildOptions = {
   format: "esm",
   entryPoints: {
     "./client/dist/webview/DataViewer": "./client/src/webview/DataViewer.tsx",
+    "./client/dist/webview/ClinicalJobEditor":
+      "./client/src/webview/ClinicalJobEditor.tsx",
     "./client/dist/webview/TablePropertiesViewer":
       "./client/src/webview/TablePropertiesViewer.ts",
     "./client/dist/notebook/LogRenderer":

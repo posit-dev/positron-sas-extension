@@ -6,7 +6,10 @@
 // service (context key SAS.clinical.jobsAvailable).
 import {
   Disposable,
+  ExtensionContext,
   LogOutputChannel,
+  TabInputCustom,
+  TabInputText,
   Uri,
   commands,
   env,
@@ -15,9 +18,13 @@ import {
 } from "vscode";
 
 import type { RepositoryModel } from "../RepositoryModel";
+import { getWorkspaceUri } from "../WorkspaceDataProvider";
 import type { WorkspaceModel } from "../WorkspaceModel";
+import { toInputValidator } from "../messages";
 import type { RepositoryItem, WorkspaceItem } from "../types";
+import { validateFileName } from "../utils";
 import { ItemPicker } from "./ItemPicker";
+import { JobEditorProvider } from "./JobEditorProvider";
 import { JobRunner } from "./JobRunner";
 import { JobsDataProvider } from "./JobsDataProvider";
 import { JobsModel } from "./JobsModel";
@@ -29,6 +36,7 @@ import { ProgramJobs } from "./programJobs";
 import { resourceForItem, resourceForUri, uriForResource } from "./resources";
 import { isTerminal } from "./state";
 import type { JobResource, Submission } from "./types";
+import { resourceFromPath } from "./utils";
 
 export interface ClinicalJobs extends Disposable {
   /** Reload the Jobs view, after sign-in or a profile switch. */
@@ -40,6 +48,7 @@ type ManifestTarget =
   JobNode | RepositoryItem | WorkspaceItem | Uri | undefined;
 
 export function registerClinicalJobs(
+  context: ExtensionContext,
   repositoryModel: RepositoryModel,
   workspaceModel: WorkspaceModel,
   output: LogOutputChannel,
@@ -82,6 +91,44 @@ export function registerClinicalJobs(
           return;
         }
         return programs.run(path);
+      },
+    ),
+    JobEditorProvider.register(context, picker),
+    commands.registerCommand(
+      "SAS.clinical.job.new",
+      async (folder: WorkspaceItem | undefined) => {
+        const parent = folder?.path ?? "/";
+        const input = await window.showInputBox({
+          prompt: JobMessages.NewJobPrompt,
+          value: "job.cjob",
+          valueSelection: [0, 3],
+          validateInput: toInputValidator(validateFileName),
+        });
+        if (!input) {
+          return;
+        }
+        const name = input.toLowerCase().endsWith(".cjob")
+          ? input
+          : `${input}.cjob`;
+        const resource = resourceFromPath(
+          `${parent === "/" ? "" : parent}/${name}`,
+          "WORKSPACE",
+        );
+        try {
+          await model.createJob({ resource, programs: [], parameters: [] });
+        } catch (error) {
+          const message = jobErrorMessage(error);
+          output.error(
+            `New job ${resource.path}: ${errorStatus(error)} ${message}`,
+          );
+          window.showErrorMessage(
+            l10n.t(JobMessages.NewJobError, { name, message }),
+          );
+          return;
+        }
+        output.info(`Created ${resource.path}.`);
+        refreshTrees();
+        await commands.executeCommand("vscode.open", getWorkspaceUri(resource));
       },
     ),
     commands.registerCommand("SAS.clinical.jobs.refresh", () => view.refresh()),
@@ -180,7 +227,7 @@ export function registerClinicalJobs(
       } else if (target && "path" in target) {
         file = resourceForItem(target);
       } else {
-        const uri = window.activeTextEditor?.document.uri;
+        const uri = activeUri();
         file = uri && resourceForUri(uri);
       }
       if (!file?.name.toLowerCase().endsWith(".cmnf")) {
@@ -213,7 +260,7 @@ function jobResource(target: RunTarget): JobResource | undefined {
   } else if (target && "path" in target) {
     resource = resourceForItem(target);
   } else {
-    const uri = window.activeTextEditor?.document.uri;
+    const uri = activeUri();
     resource = uri && resourceForUri(uri);
   }
   return resource?.name.toLowerCase().endsWith(".cjob") ? resource : undefined;
@@ -230,11 +277,23 @@ function programPath(target: RunTarget): string | undefined {
   } else if (target && "path" in target) {
     resource = resourceForItem(target);
   } else {
-    const uri = window.activeTextEditor?.document.uri;
+    const uri = activeUri();
     resource = uri && resourceForUri(uri);
   }
   return resource?.resourceLocation === "WORKSPACE" &&
     resource.name.toLowerCase().endsWith(".sas")
     ? resource.path
     : undefined;
+}
+
+/**
+ * The file of the active editor: a text editor, or a custom editor such as
+ * the clinical job editor.
+ */
+function activeUri(): Uri | undefined {
+  const input = window.tabGroups.activeTabGroup.activeTab?.input;
+  if (input instanceof TabInputText || input instanceof TabInputCustom) {
+    return input.uri;
+  }
+  return window.activeTextEditor?.document.uri;
 }

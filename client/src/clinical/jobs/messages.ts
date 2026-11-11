@@ -4,6 +4,7 @@ import { l10n } from "vscode";
 
 import { isAxiosError } from "axios";
 
+import type { EditorLabels } from "./jobForm";
 import type { ReportLabels } from "./manifestReport";
 import type { ParameterProblem } from "./parameterValues";
 import type { Outcome } from "./state";
@@ -71,6 +72,10 @@ export const JobMessages = {
   NotAProgram: l10n.t(
     "Select a SAS program (.sas) in the Clinical Workspace to run as a clinical job.",
   ),
+  EditorPickFile: l10n.t("Choose a file"),
+  EditorPickFolder: l10n.t("Choose a folder"),
+  NewJobPrompt: l10n.t("Name of the new clinical job"),
+  NewJobError: l10n.t("Could not create the clinical job {name}. {message}"),
   CannotOpen: l10n.t(
     "This file is in the repository but the run did not record its id, so it cannot be opened.",
   ),
@@ -174,3 +179,81 @@ export function errorStatus(error: unknown): string {
       : "";
   return [error.response?.status, code].filter(Boolean).join(" ");
 }
+
+export const EditorLabelText: EditorLabels = {
+  run: l10n.t("Run"),
+  openAsJson: l10n.t("Open as JSON"),
+  readOnly: l10n.t(
+    "This job is read-only. To change it, copy or check it out to your workspace.",
+  ),
+  invalidJson: l10n.t(
+    "The file is not valid JSON, so the form cannot show it. Open it as JSON to fix it.",
+  ),
+  general: l10n.t("General"),
+  description: l10n.t("Description"),
+  programs: l10n.t("Programs"),
+  programsHint: l10n.t("The SAS programs the job runs, in this order."),
+  addProgram: l10n.t("Add Program..."),
+  path: l10n.t("Path"),
+  version: l10n.t("Version"),
+  latest: l10n.t("latest"),
+  open: l10n.t("Open"),
+  moveUp: l10n.t("Move up"),
+  moveDown: l10n.t("Move down"),
+  remove: l10n.t("Remove"),
+  parameters: l10n.t("Parameters"),
+  parametersHint: l10n.t(
+    "Values asked for when the job runs. The programs see them as macro variables.",
+  ),
+  addParameter: l10n.t("Add Parameter"),
+  name: l10n.t("Name"),
+  label: l10n.t("Label"),
+  type: l10n.t("Type"),
+  defaultValue: l10n.t("Default"),
+  includeSubfolders: l10n.t("Include subfolders"),
+  browse: l10n.t("Browse..."),
+  outputs: l10n.t("Output locations"),
+  outputsHint: l10n.t(
+    "Folders for the log, the results and the manifest, relative to the job.",
+  ),
+  logsLocation: l10n.t("Log"),
+  resultsLocation: l10n.t("Results"),
+  manifestLocation: l10n.t("Manifest"),
+  repository: l10n.t("Repository runs"),
+  repositoryHint: l10n.t(
+    "These settings apply only when the job runs from the Clinical Repository.",
+  ),
+  inputFiles: l10n.t("Input files"),
+  inputFolders: l10n.t("Input folders"),
+  includeFiles: l10n.t("Include files"),
+  addFile: l10n.t("Add File..."),
+  addFolder: l10n.t("Add Folder..."),
+  checkin: l10n.t("Check-in of outputs"),
+  checkinVersion: l10n.t("Version of outputs"),
+  versionNone: l10n.t("Not versioned"),
+  versionMajor: l10n.t("Major"),
+  versionMinor: l10n.t("Minor"),
+  versionNewFiles: l10n.t("Version new files"),
+  checkinLocations: l10n.t("Check-in locations"),
+  none: l10n.t("None"),
+  problems: {
+    noPrograms: l10n.t("The job has no programs."),
+    programPath: l10n.t("A program has no path."),
+    parameterName: l10n.t(
+      "A parameter name must be a SAS name: a letter or underscore, then letters, digits or underscores, at most 32 characters.",
+    ),
+    parameterDuplicate: l10n.t("Two parameters have the same name."),
+    parameterNumber: l10n.t(
+      "The default of a number parameter is not a number.",
+    ),
+    parameterDate: l10n.t("The default of a date parameter is not a date."),
+  },
+  types: {
+    CHARACTER: l10n.t("Text"),
+    CHARACTER_MASKED: l10n.t("Masked text"),
+    NUMERIC: l10n.t("Number"),
+    DATE: l10n.t("Date"),
+    FILE: l10n.t("File"),
+    FOLDER: l10n.t("Folder"),
+  },
+};
