@@ -43,6 +43,14 @@ export const JobMessages = {
   StillRunning: l10n.t("Running..."),
   LoadMore: l10n.t("Load more..."),
   NoRuns: l10n.t("No clinical job runs yet."),
+  AllRunsHidden: l10n.t(
+    "All loaded runs are hidden. Show hidden runs to see them.",
+  ),
+  HiddenRun: l10n.t("hidden"),
+  ClearedRuns: l10n.t(
+    "Finished runs are hidden in Positron. They stay in the run history on the server.",
+  ),
+  Undo: l10n.t("Undo"),
   GroupPrograms: l10n.t("Programs"),
   GroupParameters: l10n.t("Parameters"),
   GroupInputs: l10n.t("Inputs"),
@@ -85,6 +93,8 @@ export const JobMessages = {
   ScheduleNextRuns: l10n.t("Next runs"),
   ScheduleNoNextRuns: l10n.t("No more runs are scheduled."),
   ScheduleDisabled: l10n.t("disabled"),
+  ScheduleOwner: l10n.t("by {owner}"),
+  AllUsers: l10n.t("All users"),
   ScheduleJobMissing: l10n.t(
     "The job of this schedule no longer exists, or you may not read it.",
   ),

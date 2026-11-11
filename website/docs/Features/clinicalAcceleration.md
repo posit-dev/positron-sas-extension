@@ -159,6 +159,9 @@ Right-click a run for more actions:
 - **Run Again**: run the job again with the same parameter values, without prompts.
 - **Cancel Run**: cancel a run that has not ended.
 - **Copy Run ID**: copy the ID of the run, for example for an administrator.
+- **Remove from List**: hide the run in Positron. You can select several runs and remove them together.
+
+To hide every finished run, click **Clear Finished Runs** in the title bar of the view. Runs that are still going stay in the list. Hidden runs are hidden only in Positron, for your user on that server: the run history on the server, with its manifests, stays as it is. To see hidden runs again, click **Show Hidden Runs** in the title bar; they are marked as hidden, and **Restore to List** brings one back. **Restore All Hidden Runs** is in the **...** menu of the view.
 
 :::info note
 
@@ -192,6 +195,8 @@ Right-click a schedule for more actions:
 - **Copy Schedule ID**: copy the ID of the schedule.
 
 A schedule whose job was deleted, or that you can no longer read, is marked with a warning.
+
+The view lists the schedules that run as you. To see the schedules of all users that the server shows you, click **Show All Users' Schedules** in the title bar. Other users' schedules are marked with their owner, and you can only copy their ID. Click **Show My Schedules** to go back.
 
 ### The manifest report
 

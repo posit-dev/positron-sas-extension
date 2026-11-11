@@ -14,12 +14,14 @@ import {
   TreeItem,
   TreeItemCollapsibleState,
   TreeView,
+  commands,
   l10n,
   window,
 } from "vscode";
 
-import { JOBS_VIEW_ID } from "../const";
+import { JOBS_VIEW_ID, SHOW_HIDDEN_RUNS_KEY } from "../const";
 import type { JobsModel } from "./JobsModel";
+import type { HiddenRuns } from "./hiddenRuns";
 import { type JobNode, describeValue, manifestNodes } from "./manifestTree";
 import { JobMessages, errorStatus, jobErrorMessage } from "./messages";
 import { uriForResource } from "./resources";
@@ -45,19 +47,40 @@ export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
   private loadError: string | undefined;
   private timer: ReturnType<typeof setInterval> | undefined;
   private readonly disposables: Disposable[] = [];
+  /** Whether hidden runs are listed too, marked as hidden. */
+  private showHidden = false;
 
   constructor(
     private readonly model: JobsModel,
     private readonly log: (message: string) => void,
+    private readonly hidden: HiddenRuns,
   ) {
     this.treeView = window.createTreeView(JOBS_VIEW_ID, {
       treeDataProvider: this,
       showCollapseAll: true,
+      canSelectMany: true,
     });
     this.disposables.push(
       this.treeView,
       this.treeView.onDidChangeVisibility(() => this.updateTimer()),
     );
+  }
+
+  /** The runs loaded so far, hidden ones included. */
+  get loadedRuns(): Submission[] {
+    return this.runs.flatMap((n) => (n.kind === "run" ? [n.submission] : []));
+  }
+
+  /** List hidden runs too, or not. */
+  setShowHidden(show: boolean): void {
+    this.showHidden = show;
+    void commands.executeCommand("setContext", SHOW_HIDDEN_RUNS_KEY, show);
+    this.changed.fire(undefined);
+  }
+
+  /** Redraw after the hidden runs changed; nothing is fetched. */
+  redraw(): void {
+    this.changed.fire(undefined);
   }
 
   /** Reload the list from the server. */
@@ -197,19 +220,8 @@ export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
 
   /** The next page of runs. */
   async loadMore(): Promise<void> {
-    const runs = this.runs.filter((n) => n.kind === "run");
     try {
-      const page = await this.model.listSubmissions(runs.length);
-      const known = new Set(
-        runs.map((n) => (n.kind === "run" ? n.submission.id : "")),
-      );
-      this.runs = [
-        ...runs,
-        ...page.items
-          .filter((s) => !known.has(s.id))
-          .map((submission): JobNode => ({ kind: "run", submission })),
-      ];
-      this.hasMore = page.hasMore;
+      await this.fetchMore();
     } catch (error) {
       window.showErrorMessage(
         l10n.t(JobMessages.ListError, { message: jobErrorMessage(error) }),
@@ -218,9 +230,27 @@ export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
     this.changed.fire(undefined);
   }
 
+  /** Append the next page; hidden runs count for the offset too. */
+  private async fetchMore(): Promise<void> {
+    const runs = this.runs.filter((n) => n.kind === "run");
+    const page = await this.model.listSubmissions(runs.length);
+    const known = new Set(
+      runs.map((n) => (n.kind === "run" ? n.submission.id : "")),
+    );
+    this.runs = [
+      ...runs,
+      ...page.items
+        .filter((s) => !known.has(s.id))
+        .map((submission): JobNode => ({ kind: "run", submission })),
+    ];
+    this.hasMore = page.hasMore;
+  }
+
   private async getRuns(): Promise<JobNode[]> {
     if (!this.loaded) {
       try {
+        // Per server and user: the profile or sign-in may have changed.
+        await this.hidden.load();
         const page = await this.model.listSubmissions();
         this.runs = page.items.map((submission) => ({
           kind: "run",
@@ -246,10 +276,31 @@ export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
         },
       ];
     }
-    if (!this.runs.length) {
-      return [{ kind: "message", text: JobMessages.NoRuns }];
+    let shown = this.visibleRuns();
+    // Pages of hidden runs only: fetch on until something shows.
+    for (let page = 0; !shown.length && this.hasMore && page < 8; page++) {
+      await this.fetchMore();
+      shown = this.visibleRuns();
     }
-    return this.hasMore ? [...this.runs, { kind: "more" }] : this.runs;
+    if (!shown.length) {
+      return [
+        {
+          kind: "message",
+          text: this.runs.length
+            ? JobMessages.AllRunsHidden
+            : JobMessages.NoRuns,
+        },
+      ];
+    }
+    return this.hasMore ? [...shown, { kind: "more" }] : shown;
+  }
+
+  private visibleRuns(): JobNode[] {
+    return this.showHidden
+      ? this.runs
+      : this.runs.filter(
+          (n) => n.kind !== "run" || !this.hidden.isHidden(n.submission),
+        );
   }
 
   private async getManifestNodes(submission: Submission): Promise<JobNode[]> {
@@ -323,7 +374,11 @@ export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
         .filter(Boolean)
         .join("\n\n"),
     );
-    item.contextValue = `;run;${outcome};${isTerminal(submission.state) ? "done" : "active"};${submission.job.resourceLocation.toLowerCase()};`;
+    const hidden = this.hidden.isHidden(submission);
+    if (hidden) {
+      item.description = `${item.description} · ${JobMessages.HiddenRun}`;
+    }
+    item.contextValue = `;run;${outcome};${isTerminal(submission.state) ? "done" : "active"};${submission.job.resourceLocation.toLowerCase()};${hidden ? "hidden" : "listed"};`;
     return item;
   }
 

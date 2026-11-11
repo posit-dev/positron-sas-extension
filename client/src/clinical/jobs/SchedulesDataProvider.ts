@@ -14,10 +14,12 @@ import {
   TreeItem,
   TreeItemCollapsibleState,
   TreeView,
+  commands,
   l10n,
   window,
 } from "vscode";
 
+import { SHOW_ALL_SCHEDULES_KEY } from "../const";
 import { formatDate } from "../properties";
 import type { JobsModel } from "./JobsModel";
 import { describeValue } from "./manifestTree";
@@ -25,6 +27,7 @@ import { JobMessages, TriggerLabelText, jobErrorMessage } from "./messages";
 import { uriForResource } from "./resources";
 import {
   describeTrigger,
+  isOwnSchedule,
   scheduleContextValue,
   scheduleJob,
 } from "./schedules";
@@ -46,10 +49,14 @@ export class SchedulesDataProvider
   private readonly changed = new EventEmitter<ScheduleNode | undefined>();
   readonly onDidChangeTreeData = this.changed.event;
   private readonly treeView: TreeView<ScheduleNode>;
+  /** Whether other users' schedules are listed too. */
+  private showAll = false;
+  private userId: string | undefined;
 
   constructor(
     private readonly model: JobsModel,
     private readonly log: (message: string) => void,
+    private readonly currentUser: () => Promise<string | undefined>,
   ) {
     this.treeView = window.createTreeView(SCHEDULES_VIEW_ID, {
       treeDataProvider: this,
@@ -61,10 +68,21 @@ export class SchedulesDataProvider
     this.changed.fire(undefined);
   }
 
+  /** List everyone's schedules, or only the user's. */
+  setShowAll(show: boolean): void {
+    this.showAll = show;
+    this.treeView.description = show ? JobMessages.AllUsers : undefined;
+    void commands.executeCommand("setContext", SHOW_ALL_SCHEDULES_KEY, show);
+    this.changed.fire(undefined);
+  }
+
   async getChildren(node?: ScheduleNode): Promise<ScheduleNode[]> {
     if (!node) {
       try {
-        const schedules = await this.model.listSchedules();
+        this.userId = await this.currentUser();
+        const schedules = (await this.model.listSchedules()).filter(
+          (s) => this.showAll || isOwnSchedule(s, this.userId),
+        );
         if (!schedules.length) {
           return [{ kind: "message", text: JobMessages.NoSchedules }];
         }
@@ -189,10 +207,19 @@ export class SchedulesDataProvider
     );
     item.id = `schedule:${schedule.id}`;
     const disabled = schedule.status === "DISABLED";
+    const own = isOwnSchedule(schedule, this.userId);
     const trigger = describeTrigger(schedule.trigger, TriggerLabelText);
-    item.description = disabled
-      ? `${trigger} · ${JobMessages.ScheduleDisabled}`
-      : trigger;
+    item.description = [
+      own
+        ? ""
+        : l10n.t(JobMessages.ScheduleOwner, {
+            owner: schedule.runAsDisplayName ?? schedule.runAs ?? "",
+          }),
+      trigger,
+      disabled ? JobMessages.ScheduleDisabled : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
     const missing = schedule.jobAvailable === false;
     item.iconPath = missing
       ? new ThemeIcon("warning", new ThemeColor("editorWarning.foreground"))
@@ -212,7 +239,7 @@ export class SchedulesDataProvider
         .filter(Boolean)
         .join("\n\n"),
     );
-    item.contextValue = scheduleContextValue(schedule);
+    item.contextValue = scheduleContextValue(schedule, own);
     return item;
   }
 }

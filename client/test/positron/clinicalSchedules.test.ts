@@ -15,6 +15,7 @@ import {
   buildTrigger,
   describeTrigger,
   isDate,
+  isOwnSchedule,
   isTime,
   parseDateList,
   parseWhole,
@@ -340,15 +341,71 @@ describe("schedules in the view", () => {
     expect(scheduleValues(schedule)).to.deep.equal([
       { name: "probe_char", type: "CHARACTER", value: "from-schedule" },
     ]);
-    expect(scheduleContextValue(schedule)).to.equal(";schedule;enabled;jobOk;");
+    expect(scheduleContextValue(schedule)).to.equal(
+      ";schedule;enabled;jobOk;mine;",
+    );
     expect(
-      scheduleContextValue({
-        ...schedule,
-        status: "DISABLED",
-        jobAvailable: false,
-      }),
-    ).to.equal(";schedule;disabled;jobMissing;");
+      scheduleContextValue(
+        { ...schedule, status: "DISABLED", jobAvailable: false },
+        false,
+      ),
+    ).to.equal(";schedule;disabled;jobMissing;others;");
     expect(scheduleJob({ id: "x", name: "x" })).to.equal(undefined);
+  });
+});
+
+describe("schedule owners", () => {
+  const schedule = json<Schedule>("schedule.json");
+
+  it("tells the user's schedules from other users'", () => {
+    // runAs is the owner; the fixture's is test1.
+    expect(isOwnSchedule(schedule, "test1")).to.equal(true);
+    expect(isOwnSchedule(schedule, "demouser")).to.equal(false);
+    expect(
+      isOwnSchedule(
+        { ...schedule, runAs: undefined, createdBy: "demouser" },
+        "demouser",
+      ),
+    ).to.equal(true);
+    // Without a known user or owner, nothing is hidden.
+    expect(isOwnSchedule(schedule, undefined)).to.equal(true);
+    expect(isOwnSchedule({ id: "x", name: "x" }, "demouser")).to.equal(true);
+  });
+
+  it("offers only Copy Schedule ID on other users' schedules", () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(
+        path.join(fixtures, "../../../../../package.json"),
+        "utf8",
+      ),
+    );
+    const menus: { command: string; when: string }[] = pkg.contributes.menus[
+      "view/item/context"
+    ].filter((m: { when?: string }) =>
+      (m.when ?? "").includes("view == clinicaljobschedulesprovider"),
+    );
+    const shown = (contextValue: string) =>
+      menus
+        .filter((m) =>
+          m.when
+            .split(" && ")
+            .slice(1)
+            .every((clause) => {
+              const re = /^viewItem =~ \/(.+)\/$/.exec(clause);
+              return re ? new RegExp(re[1]).test(contextValue) : false;
+            }),
+        )
+        .map((m) => m.command);
+    const others = new Set(shown(scheduleContextValue(schedule, false)));
+    expect([...others]).to.deep.equal(["SAS.clinical.schedule.copyId"]);
+    const mine = new Set(shown(scheduleContextValue(schedule, true)));
+    expect([...mine]).to.have.members([
+      "SAS.clinical.schedule.runNow",
+      "SAS.clinical.schedule.disable",
+      "SAS.clinical.schedule.edit",
+      "SAS.clinical.schedule.delete",
+      "SAS.clinical.schedule.copyId",
+    ]);
   });
 });
 

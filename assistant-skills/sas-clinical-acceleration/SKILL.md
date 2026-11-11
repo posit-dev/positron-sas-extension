@@ -110,8 +110,11 @@ That manifest is the audit trail.
   first. Expanding a run shows its manifest: Programs (state and run time),
   Parameters, Inputs, Outputs, Logs, Results, and Check-in failures. A
   versioned repository file opens at the version the run used. Right-click a
-  run for **Run Again** (same values, no prompts), **Open Job**, **Cancel Run**
-  and **Copy Run ID**.
+  run for **Run Again** (same values, no prompts), **Open Job**, **Cancel Run**,
+  **Copy Run ID** and **Remove from List**. **Clear Finished Runs** (view
+  title) hides all finished runs. Hiding is only in Positron, per user and
+  server; the run history on the server stays. **Show Hidden Runs** and
+  **Restore to List** bring them back.
 - **Manifest report:** **Show Manifest Report** (on a run in the Clinical Jobs
   view, on a `.cmnf` file, or in the end-of-run notification) opens the
   manifest as an HTML page in the Viewer, which you can read: the job, state,
@@ -137,7 +140,9 @@ That manifest is the audit trail.
   server calculates them, which is how to check that a schedule does what
   was meant. Right-click for **Run Now**, **Edit Schedule...**, **Disable** /
   **Enable Schedule**, **Delete Schedule...** (keeps the job) and **Copy
-  Schedule ID**. Schedules run under the user who created them.
+  Schedule ID**. Schedules run under the user who created them. The view lists
+  the user's own schedules; **Show All Users' Schedules** lists everyone's
+  (marked with the owner, read-only).
 
 The Clinical Jobs and Clinical Job Schedules views appear only when the server
 also runs SAS Clinical Job Management.

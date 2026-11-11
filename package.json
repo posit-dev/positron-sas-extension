@@ -1267,6 +1267,53 @@
         "category": "SAS Clinical Acceleration"
       },
       {
+        "command": "SAS.clinical.job.hide",
+        "title": "%clinical.commands.hideRun%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(close)"
+      },
+      {
+        "command": "SAS.clinical.job.restore",
+        "title": "%clinical.commands.restoreRun%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(reply)"
+      },
+      {
+        "command": "SAS.clinical.jobs.clearFinished",
+        "title": "%clinical.commands.clearFinishedRuns%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "SAS.clinical.jobs.restoreAll",
+        "title": "%clinical.commands.restoreAllRuns%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.jobs.showHidden",
+        "title": "%clinical.commands.showHiddenRuns%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "SAS.clinical.jobs.hideHidden",
+        "title": "%clinical.commands.hideHiddenRuns%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "SAS.clinical.schedules.showAll",
+        "title": "%clinical.commands.showAllSchedules%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "SAS.clinical.schedules.showMine",
+        "title": "%clinical.commands.showMySchedules%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(person)"
+      },
+      {
         "command": "SAS.clinical.jobs.refresh",
         "title": "%commands.SAS.refresh%",
         "category": "SAS Clinical Acceleration",
@@ -1390,6 +1437,36 @@
         }
       ],
       "view/title": [
+        {
+          "command": "SAS.clinical.jobs.clearFinished",
+          "when": "view == clinicaljobsprovider",
+          "group": "navigation@1"
+        },
+        {
+          "command": "SAS.clinical.jobs.showHidden",
+          "when": "view == clinicaljobsprovider && !SAS.clinical.showHiddenRuns",
+          "group": "navigation@2"
+        },
+        {
+          "command": "SAS.clinical.jobs.hideHidden",
+          "when": "view == clinicaljobsprovider && SAS.clinical.showHiddenRuns",
+          "group": "navigation@2"
+        },
+        {
+          "command": "SAS.clinical.jobs.restoreAll",
+          "when": "view == clinicaljobsprovider",
+          "group": "1_hidden@0"
+        },
+        {
+          "command": "SAS.clinical.schedules.showAll",
+          "when": "view == clinicaljobschedulesprovider && !SAS.clinical.showAllSchedules",
+          "group": "navigation@2"
+        },
+        {
+          "command": "SAS.clinical.schedules.showMine",
+          "when": "view == clinicaljobschedulesprovider && SAS.clinical.showAllSchedules",
+          "group": "navigation@2"
+        },
         {
           "command": "SAS.clinical.schedules.refresh",
           "when": "view == clinicaljobschedulesprovider",
@@ -1816,42 +1893,42 @@
         },
         {
           "command": "SAS.clinical.schedule.runNow",
-          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/",
+          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;mine;/",
           "group": "inline@0"
         },
         {
           "command": "SAS.clinical.schedule.disable",
-          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;enabled;/",
+          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;mine;/ && viewItem =~ /;enabled;/",
           "group": "inline@1"
         },
         {
           "command": "SAS.clinical.schedule.enable",
-          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;disabled;/",
+          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;mine;/ && viewItem =~ /;disabled;/",
           "group": "inline@1"
         },
         {
           "command": "SAS.clinical.schedule.runNow",
-          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/",
+          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;mine;/",
           "group": "0_run@0"
         },
         {
           "command": "SAS.clinical.schedule.edit",
-          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/",
+          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;mine;/",
           "group": "1_edit@0"
         },
         {
           "command": "SAS.clinical.schedule.disable",
-          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;enabled;/",
+          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;mine;/ && viewItem =~ /;enabled;/",
           "group": "1_edit@1"
         },
         {
           "command": "SAS.clinical.schedule.enable",
-          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;disabled;/",
+          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;mine;/ && viewItem =~ /;disabled;/",
           "group": "1_edit@1"
         },
         {
           "command": "SAS.clinical.schedule.delete",
-          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/",
+          "when": "view == clinicaljobschedulesprovider && viewItem =~ /;schedule;/ && viewItem =~ /;mine;/",
           "group": "2_delete@0"
         },
         {
@@ -1898,6 +1975,16 @@
           "command": "SAS.clinical.job.copyId",
           "when": "view == clinicaljobsprovider && viewItem =~ /;run;/",
           "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.clinical.job.hide",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;listed;/",
+          "group": "4_list@0"
+        },
+        {
+          "command": "SAS.clinical.job.restore",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;hidden;/",
+          "group": "4_list@0"
         },
         {
           "command": "SAS.clinical.job.showManifest",
@@ -2369,6 +2456,38 @@
         {
           "when": "false",
           "command": "SAS.clinical.job.new"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.job.hide"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.job.restore"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.jobs.clearFinished"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.jobs.restoreAll"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.jobs.showHidden"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.jobs.hideHidden"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.schedules.showAll"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.schedules.showMine"
         },
         {
           "when": "SAS.clinical.jobsAvailable",
