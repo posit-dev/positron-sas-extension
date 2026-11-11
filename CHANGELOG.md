@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 - 2026-11-11
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+This release adds clinical jobs to the SAS Clinical Acceleration support: running jobs and following their runs ([#113](https://github.com/posit-dev/positron-sas-extension/pull/113)), manifest reports with links to the files of a run ([#114](https://github.com/posit-dev/positron-sas-extension/pull/114), [#116](https://github.com/posit-dev/positron-sas-extension/pull/116)), Run as Clinical Job ([#115](https://github.com/posit-dev/positron-sas-extension/pull/115)), a job editor ([#117](https://github.com/posit-dev/positron-sas-extension/pull/117)), and schedules ([#118](https://github.com/posit-dev/positron-sas-extension/pull/118)). It also lets Posit Assistant write SAS reports as Quarto documents and exports the SAS connection for saspy ([#111](https://github.com/posit-dev/positron-sas-extension/pull/111), [#112](https://github.com/posit-dev/positron-sas-extension/pull/112)).
 
 ### Features
 
