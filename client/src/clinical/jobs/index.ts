@@ -21,8 +21,9 @@ import { ItemPicker } from "./ItemPicker";
 import { JobRunner } from "./JobRunner";
 import { JobsDataProvider } from "./JobsDataProvider";
 import { JobsModel } from "./JobsModel";
+import { type LoadedManifest, ManifestReports } from "./ManifestReports";
 import type { JobNode } from "./manifestTree";
-import { JobMessages, jobErrorMessage } from "./messages";
+import { JobMessages, errorStatus, jobErrorMessage } from "./messages";
 import { valuesForRerun } from "./parameterValues";
 import { resourceForItem, resourceForUri, uriForResource } from "./resources";
 import { isTerminal } from "./state";
@@ -34,6 +35,8 @@ export interface ClinicalJobs extends Disposable {
 }
 
 type RunTarget = RepositoryItem | WorkspaceItem | Uri | undefined;
+type ManifestTarget =
+  JobNode | RepositoryItem | WorkspaceItem | Uri | undefined;
 
 export function registerClinicalJobs(
   repositoryModel: RepositoryModel,
@@ -46,6 +49,7 @@ export function registerClinicalJobs(
   const model = new JobsModel(repositoryModel, workspaceModel);
   const picker = new ItemPicker(repositoryModel, workspaceModel);
   const view = new JobsDataProvider(model, log);
+  const reports = new ManifestReports(model, output);
   const runner = new JobRunner(model, picker, output, (submission) => {
     view.upsert(submission);
     if (isTerminal(submission.state)) {
@@ -127,7 +131,56 @@ export function registerClinicalJobs(
       const submission = runOf(node);
       return submission && env.clipboard.writeText(submission.id);
     }),
+    reports,
+    commands.registerCommand(
+      "SAS.clinical.job.showManifest",
+      async (target: ManifestTarget) => {
+        const loaded = await loadManifest(target);
+        return loaded && reports.show(loaded);
+      },
+    ),
+    commands.registerCommand(
+      "SAS.clinical.job.exportManifest",
+      async (target: ManifestTarget) => {
+        const loaded = await loadManifest(target);
+        return loaded && reports.export(loaded);
+      },
+    ),
   ];
+
+  /**
+   * The manifest of a run in the Jobs view, of a .cmnf file in a tree or an
+   * editor, or of the active editor's .cmnf file.
+   */
+  async function loadManifest(
+    target: ManifestTarget,
+  ): Promise<LoadedManifest | undefined> {
+    try {
+      if (target && "kind" in target) {
+        const submission = runOf(target);
+        return submission ? await reports.forRun(submission.id) : undefined;
+      }
+      let file: JobResource | undefined;
+      if (target instanceof Uri) {
+        file = resourceForUri(target);
+      } else if (target && "path" in target) {
+        file = resourceForItem(target);
+      } else {
+        const uri = window.activeTextEditor?.document.uri;
+        file = uri && resourceForUri(uri);
+      }
+      if (!file?.name.toLowerCase().endsWith(".cmnf")) {
+        window.showInformationMessage(JobMessages.NotAManifest);
+        return undefined;
+      }
+      return await reports.forFile(file);
+    } catch (error) {
+      const message = jobErrorMessage(error);
+      output.error(`Manifest: ${errorStatus(error)} ${message}`);
+      window.showErrorMessage(l10n.t(JobMessages.ManifestError, { message }));
+      return undefined;
+    }
+  }
 
   return {
     refresh: () => view.refresh(),

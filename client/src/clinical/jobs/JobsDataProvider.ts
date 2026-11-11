@@ -21,7 +21,7 @@ import {
 import { JOBS_VIEW_ID } from "../const";
 import type { JobsModel } from "./JobsModel";
 import { type JobNode, describeValue, manifestNodes } from "./manifestTree";
-import { JobMessages, jobErrorMessage } from "./messages";
+import { JobMessages, errorStatus, jobErrorMessage } from "./messages";
 import { uriForResource } from "./resources";
 import {
   executionIcon,
@@ -266,12 +266,14 @@ export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
     try {
       manifest = await this.model.getSubmissionManifest(submission.id);
     } catch (error) {
+      const message = jobErrorMessage(error);
+      this.log(
+        `Manifest of run ${submission.id} (${submission.job.path}, ${submission.state}): ${errorStatus(error)} ${message}`,
+      );
       return [
         {
           kind: "message",
-          text: l10n.t(JobMessages.ManifestError, {
-            message: jobErrorMessage(error),
-          }),
+          text: l10n.t(JobMessages.ManifestError, { message }),
           icon: "warning",
         },
       ];

@@ -1253,6 +1253,17 @@
         "category": "SAS Clinical Acceleration"
       },
       {
+        "command": "SAS.clinical.job.showManifest",
+        "title": "%clinical.commands.showManifest%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "SAS.clinical.job.exportManifest",
+        "title": "%clinical.commands.exportManifest%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.workspace.checkIn",
         "title": "%clinical.commands.checkIn%",
         "category": "SAS Clinical Acceleration"
@@ -1306,6 +1317,11 @@
         {
           "command": "SAS.clinical.job.run",
           "when": "resourceExtname == .cjob && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.clinical.job.showManifest",
+          "when": "resourceExtname == .cmnf && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",
           "group": "navigation@0"
         }
       ],
@@ -1713,7 +1729,7 @@
         {
           "command": "SAS.clinical.job.openLog",
           "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
-          "group": "inline@0"
+          "group": "inline@1"
         },
         {
           "command": "SAS.clinical.job.cancel",
@@ -1749,6 +1765,41 @@
           "command": "SAS.clinical.job.copyId",
           "when": "view == clinicaljobsprovider && viewItem =~ /;run;/",
           "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.clinical.job.showManifest",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;manifest;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@0"
+        },
+        {
+          "command": "SAS.clinical.job.exportManifest",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;manifest;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@1"
+        },
+        {
+          "command": "SAS.clinical.job.showManifest",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;manifest;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@0"
+        },
+        {
+          "command": "SAS.clinical.job.exportManifest",
+          "when": "view == clinicalworkspaceprovider && viewItem =~ /;manifest;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "group": "0_run@1"
+        },
+        {
+          "command": "SAS.clinical.job.showManifest",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
+          "group": "inline@0"
+        },
+        {
+          "command": "SAS.clinical.job.showManifest",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
+          "group": "0_manifest@0"
+        },
+        {
+          "command": "SAS.clinical.job.exportManifest",
+          "when": "view == clinicaljobsprovider && viewItem =~ /;run;/ && viewItem =~ /;done;/",
+          "group": "0_manifest@1"
         },
         {
           "command": "SAS.clinical.selectForCompare",
@@ -2172,6 +2223,14 @@
         {
           "when": "false",
           "command": "SAS.clinical.job.copyId"
+        },
+        {
+          "when": "resourceExtname == .cmnf && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",
+          "command": "SAS.clinical.job.showManifest"
+        },
+        {
+          "when": "resourceExtname == .cmnf && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",
+          "command": "SAS.clinical.job.exportManifest"
         },
         {
           "when": "false",

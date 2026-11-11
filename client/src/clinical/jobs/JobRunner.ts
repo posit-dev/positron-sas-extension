@@ -164,7 +164,11 @@ export class JobRunner {
       name: submission.name,
       info: submission.info ?? humanizeState(submission.state),
     });
-    const actions = [JobMessages.OpenLog, JobMessages.OpenResults];
+    const actions = [
+      JobMessages.OpenLog,
+      JobMessages.OpenResults,
+      JobMessages.ShowManifest,
+    ];
     const show =
       outcome === "success" || outcome === "canceled"
         ? window.showInformationMessage
@@ -184,6 +188,11 @@ export class JobRunner {
       await this.openFiles(submission, "logs");
     } else if (choice === JobMessages.OpenResults) {
       await this.openFiles(submission, "results");
+    } else if (choice === JobMessages.ShowManifest) {
+      await commands.executeCommand("SAS.clinical.job.showManifest", {
+        kind: "run",
+        submission,
+      });
     }
   }
 

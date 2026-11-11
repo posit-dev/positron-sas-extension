@@ -443,6 +443,7 @@ export interface PreviewPanel {
   };
   readonly visible: boolean;
   readonly onDidChangeViewState: vscode.Event<unknown>;
+  dispose(): void;
 }
 
 export interface WindowManager {

@@ -29,6 +29,15 @@ describe("OutputFiles", () => {
     expect(readFileSync(second, "utf8")).to.equal("<p>two</p>");
   });
 
+  it("starts file names with a safe version of the given name", async () => {
+    const files = new OutputFiles(20, parent);
+    const report = await files.write("<p/>", "manifest-probe");
+    const odd = await files.write("<p/>", "../a b/c");
+    expect(basename(report)).to.equal("manifest-probe-1.html");
+    expect(basename(odd)).to.equal("..-a-b-c-2.html");
+    expect(dirname(odd)).to.equal(dirname(report));
+  });
+
   it("keeps only the newest files", async () => {
     const files = new OutputFiles(2, parent);
     const written = [
