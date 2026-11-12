@@ -16,23 +16,56 @@ import {
 } from "../../src/positron/localSasProfile";
 
 class FakeStore implements LocalProfileStore {
+  /** Every saveProfiles call, failed or not. */
+  saves: { active: string; profiles: { [name: string]: Profile } }[] = [];
+  /** saveProfiles fails this many times first, as a settings.json conflict. */
+  failures = 0;
+  /** saveProfiles "succeeds" without changing anything. */
+  dropWrites = false;
+  /** Called before each read of the profiles, to change them meanwhile. */
+  beforeRead?: () => void;
+
   constructor(
     public profiles: { [name: string]: Profile } = {},
     public active = "",
   ) {}
   getAllProfiles() {
+    this.beforeRead?.();
     return this.profiles;
   }
   getActiveProfile() {
     return this.active;
   }
-  async upsertProfile(name: string, profile: Profile) {
-    this.profiles = { ...this.profiles, [name]: profile };
-  }
-  async updateActiveProfileSetting(name: string) {
-    this.active = name;
+  async saveProfiles(active: string, profiles: { [name: string]: Profile }) {
+    this.saves.push({ active, profiles });
+    if (this.failures > 0) {
+      this.failures--;
+      throw new Error(
+        "Failed to save 'settings.json': The content of the file is newer.",
+      );
+    }
+    if (!this.dropWrites) {
+      this.profiles = profiles;
+      this.active = active;
+    }
   }
 }
+
+/** Retries without waiting; records the waits and the final failure. */
+const noWait = () => {
+  const record = { waits: [] as number[], failed: [] as unknown[] };
+  return {
+    record,
+    retry: {
+      sleep: async (ms: number) => {
+        record.waits.push(ms);
+      },
+      onFailed: (error: unknown) => {
+        record.failed.push(error);
+      },
+    },
+  };
+};
 
 class FakeState implements LocalProfileState {
   values: { [key: string]: unknown } = {};
@@ -241,6 +274,144 @@ describe("addLocalSasProfile", () => {
     expect(store.profiles.local).to.deep.equal({
       connectionType: "stdio",
       saspath: "/custom/sas",
+    });
+  });
+
+  describe("when writing settings.json fails", () => {
+    it("writes the profile and the active profile in one write", async () => {
+      const store = new FakeStore();
+      await addLocalSasProfile(
+        store,
+        new FakeState(),
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+      );
+      expect(store.saves).to.have.length(1);
+      expect(store.saves[0].active).to.equal("local");
+      expect(Object.keys(store.saves[0].profiles)).to.deep.equal(["local"]);
+    });
+
+    it("retries after a conflict and succeeds", async () => {
+      const store = new FakeStore();
+      store.failures = 2;
+      const state = new FakeState();
+      const { record, retry } = noWait();
+
+      const name = await addLocalSasProfile(
+        store,
+        state,
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        retry,
+      );
+
+      expect(name).to.equal("local");
+      expect(store.saves).to.have.length(3);
+      expect(record.waits).to.deep.equal([1000, 2000]);
+      expect(store.active).to.equal("local");
+      expect(state.values[LOCAL_PROFILE_ADDED_KEY]).to.equal(true);
+      expect(record.failed).to.be.empty;
+    });
+
+    it("leaves the flag unset and reports when every attempt fails", async () => {
+      const store = new FakeStore();
+      store.failures = 99;
+      const state = new FakeState();
+      const { record, retry } = noWait();
+
+      const name = await addLocalSasProfile(
+        store,
+        state,
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        retry,
+      );
+
+      expect(name).to.be.undefined;
+      expect(store.saves).to.have.length(5);
+      expect(record.waits).to.deep.equal([1000, 2000, 4000, 8000]);
+      expect(state.values[LOCAL_PROFILE_ADDED_KEY]).to.be.undefined;
+      expect(record.failed).to.have.length(1);
+      expect(String(record.failed[0])).to.match(/newer/);
+    });
+
+    it("counts a write it cannot read back as failed", async () => {
+      const store = new FakeStore();
+      store.dropWrites = true;
+      const state = new FakeState();
+      const { record, retry } = noWait();
+
+      const name = await addLocalSasProfile(
+        store,
+        state,
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        { ...retry, delaysMs: [10] },
+      );
+
+      expect(name).to.be.undefined;
+      expect(store.saves).to.have.length(2);
+      expect(state.values[LOCAL_PROFILE_ADDED_KEY]).to.be.undefined;
+      expect(String(record.failed[0])).to.match(/not in the settings/);
+    });
+
+    it("stops when a stdio profile appears before a retry", async () => {
+      const store = new FakeStore();
+      store.failures = 1;
+      const state = new FakeState();
+      const { retry } = noWait();
+      let reads = 0;
+      store.beforeRead = () => {
+        // The failed write landed after all, seen on the next read.
+        if (++reads === 2) {
+          store.profiles = {
+            local: { connectionType: "stdio", saspath: "/x" } as Profile,
+          };
+        }
+      };
+
+      const name = await addLocalSasProfile(
+        store,
+        state,
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        retry,
+      );
+
+      expect(name).to.be.undefined;
+      expect(store.saves).to.have.length(1);
+      expect(state.values[LOCAL_PROFILE_ADDED_KEY]).to.equal(true);
+    });
+
+    it("keeps profiles another writer added before the retry", async () => {
+      const viya = {
+        connectionType: "rest",
+        endpoint: "https://viya.example.com",
+      } as Profile;
+      const store = new FakeStore();
+      store.failures = 1;
+      let reads = 0;
+      store.beforeRead = () => {
+        if (++reads === 2) {
+          store.profiles = { viya };
+          store.active = "viya";
+        }
+      };
+
+      const name = await addLocalSasProfile(
+        store,
+        new FakeState(),
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        noWait().retry,
+      );
+
+      expect(name).to.equal("local");
+      expect(Object.keys(store.profiles).sort()).to.deep.equal([
+        "local",
+        "viya",
+      ]);
+      expect(store.active).to.equal("viya");
     });
   });
 });
