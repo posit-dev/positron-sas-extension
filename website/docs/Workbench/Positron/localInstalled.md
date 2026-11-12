@@ -15,7 +15,7 @@ An administrator installs SAS where Workbench sessions run, in the same way as R
 ## Requirements
 
 - Any Workbench release with Positron sessions
-- The Positron SAS extension 0.4.0 or later. Automatic profiles for SAS 9.4 need version 0.5.0 or later.
+- The Positron SAS extension 0.4.0 or later. Automatic profiles for SAS 9.4 need version 0.5.0 or later. Use version 0.6.2 or later with SAS Analytics Pro images: earlier versions could lose the automatic profile on the first start of a session.
 - SAS installed and licensed on the Workbench host or in the session image. The license is applied at installation, as for any SAS installation, so Workbench does not provide it.
 
 ## Set Up
@@ -34,7 +34,9 @@ The extension adds a `local` connection profile automatically when it finds SAS.
 
 For SAS 9.4, the extension uses the UTF-8 launcher `bin/sas_u8`, because it reads SAS output as UTF-8. `SAS.localSasPaths` is a machine setting, so an administrator can set it for all users of a Workbench host or session image when SAS is installed elsewhere.
 
-The extension adds the profile once: a deleted profile stays deleted, and an existing `stdio` profile prevents it. Users can also add the profile to their Positron settings themselves:
+The extension adds the profile once: a deleted profile stays deleted, and an existing `stdio` profile prevents it. If the extension cannot save the profile to `settings.json`, for example because Posit Workbench writes `settings.json` at the same moment when a session starts, it tries again several times over about 15 seconds. If every attempt fails, a warning offers **Retry**: if `settings.json` shows unsaved changes, save or revert it first. A profile that could not be saved is added again at the next start. Version 0.6.2 or later is needed for this; with earlier versions, the profile could be lost on the first start in a SAS Analytics Pro image.
+
+Users can also add the profile to their Positron settings themselves:
 
 ```json
 "SAS.connectionProfiles": {
