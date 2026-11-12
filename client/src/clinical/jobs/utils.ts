@@ -5,6 +5,8 @@
 import type {
   ClinicalJob,
   JobResource,
+  Manifest,
+  PublishCheckin,
   RawSubmission,
   ResourceLocation,
   RunInfo,
@@ -233,6 +235,84 @@ export function manifestSubmissionId(text: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+type CheckinLocation = PublishCheckin["locations"][number];
+
+/** A check-in location of a .cmnf file, in whichever shape it is stored. */
+function checkinLocation(entry: unknown): CheckinLocation | undefined {
+  if (typeof entry === "string") {
+    return entry ? { path: entry } : undefined;
+  }
+  if (typeof entry !== "object" || entry === null) {
+    return undefined;
+  }
+  const includeSubfolders =
+    "includeSubfolders" in entry && entry.includeSubfolders === true;
+  let path: unknown = "path" in entry ? entry.path : undefined;
+  for (const key of ["resource", "file"]) {
+    const inner: unknown = key in entry ? Reflect.get(entry, key) : undefined;
+    if (!path && typeof inner === "object" && inner && "path" in inner) {
+      path = inner.path;
+    }
+  }
+  return typeof path === "string" && path
+    ? { path, ...(includeSubfolders ? { includeSubfolders } : {}) }
+    : undefined;
+}
+
+/**
+ * The check-in settings a .cmnf file records. The file keeps the run's
+ * check-in locations; the service's manifest of the run can come back
+ * without them (seen live, 2026-11-12).
+ */
+export function manifestFileCheckin(text: string): PublishCheckin | undefined {
+  let spec: unknown;
+  try {
+    spec = JSON.parse(text)?.checkinSpecification;
+  } catch {
+    return undefined;
+  }
+  if (typeof spec !== "object" || spec === null) {
+    return undefined;
+  }
+  const raw: unknown = "locations" in spec ? spec.locations : undefined;
+  return {
+    ...("enableVersioningOnNewFiles" in spec &&
+    typeof spec.enableVersioningOnNewFiles === "boolean"
+      ? { enableVersioningOnNewFiles: spec.enableVersioningOnNewFiles }
+      : {}),
+    ...("fileVersion" in spec && typeof spec.fileVersion === "string"
+      ? { fileVersion: spec.fileVersion }
+      : {}),
+    locations: Array.isArray(raw)
+      ? raw.flatMap((entry) => checkinLocation(entry) ?? [])
+      : [],
+  };
+}
+
+/**
+ * The manifest with the check-in settings of its .cmnf file where the
+ * service's copy lists no locations but the file does.
+ */
+export function withFileCheckin(
+  manifest: Manifest,
+  file: PublishCheckin | undefined,
+): Manifest {
+  if (
+    !file?.locations.length ||
+    manifest.checkinSpecification?.locations?.length
+  ) {
+    return manifest;
+  }
+  return {
+    ...manifest,
+    checkinSpecification: {
+      ...file,
+      ...manifest.checkinSpecification,
+      locations: file.locations,
+    },
+  };
 }
 
 /** `eq(submittedBy,"id")`, the filter for one user's submissions. */
