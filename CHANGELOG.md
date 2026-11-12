@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- SAS Clinical Acceleration: the manifest report showed "Check-in locations: None" for repository runs that had check-in locations. The report reads the manifest from the clinical jobs service, whose copy can lack the locations that the run's `.cmnf` file records. When it does, the report now takes the check-in settings from the `.cmnf` file, at the version the run wrote, and the **SAS Clinical Repository** output channel notes it
+
 ## 0.6.1 - 2026-11-11
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

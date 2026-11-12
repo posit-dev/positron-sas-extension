@@ -431,6 +431,8 @@ describe("JobsModel schedules", () => {
     {
       getConnection: async () => connection,
       getCurrentUserId: async () => "test1",
+      getContent: async () => new Uint8Array(),
+      getVersionContent: async () => new Uint8Array(),
     },
     { getContent: async () => new Uint8Array() },
   );

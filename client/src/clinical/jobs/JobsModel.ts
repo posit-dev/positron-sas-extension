@@ -26,6 +26,7 @@ import type {
   ClinicalJob,
   JobResource,
   Manifest,
+  PublishCheckin,
   RawSubmission,
   RunInfo,
   RunKind,
@@ -36,6 +37,7 @@ import type {
   SubmissionState,
 } from "./types";
 import {
+  manifestFileCheckin,
   manifestSubmissionId,
   normalizeSubmission,
   parseJobFile,
@@ -87,10 +89,15 @@ export interface JobsConnection {
   delete<T>(url: string, config?: RequestConfig): Promise<{ data: T }>;
 }
 
-/** What the model needs from RepositoryModel: its signed-in connection. */
+/**
+ * What the model needs from RepositoryModel: its signed-in connection and
+ * the content of repository files.
+ */
 export interface JobsBackend {
   getConnection(): Promise<JobsConnection>;
   getCurrentUserId(): Promise<string | undefined>;
+  getContent(id: string): Promise<Uint8Array>;
+  getVersionContent(id: string, version: string): Promise<Uint8Array>;
 }
 
 /** What the model needs from WorkspaceModel: file contents. */
@@ -254,6 +261,28 @@ export class JobsModel {
       throw new Error(`${path} does not name the run that wrote it.`);
     }
     return this.getSubmissionManifest(id);
+  }
+
+  /**
+   * The check-in settings that a run's .cmnf file records, read from the
+   * workspace or from the repository at the version the run wrote.
+   * Undefined when the file can't be read or has none.
+   */
+  async readManifestFileCheckin(
+    file: Partial<JobResource> | undefined,
+  ): Promise<PublishCheckin | undefined> {
+    let bytes: Uint8Array;
+    if (file?.resourceLocation === "WORKSPACE" && file.path) {
+      bytes = await this.workspace.getContent(file.path);
+    } else if (file?.resourceLocation === "REPOSITORY" && file.id) {
+      bytes =
+        file.fileVersion && file.fileVersion !== "-"
+          ? await this.repository.getVersionContent(file.id, file.fileVersion)
+          : await this.repository.getContent(file.id);
+    } else {
+      return undefined;
+    }
+    return manifestFileCheckin(new TextDecoder().decode(bytes));
   }
 
   /**

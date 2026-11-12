@@ -45,6 +45,7 @@ import type {
 } from "../../src/clinical/jobs/types";
 import {
   jobPathForProgram,
+  manifestFileCheckin,
   manifestSubmissionId,
   normalizeSubmission,
   parentPath,
@@ -58,6 +59,7 @@ import {
   runsOnlyProgram,
   submittedByFilter,
   toRunInfo,
+  withFileCheckin,
 } from "../../src/clinical/jobs/utils";
 
 // Found from the repository root: this file also runs compiled, from
@@ -204,6 +206,72 @@ describe("run and populate", () => {
         publishCheckin: { locations: [{ path: "./out" }] },
       }),
     ).to.deep.equal({ files: 1, folders: 2, locations: 1 });
+  });
+});
+
+describe("check-in settings of a .cmnf file", () => {
+  it("reads the locations in the shapes a file may hold", () => {
+    const spec = manifestFileCheckin(
+      JSON.stringify({
+        checkinSpecification: {
+          enableVersioningOnNewFiles: false,
+          fileVersion: "MAJOR",
+          locations: [
+            { path: "/s/outputs", includeSubfolders: true },
+            { resource: { path: "/s/tables" } },
+            "/s/listings",
+            { nothing: 1 },
+          ],
+        },
+      }),
+    );
+    expect(spec).to.deep.equal({
+      enableVersioningOnNewFiles: false,
+      fileVersion: "MAJOR",
+      locations: [
+        { path: "/s/outputs", includeSubfolders: true },
+        { path: "/s/tables" },
+        { path: "/s/listings" },
+      ],
+    });
+  });
+
+  it("is undefined for text that is no manifest", () => {
+    expect(manifestFileCheckin("not json")).to.equal(undefined);
+    expect(manifestFileCheckin("{}")).to.equal(undefined);
+  });
+
+  const served: Manifest = {
+    type: "REPOSITORY",
+    checkinSpecification: {
+      fileVersion: "MAJOR",
+      enableVersioningOnNewFiles: true,
+      locations: [],
+    },
+  };
+  const file = { fileVersion: "MINOR", locations: [{ path: "/s/outputs" }] };
+
+  it("fills in the locations the service left out, keeping its settings", () => {
+    expect(withFileCheckin(served, file).checkinSpecification).to.deep.equal({
+      fileVersion: "MAJOR",
+      enableVersioningOnNewFiles: true,
+      locations: [{ path: "/s/outputs" }],
+    });
+  });
+
+  it("uses the file's settings when the service sent none", () => {
+    expect(
+      withFileCheckin({ type: "REPOSITORY" }, file).checkinSpecification,
+    ).to.deep.equal(file);
+  });
+
+  it("keeps the service's locations and an empty file as they are", () => {
+    const listed: Manifest = {
+      checkinSpecification: { locations: [{ path: "/a" }] },
+    };
+    expect(withFileCheckin(listed, file)).to.equal(listed);
+    expect(withFileCheckin(served, { locations: [] })).to.equal(served);
+    expect(withFileCheckin(served, undefined)).to.equal(served);
   });
 });
 
@@ -391,10 +459,15 @@ describe("JobsModel", () => {
     delete: (url, config) => record("DELETE", url, undefined, config),
   };
   const contents: Record<string, string> = {};
+  // Repository files by id, and by "id@version".
+  const repoContents: Record<string, string> = {};
   const model = new JobsModel(
     {
       getConnection: async () => connection,
       getCurrentUserId: async () => "test1",
+      getContent: async (id) => new TextEncoder().encode(repoContents[id]),
+      getVersionContent: async (id, v) =>
+        new TextEncoder().encode(repoContents[`${id}@${v}`]),
     },
     { getContent: async (p) => new TextEncoder().encode(contents[p]) },
   );
@@ -461,6 +534,41 @@ describe("JobsModel", () => {
     // Relative paths are a body field; the server ignores a query parameter.
     expect(calls[0].data).to.not.have.property("useRelativePaths");
     expect(calls[1].data).to.deep.include({ useRelativePaths: true });
+  });
+
+  it("reads the check-in settings of a .cmnf file", async () => {
+    const cmnf = (path: string) =>
+      JSON.stringify({
+        jobSubmission: { id: "r1" },
+        checkinSpecification: {
+          enableVersioningOnNewFiles: true,
+          fileVersion: "MAJOR",
+          locations: [{ path, includeSubfolders: true }],
+        },
+      });
+    contents["/s/t.cmnf"] = cmnf("/s/outputs");
+    repoContents.m1 = cmnf("/latest");
+    repoContents["m1@2.0"] = cmnf("/v2");
+    const read = (file: Parameters<typeof model.readManifestFileCheckin>[0]) =>
+      model.readManifestFileCheckin(file).then((c) => c?.locations);
+    expect(
+      await read({ path: "/s/t.cmnf", resourceLocation: "WORKSPACE" }),
+    ).to.deep.equal([{ path: "/s/outputs", includeSubfolders: true }]);
+    expect(
+      await read({
+        id: "m1",
+        fileVersion: "2.0",
+        resourceLocation: "REPOSITORY",
+      }),
+    ).to.deep.equal([{ path: "/v2", includeSubfolders: true }]);
+    expect(
+      await read({
+        id: "m1",
+        fileVersion: "-",
+        resourceLocation: "REPOSITORY",
+      }),
+    ).to.deep.equal([{ path: "/latest", includeSubfolders: true }]);
+    expect(await read(undefined)).to.equal(undefined);
   });
 
   it("reads the state as JSON and waits for a final one", async () => {

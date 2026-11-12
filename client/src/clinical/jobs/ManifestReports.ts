@@ -23,7 +23,7 @@ import { renderManifestReport } from "./manifestReport";
 import { JobMessages, ReportLabelText, jobErrorMessage } from "./messages";
 import { uriForResource } from "./resources";
 import type { CheckinFailure, JobResource, Manifest } from "./types";
-import { baseName } from "./utils";
+import { baseName, withFileCheckin } from "./utils";
 
 /** A manifest and what the report needs besides it. */
 export interface LoadedManifest {
@@ -54,10 +54,14 @@ export class ManifestReports implements Disposable {
 
   /** The manifest of a run, with its check-in failures. */
   async forRun(submissionId: string): Promise<LoadedManifest> {
-    const [manifest, submission] = await Promise.all([
+    const [served, submission] = await Promise.all([
       this.model.getSubmissionManifest(submissionId),
       this.model.getSubmission(submissionId).catch(() => undefined),
     ]);
+    const manifest = await this.completeCheckin(
+      served,
+      served.manifest?.resource,
+    );
     return {
       manifest,
       checkinFailures: submission?.checkinFailures ?? [],
@@ -67,13 +71,15 @@ export class ManifestReports implements Disposable {
 
   /** The manifest a .cmnf file in the workspace or repository records. */
   async forFile(file: JobResource): Promise<LoadedManifest> {
-    const manifest =
+    const served =
       file.resourceLocation === "WORKSPACE"
         ? await this.model.readWorkspaceManifest(file.path)
         : await this.model.getRepositoryManifest(
             file.id ?? "",
             file.fileVersion,
           );
+    // The file itself, at the version opened.
+    const manifest = await this.completeCheckin(served, file);
     const runId = manifest.jobSubmission?.id;
     const submission = runId
       ? await this.model.getSubmission(runId).catch(() => undefined)
@@ -83,6 +89,34 @@ export class ManifestReports implements Disposable {
       checkinFailures: submission?.checkinFailures ?? [],
       jobName: manifest.job?.resource.name ?? baseName(file.path),
     };
+  }
+
+  /**
+   * The service's manifest can lack the run's check-in locations, which the
+   * .cmnf file keeps: take them from the file then.
+   */
+  private async completeCheckin(
+    manifest: Manifest,
+    file: Partial<JobResource> | undefined,
+  ): Promise<Manifest> {
+    if (manifest.checkinSpecification?.locations?.length) {
+      return manifest;
+    }
+    try {
+      const fromFile = await this.model.readManifestFileCheckin(file);
+      const completed = withFileCheckin(manifest, fromFile);
+      if (completed !== manifest) {
+        this.output.info(
+          `The service's manifest of run ${manifest.jobSubmission?.id ?? "?"} lists no check-in locations; showing the ${fromFile?.locations.length ?? 0} that ${file?.path ?? "its .cmnf file"} records.`,
+        );
+      }
+      return completed;
+    } catch (error) {
+      this.output.warn(
+        `Could not read the check-in locations from ${file?.path ?? "the .cmnf file"}: ${jobErrorMessage(error)}`,
+      );
+      return manifest;
+    }
   }
 
   /** The report; with links to the run's files, for the server's pages. */
