@@ -249,18 +249,7 @@ export async function activate(context: ExtensionContext) {
   // Initialize Positron integration if running in Positron
   if (isPositron()) {
     // Before the integration starts, so runtime discovery sees the profile.
-    const localProfile = await addLocalSasProfile(
-      profileConfig,
-      context.globalState,
-      localSasCandidates(
-        workspace.getConfiguration("SAS").get<string[]>("localSasPaths") ?? [],
-      ),
-    );
-    if (localProfile) {
-      console.log(`Added connection profile "${localProfile}" for local SAS`);
-      triggerProfileUpdate();
-      updateViewSettings();
-    }
+    await addLocalProfile(context);
 
     console.log("Running in Positron - initializing Positron integration");
     await initializePositronIntegration(context);
@@ -269,6 +258,47 @@ export async function activate(context: ExtensionContext) {
   return {
     getRestAPIs,
   };
+}
+
+/**
+ * Add the "local" profile when SAS is installed here. A write that fails
+ * every retry (settings.json changed by another writer, or left with unsaved
+ * changes) is reported with a Retry; the next start tries again too.
+ */
+async function addLocalProfile(context: ExtensionContext): Promise<void> {
+  const localProfile = await addLocalSasProfile(
+    profileConfig,
+    context.globalState,
+    localSasCandidates(
+      workspace.getConfiguration("SAS").get<string[]>("localSasPaths") ?? [],
+    ),
+    undefined,
+    {
+      onFailed: (error) => {
+        const retry = l10n.t("Retry");
+        window
+          .showWarningMessage(
+            l10n.t(
+              "SAS could not save the local SAS profile to settings.json ({message}). If settings.json has unsaved changes, save or revert it, then click Retry.",
+              {
+                message: error instanceof Error ? error.message : String(error),
+              },
+            ),
+            retry,
+          )
+          .then((choice) => {
+            if (choice === retry) {
+              void addLocalProfile(context);
+            }
+          });
+      },
+    },
+  );
+  if (localProfile) {
+    console.log(`Added connection profile "${localProfile}" for local SAS`);
+    triggerProfileUpdate();
+    updateViewSettings();
+  }
 }
 
 function updateViewSettings(): void {
@@ -322,7 +352,11 @@ function triggerProfileUpdate(): void {
         "serverId" in profileList[activeProfileName],
     );
   } else {
-    profileConfig.updateActiveProfileSetting("");
+    // Only clear a stale name: writing "" when it is already "" rewrote
+    // settings.json on every profile change, racing with other writers.
+    if (activeProfileName) {
+      profileConfig.updateActiveProfileSetting("");
+    }
     commands.executeCommand(
       "setContext",
       "SAS.connectionType",

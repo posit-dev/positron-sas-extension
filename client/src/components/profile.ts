@@ -249,27 +249,24 @@ export class ProfileConfig {
 
   /**
    * Validates settings.json to confirm that SAS.connectionProfiles exists
-   * as a key, and updates it, if the setting does not exists
+   * as a key.
+   *
+   * It no longer writes an empty setting when the key is missing: that
+   * unawaited write raced with other writers of settings.json (such as
+   * Posit Workbench at session start), and a failed write left settings.json
+   * dirty, so the profile written next was lost. Callers treat a missing
+   * setting as no profiles, and every write sets the whole object.
    *
    * @returns Boolean for pass or fail
    */
   validateSettings(): boolean {
     const profileList: Dictionary<Profile> = workspace
       .getConfiguration(EXTENSION_CONFIG_KEY)
-      .get(EXTENSION_DEFINE_PROFILES_CONFIG_KEY)[EXTENSION_PROFILES_CONFIG_KEY];
+      .get(EXTENSION_DEFINE_PROFILES_CONFIG_KEY)?.[
+      EXTENSION_PROFILES_CONFIG_KEY
+    ];
 
-    if (!profileList) {
-      workspace.getConfiguration(EXTENSION_CONFIG_KEY).update(
-        EXTENSION_DEFINE_PROFILES_CONFIG_KEY,
-        {
-          activeProfile: "",
-          profiles: {},
-        },
-        ConfigurationTarget.Global,
-      );
-      return false;
-    }
-    return true;
+    return !!profileList;
   }
 
   /**
@@ -321,6 +318,26 @@ export class ProfileConfig {
       .update(
         EXTENSION_DEFINE_PROFILES_CONFIG_KEY,
         profiles,
+        ConfigurationTarget.Global,
+      );
+  }
+
+  /**
+   * Update VSCode settings with the profiles and the active profile in one
+   * write, so a concurrent writer of settings.json can't land between two.
+   *
+   * @param activeProfile name of the active profile
+   * @param profileDict {@link Dictionary<Profile>} all profiles
+   */
+  async saveProfiles(
+    activeProfile: string,
+    profileDict: Dictionary<Profile>,
+  ): Promise<void> {
+    await workspace
+      .getConfiguration(EXTENSION_CONFIG_KEY)
+      .update(
+        EXTENSION_DEFINE_PROFILES_CONFIG_KEY,
+        { activeProfile, profiles: profileDict },
         ConfigurationTarget.Global,
       );
   }

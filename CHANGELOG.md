@@ -4,6 +4,7 @@
 
 ### Bug Fixes
 
+- Positron: the connection profile for a local SAS installation (such as the SAS Analytics Pro image) could be lost on the first start. Posit Workbench writes settings.json at session start, and a profile write of the extension that overlapped it failed with "The content of the file is newer", leaving settings.json with an empty `SAS.connectionProfiles`. The extension no longer writes an empty `SAS.connectionProfiles` when it reads the setting or when no profile is active. It writes the local profile and the active profile in one write and retries a failed write with backoff. It marks the profile as added only once it can read it back, so a failed add is tried again at the next start. If every retry fails, a warning offers **Retry**
 - SAS Clinical Acceleration: the manifest report showed "Check-in locations: None" for repository runs that had check-in locations. The report reads the manifest from the clinical jobs service, whose copy can lack the locations that the run's `.cmnf` file records. When it does, the report now takes the check-in settings from the `.cmnf` file, at the version the run wrote, and the **SAS Clinical Repository** output channel notes it
 
 ## 0.6.1 - 2026-11-11
