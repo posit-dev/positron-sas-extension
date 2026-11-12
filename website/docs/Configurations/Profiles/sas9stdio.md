@@ -45,6 +45,8 @@ If SAS is installed elsewhere, list its launcher in `SAS.localSasPaths` (a machi
 
 The profile is not added if a stdio profile already exists. It becomes the active profile only if none is set. If you delete it, it is not added again.
 
+If the extension cannot save the profile to `settings.json`, for example because Posit Workbench writes `settings.json` at the same moment when a session starts, it tries again several times over about 15 seconds. If every attempt fails, a warning offers **Retry**: if `settings.json` shows unsaved changes, save or revert it first. A profile that could not be saved is added again at the next start. Version 0.6.2 or later is needed for this; with earlier versions, the profile could be lost on the first start in a SAS Analytics Pro image.
+
 In a Posit Workbench session started from a SAS Analytics Pro image, Workbench licenses SAS for the session through the `SASV9_OPTIONS` environment variable. The stdio session inherits it, so no license options are needed in the profile.
 
 In Positron, a stdio session supports the SAS console, the Viewer and Plots panes, browsing libraries in the Connections pane, and the Data Explorer. The SAS Content and SAS Server views are not available. Use Positron's Explorer for local files.

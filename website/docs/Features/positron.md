@@ -218,6 +218,8 @@ To set up a profile, run **SAS: Add New Connection Profile**, select **SAS 9.4 (
 
 When the extension finds SAS on the machine, it adds a `local` profile like the one above. It looks in the paths of the `SAS.localSasPaths` setting, then at `/opt/sas/viya/home/SASFoundation/sas` (SAS Analytics Pro), then in common SAS 9.4 locations, where it uses the UTF-8 launcher `bin/sas_u8`, and finally for `sas` on the `PATH`. See [SAS Installed with Workbench](../Workbench/Positron/localInstalled.md). It adds the profile once: a deleted profile stays deleted, and an existing `stdio` profile prevents it. The profile becomes the active profile only if no profile is active.
 
+If the extension cannot save the profile to `settings.json`, for example because Posit Workbench writes `settings.json` at the same moment when a session starts, it tries again several times over about 15 seconds. If every attempt fails, a warning offers **Retry**: if `settings.json` shows unsaved changes, save or revert it first. A profile that could not be saved is added again at the next start. Version 0.6.2 or later is needed for this; with earlier versions, the profile could be lost on the first start in a SAS Analytics Pro image.
+
 The profile's `autoExec` lines run once, right after SAS starts.
 
 ## Features by Connection Type

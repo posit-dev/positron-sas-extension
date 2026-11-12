@@ -231,7 +231,7 @@ The view lists the schedules that run as you. To see the schedules of all users 
 
 ### The manifest report
 
-The manifest report shows the manifest of a run as one page, for review or for a quality check. It lists the job, how the run ended, who ran it and when, the parameter values, the programs with their results and run times, and each input and output file with its version, size, modification time, and MD5 checksum. For a repository job, it also shows how outputs are checked in and which outputs failed to check in.
+The manifest report shows the manifest of a run as one page, for review or for a quality check. It lists the job, how the run ended, who ran it and when, the parameter values, the programs with their results and run times, and each input and output file with its version, size, modification time, and MD5 checksum. For a repository job, it also shows how outputs are checked in and which outputs failed to check in. The check-in locations come from the run's `.cmnf` file when the server's copy of the manifest lists none (version 0.6.2 or later; earlier versions showed **None**).
 
 To show the report, do one of the following:
 
@@ -241,7 +241,7 @@ To show the report, do one of the following:
 
 In Positron, the report opens in the Viewer, where Posit Assistant can read it. Click a path in the report to open that file. A versioned repository file opens at the version the run used. Ask the Assistant, for example, which version of a dataset a run read.
 
-To save the report, select **Export Manifest...** in the same places. Save it as an `.html` file for the report, or as a `.json` file for the manifest as the server returns it. The paths in an exported report are not links.
+To save the report, select **Export Manifest...** in the same places. Save it as an `.html` file for the report, or as a `.json` file for the manifest as the server returns it, with the check-in locations from the `.cmnf` file added where the server left them out. The paths in an exported report are not links.
 
 :::info note
 
