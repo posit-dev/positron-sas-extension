@@ -1,17 +1,12 @@
 # Changelog
 
-## Unreleased
-
-### Bug Fixes
-
-- Positron: the connection profile for a local SAS installation (such as the SAS Analytics Pro image) could be lost on the first start. Posit Workbench writes settings.json at session start, and a profile write of the extension that overlapped it failed with "The content of the file is newer", leaving settings.json with an empty `SAS.connectionProfiles`. The extension no longer writes an empty `SAS.connectionProfiles` when it reads the setting or when no profile is active. It writes the local profile and the active profile in one write and retries a failed write with backoff. It marks the profile as added only once it can read it back, so a failed add is tried again at the next start. If every retry fails, a warning offers **Retry**
-- SAS Clinical Acceleration: the manifest report showed "Check-in locations: None" for repository runs that had check-in locations. The report reads the manifest from the clinical jobs service, whose copy can lack the locations that the run's `.cmnf` file records. When it does, the report now takes the check-in settings from the `.cmnf` file, at the version the run wrote, and the **SAS Clinical Repository** output channel notes it
-
-## 0.6.1 - 2026-11-11
+## 0.6.2 - 2026-11-12
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
 
-This release extends the SAS Clinical Acceleration support: runs can be removed from the Clinical Jobs view and the Clinical Job Schedules view lists only your schedules ([#120](https://github.com/posit-dev/positron-sas-extension/pull/120)), Properties show your permissions and Check In explains refused files ([#122](https://github.com/posit-dev/positron-sas-extension/pull/122)), and clinical jobs can be run and populated and tested as repository runs ([#123](https://github.com/posit-dev/positron-sas-extension/pull/123), [#124](https://github.com/posit-dev/positron-sas-extension/pull/124)).
+Version 0.6.1 was prepared but never published, because a GitHub Actions outage stopped its release; its changes are part of this release.
+
+This release extends the SAS Clinical Acceleration support: runs can be removed from the Clinical Jobs view and the Clinical Job Schedules view lists only your schedules ([#120](https://github.com/posit-dev/positron-sas-extension/pull/120)), Properties show your permissions and Check In explains refused files ([#122](https://github.com/posit-dev/positron-sas-extension/pull/122)), and clinical jobs can be run and populated and tested as repository runs ([#123](https://github.com/posit-dev/positron-sas-extension/pull/123), [#124](https://github.com/posit-dev/positron-sas-extension/pull/124)). It fixes the check-in locations in the manifest report ([#126](https://github.com/posit-dev/positron-sas-extension/pull/126)) and the local SAS connection profile that could be lost on the first start in the SAS Analytics Pro image ([#127](https://github.com/posit-dev/positron-sas-extension/pull/127)).
 
 ### Features
 
@@ -24,6 +19,8 @@ This release extends the SAS Clinical Acceleration support: runs can be removed 
 
 ### Bug Fixes
 
+- Positron: the connection profile for a local SAS installation (such as the SAS Analytics Pro image) could be lost on the first start. Posit Workbench writes settings.json at session start, and a profile write of the extension that overlapped it failed with "The content of the file is newer", leaving settings.json with an empty `SAS.connectionProfiles`. The extension no longer writes an empty `SAS.connectionProfiles` when it reads the setting or when no profile is active. It writes the local profile and the active profile in one write and retries a failed write with backoff. It marks the profile as added only once it can read it back, so a failed add is tried again at the next start. If every retry fails, a warning offers **Retry**
+- SAS Clinical Acceleration: the manifest report showed "Check-in locations: None" for repository runs that had check-in locations. The report reads the manifest from the clinical jobs service, whose copy can lack the locations that the run's `.cmnf` file records. When it does, the report now takes the check-in settings from the `.cmnf` file, at the version the run wrote, and the **SAS Clinical Repository** output channel notes it
 - SAS Clinical Acceleration: the **Clinical Job Schedules** view listed other users' schedules and offered to run, change and delete them. The service returns other users' schedules too, although its documentation says it returns the current user's. The view now lists the schedules that run as you, like the **Clinical Jobs** view lists your runs
 
 ## 0.6.0 - 2026-11-11
