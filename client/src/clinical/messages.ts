@@ -7,6 +7,8 @@ import { l10n } from "vscode";
 import { isAxiosError } from "axios";
 
 import type { PropertyLabels } from "./properties";
+import type { SignatureReportLabels } from "./signatureReport";
+import type { SigningStatus } from "./types";
 import type { CheckInBlock, ValidationError } from "./utils";
 
 export const Messages = {
@@ -179,6 +181,45 @@ export const Messages = {
     "Leave empty to upload without versioning, or enter a version (ex: 1.0, MAJOR, MINOR).",
   ),
   VersionTitle: l10n.t("Version"),
+  Signed: l10n.t("Signed"),
+  SignatureHistoryError: l10n.t(
+    "Unable to load the signature history. {message}",
+  ),
+  SignatureExportTitle: l10n.t("Export Signature History"),
+  SignatureExported: l10n.t('Saved the signature history to "{path}".'),
+  SignatureExportError: l10n.t(
+    "Unable to save the signature history. {message}",
+  ),
+};
+
+/** Whether a file is signed, as the Properties view and reports say it. */
+export const SigningStatusText: Record<SigningStatus, string> = {
+  NONE: l10n.t("Not signed"),
+  CURRENT: l10n.t("Signed"),
+  PREVIOUS: l10n.t("Earlier versions signed"),
+  BOTH: l10n.t("Signed, and earlier versions"),
+};
+
+/** Labels of the signature history report and its CSV export. */
+export const SignatureLabelText: SignatureReportLabels = {
+  title: l10n.t("Signature History"),
+  file: l10n.t("File"),
+  location: l10n.t("Location"),
+  version: l10n.t("Version"),
+  status: l10n.t("Signatures"),
+  signatures: l10n.t("Signatures"),
+  date: l10n.t("Date signed"),
+  signedBy: l10n.t("Signed by"),
+  userId: l10n.t("User ID"),
+  role: l10n.t("Role"),
+  reason: l10n.t("Reason"),
+  comment: l10n.t("Comment"),
+  none: l10n.t("No signatures."),
+  latestOnly: l10n.t(
+    "Signatures of the latest version. The signatures of earlier versions are in their version history: select a signed version in the Version History view.",
+  ),
+  generated: l10n.t("Generated"),
+  statuses: SigningStatusText,
 };
 
 /** Labels of the Properties view. */
@@ -217,6 +258,8 @@ export const PropertyLabelText: PropertyLabels = {
   noPermissions: l10n.t("None"),
   privilegeEnable: l10n.t("Enable versioning"),
   privilegeManage: l10n.t("Manage versioning"),
+  signatures: l10n.t("Signatures"),
+  signingStatuses: SigningStatusText,
 };
 
 const ValidationMessages: Record<ValidationError, string> = {

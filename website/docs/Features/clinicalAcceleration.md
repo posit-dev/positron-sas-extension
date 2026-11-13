@@ -84,9 +84,26 @@ Click a version to open it read-only. Right-click a version to download it, comp
 
 To turn versioning on or off for a file, right-click it in the **Clinical Repository** view and select **Enable Versioning** or **Disable Versioning**. Changing versioning needs a versioning privilege on the server. The extension stops and tells you when the server reports that you have no such privilege.
 
-The **Clinical Repository Properties** view shows the details of the selected item. For a file, it lists the size, the lock state, the version, the check-out state, and whether the copy of the file in your workspace is in sync with the repository.
+The **Clinical Repository Properties** view shows the details of the selected item. For a file, it lists the size, the lock state, the version, whether the file is signed, the check-out state, and whether the copy of the file in your workspace is in sync with the repository.
 
 For files and folders, it also lists **Your permissions**, the permissions the server grants you on the item, such as `READ` and `WRITE`, and **Your versioning privileges**. They explain a missing action: without `WRITE` on a file, for example, **Check out to Workspace** is not offered. Permissions can differ between folders, and adding new files to a folder is not the same as changing a file that is already there.
+
+## Signatures
+
+Files in SAS Clinical Acceleration can carry electronic signatures. A signature records who signed the file, when, in which role, and for which reason. The extension shows signatures read-only. To sign files, use SAS Clinical Acceleration Repository.
+
+The **Clinical Repository** view marks a file whose latest version is signed with **Signed**. In the **Clinical Version History** view, a signed version shows **Signed** before its comment. The **Signatures** row of the **Clinical Repository Properties** view tells whether the latest version, earlier versions, or both are signed.
+
+To see the signatures of a file:
+
+1. Right-click the file in the **Clinical Repository** view, or a signed version in the **Clinical Version History** view.
+2. Select **Show Signature History**.
+
+The signature history opens in the Viewer. It lists each signature, newest first, with the date, the signer, the role, the reason, and, for a versioned file, the version. For a versioned file, SAS Clinical Acceleration lists the signatures of the latest version; to see those of an earlier version, right-click that version in the **Clinical Version History** view. Click the file name in the report to open the file or version.
+
+To save the signature history, select **Export Signature History...** and choose **HTML** for the report or **CSV** for a spreadsheet.
+
+**Show Signature History** is offered only for files that have been signed at least once.
 
 ## Compare files and versions
 
@@ -263,4 +280,4 @@ A server can still refuse an action, such as a check-out without write permissio
 
 - The views use the active SAS Viya profile. Switch profiles to work with another server.
 - The views do not detect changes made by other users or other applications. Click **Refresh** to see them.
-- You cannot search the repository, restore deleted items, or change permissions. Use SAS Clinical Acceleration for those tasks.
+- You cannot search the repository, sign files, restore deleted items, or change permissions. Use SAS Clinical Acceleration for those tasks.

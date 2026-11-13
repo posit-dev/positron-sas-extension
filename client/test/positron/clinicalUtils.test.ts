@@ -193,6 +193,24 @@ describe("buildContextValue", () => {
     );
   });
 
+  it("marks files with a signature history", () => {
+    const value = (signingStatus?: string) =>
+      buildContextValue(file({ signingStatus }), undefined, "me", "read");
+    expect(value("CURRENT")).to.include(";signed;");
+    expect(value("PREVIOUS")).to.include(";signed;");
+    expect(value("BOTH")).to.include(";signed;");
+    expect(value("NONE")).to.not.include(";signed;");
+    expect(value(undefined)).to.not.include(";signed;");
+    // Folders report no signing status worth a menu.
+    expect(
+      buildContextValue(
+        { ...folder, signingStatus: "CURRENT" },
+        undefined,
+        "me",
+      ),
+    ).to.not.include(";signed;");
+  });
+
   it("never lets a context be deleted", () => {
     const study: RepositoryItem = { ...org, id: "3", typeId: "study" };
     expect(buildContextValue(study, undefined, "me", "write")).to.not.include(
@@ -475,6 +493,43 @@ describe("buildContextValue", () => {
       expect(
         shown(buildContextValue(file(), undefined, "me", "write")),
       ).to.not.include("SAS.clinical.downloadVersion");
+    });
+
+    it("offers the signature history of signed files and versions", () => {
+      const signature = [
+        "SAS.clinical.showSignatureHistory",
+        "SAS.clinical.exportSignatureHistory",
+      ];
+      const of = (contextValue: string, opts: Shown = {}) =>
+        shown(contextValue, opts).filter((c) => signature.includes(String(c)));
+      // Any signed version gives a history; read access is enough.
+      for (const signingStatus of ["CURRENT", "PREVIOUS", "BOTH"]) {
+        expect(
+          of(
+            buildContextValue(file({ signingStatus }), undefined, "me", "read"),
+          ),
+        ).to.have.members(signature);
+      }
+      expect(
+        of(buildContextValue(file({ signingStatus: "NONE" }), undefined, "me")),
+      ).to.deep.equal([]);
+      expect(of(buildContextValue(file(), undefined, "me"))).to.deep.equal([]);
+      expect(
+        of(
+          buildContextValue(
+            file({ signingStatus: "CURRENT" }),
+            undefined,
+            "me",
+          ),
+          {
+            multi: true,
+          },
+        ),
+      ).to.deep.equal([]);
+
+      const view = "clinicalversionhistoryprovider";
+      expect(of(";version;signed;", { view })).to.have.members(signature);
+      expect(of(";version;", { view })).to.deep.equal([]);
     });
 
     it("offers the workspace actions in the Workspace view only", () => {

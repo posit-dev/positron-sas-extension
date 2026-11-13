@@ -3,21 +3,9 @@
 //
 // Show a run's manifest as a report in the Viewer (or a webview outside
 // Positron), and export it as HTML or JSON.
-import {
-  Disposable,
-  LogOutputChannel,
-  Uri,
-  ViewColumn,
-  commands,
-  l10n,
-  window,
-  workspace,
-} from "vscode";
+import { Disposable, LogOutputChannel, l10n, window } from "vscode";
 
-import { OutputFiles } from "../../positron/outputFiles";
-import { showHtmlInViewer, showUrlInViewer } from "../../positron/viewer";
-import { ViewerServer } from "../../positron/viewerServer";
-import { CLINICAL_SCHEME, VERSION_SCHEME, WORKSPACE_SCHEME } from "../const";
+import { ReportPresenter, stem } from "../report/ReportPresenter";
 import type { JobsModel } from "./JobsModel";
 import { renderManifestReport } from "./manifestReport";
 import { JobMessages, ReportLabelText, jobErrorMessage } from "./messages";
@@ -33,24 +21,19 @@ export interface LoadedManifest {
   jobName: string;
 }
 
-/** The file systems a report link may open: the Clinical Acceleration ones. */
-const LINK_SCHEMES = new Set([
-  CLINICAL_SCHEME,
-  WORKSPACE_SCHEME,
-  VERSION_SCHEME,
-]);
-
 export class ManifestReports implements Disposable {
-  // Reports are URL or file previews, which Posit Assistant can read in the
-  // Viewer. The server's pages have links that open the run's files; the
-  // file fallback has none.
-  private readonly server = new ViewerServer((target) => this.open(target));
-  private readonly files = new OutputFiles(10);
+  private readonly presenter: ReportPresenter;
 
   constructor(
     private readonly model: JobsModel,
     private readonly output: LogOutputChannel,
-  ) {}
+  ) {
+    this.presenter = new ReportPresenter(
+      output,
+      "sas.clinicalManifest",
+      "Manifest",
+    );
+  }
 
   /** The manifest of a run, with its check-in failures. */
   async forRun(submissionId: string): Promise<LoadedManifest> {
@@ -126,66 +109,41 @@ export class ManifestReports implements Disposable {
       linkFor: links
         ? (resource) => {
             const uri = uriForResource(resource);
-            return uri && ViewerServer.linkTo(uri.toString());
+            return uri && ReportPresenter.linkTo(uri);
           }
         : undefined,
     });
   }
 
-  async show(loaded: LoadedManifest): Promise<void> {
-    try {
-      const url = await this.server.publish(
-        this.render(loaded, true),
-        `manifest-${stem(loaded.jobName)}`,
-      );
-      if (await showUrlInViewer(url)) {
-        return;
-      }
-    } catch (error) {
-      this.output.warn(`Manifest report server: ${error}`);
-    }
-    const html = this.render(loaded);
-    const title = l10n.t(JobMessages.ManifestTitle, { name: loaded.jobName });
-    const shown = await showHtmlInViewer(html, this.files, {
-      viewType: "sas.clinicalManifest",
-      title,
-      preserveFocus: false,
-      fileName: `manifest-${stem(loaded.jobName)}`,
+  show(loaded: LoadedManifest): Promise<void> {
+    return this.presenter.show({
+      render: (links) => this.render(loaded, links),
+      title: l10n.t(JobMessages.ManifestTitle, { name: loaded.jobName }),
+      name: `manifest-${stem(loaded.jobName, "job")}`,
     });
-    if (!shown) {
-      const panel = window.createWebviewPanel(
-        "sas.clinicalManifest",
-        title,
-        ViewColumn.Beside,
-        { enableScripts: false },
-      );
-      panel.webview.html = html;
-    }
   }
 
   /** Save the report (.html) or the manifest itself (.json). */
   async export(loaded: LoadedManifest): Promise<void> {
     const runId = loaded.manifest.jobSubmission?.id?.slice(0, 8);
-    const name = `${stem(loaded.jobName)}-manifest${runId ? `-${runId}` : ""}`;
-    const folder = workspace.workspaceFolders?.[0]?.uri;
-    const target = await window.showSaveDialog({
-      title: JobMessages.ExportTitle,
-      defaultUri: folder ? Uri.joinPath(folder, `${name}.html`) : undefined,
-      filters: { HTML: ["html"], JSON: ["json"] },
-    });
-    if (!target) {
-      return;
-    }
-    const json = target.path.toLowerCase().endsWith(".json");
-    const text = json
-      ? `${JSON.stringify(loaded.manifest, null, 2)}\n`
-      : this.render(loaded);
+    let target;
     try {
-      await workspace.fs.writeFile(target, new TextEncoder().encode(text));
+      target = await this.presenter.save({
+        title: JobMessages.ExportTitle,
+        defaultName: `${stem(loaded.jobName, "job")}-manifest${runId ? `-${runId}` : ""}`,
+        filters: { HTML: ["html"], JSON: ["json"] },
+        content: (extension) =>
+          extension === "json"
+            ? `${JSON.stringify(loaded.manifest, null, 2)}\n`
+            : this.render(loaded),
+      });
     } catch (error) {
       const message = jobErrorMessage(error);
-      this.output.error(`Manifest export to ${target.fsPath}: ${message}`);
+      this.output.error(`Manifest export: ${message}`);
       window.showErrorMessage(l10n.t(JobMessages.ExportError, { message }));
+      return;
+    }
+    if (!target) {
       return;
     }
     this.output.info(
@@ -196,29 +154,7 @@ export class ManifestReports implements Disposable {
     );
   }
 
-  /** Open a file a report links to, if it is a Clinical Acceleration file. */
-  private async open(target: string): Promise<boolean> {
-    let uri: Uri;
-    try {
-      uri = Uri.parse(target, true);
-    } catch {
-      return false;
-    }
-    if (!LINK_SCHEMES.has(uri.scheme)) {
-      this.output.warn(`Manifest report: refused to open ${target}.`);
-      return false;
-    }
-    await commands.executeCommand("vscode.open", uri, { preview: false });
-    return true;
-  }
-
   dispose(): void {
-    this.server.dispose();
-    void this.files.dispose();
+    this.presenter.dispose();
   }
-}
-
-/** "probe.cjob" → "probe". */
-function stem(name: string): string {
-  return name.replace(/\.[^.]*$/, "") || "job";
 }

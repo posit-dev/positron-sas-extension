@@ -1,0 +1,42 @@
+{
+  "links": [
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/clinicalRepository/repository/items/8ab1344f-86e3-422a-8f80-a6124b8bebc2/signatures?start=0&limit=2",
+      "uri": "/clinicalRepository/repository/items/8ab1344f-86e3-422a-8f80-a6124b8bebc2/signatures?start=0&limit=2",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.clinical.signature+json"
+    }
+  ],
+  "name": "signatures",
+  "accept": "application/vnd.sas.clinical.signature+json",
+  "start": 0,
+  "count": 2,
+  "items": [
+    {
+      "version": 1,
+      "id": "554a9400-0962-454d-9cb4-394772e2ea74",
+      "fileId": "8ab1344f-86e3-422a-8f80-a6124b8bebc2",
+      "fileVersion": "2.0",
+      "userId": "sastest1",
+      "userDisplayName": "SAS Test User 1",
+      "role": "Approver",
+      "reason": "Approve",
+      "creationTimeStamp": "2023-08-31T20:44:23.987000Z"
+    },
+    {
+      "version": 1,
+      "id": "32ad3a44-7830-4ef8-9751-46bd30f92c64",
+      "fileId": "8ab1344f-86e3-422a-8f80-a6124b8bebc2",
+      "fileVersion": "6.1",
+      "userId": "sastest1",
+      "userDisplayName": "SAS Test User 1",
+      "role": "Approver",
+      "reason": "Approve",
+      "creationTimeStamp": "2023-08-31T20:45:37.964000Z"
+    }
+  ],
+  "limit": 2,
+  "version": 2
+}

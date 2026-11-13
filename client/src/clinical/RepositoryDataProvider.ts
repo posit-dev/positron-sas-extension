@@ -33,6 +33,7 @@ import {
   extractSingleZipEntry,
   getCheckoutState,
   isContainer,
+  isSigned,
   isZip,
 } from "./utils";
 
@@ -141,6 +142,8 @@ export class RepositoryDataProvider
     return {
       id: item.id,
       label: item.name,
+      // SAS's "Signed" status chip: the latest version is signed.
+      description: isSigned(item) ? Messages.Signed : undefined,
       resourceUri: uri,
       tooltip: item.path,
       iconPath: this.iconFor(item, type?.name),

@@ -35,6 +35,7 @@ import type {
   ObjectType,
   RepositoryItem,
   ResourceCollection,
+  Signature,
   VersionHistoryItem,
   VersioningAction,
 } from "./types";
@@ -42,6 +43,7 @@ import {
   ItemPermission,
   buildChildrenUrl,
   buildIdFilter,
+  buildSignaturesUrl,
   buildVersionsUrl,
   collectPages,
   createLimiter,
@@ -462,6 +464,24 @@ export class RepositoryModel {
       { headers: { Accept: REPOSITORY_FILE_MEDIA_TYPE } },
     );
     return response.data;
+  }
+
+  /**
+   * The electronic signatures of a file, or of one version of it. Read-only:
+   * signing needs the signer's authenticator PIN.
+   */
+  async getSignatures(
+    id: string,
+    version?: string,
+    onTruncated?: (reason: string) => void,
+  ): Promise<Signature[]> {
+    const connection = await this.getConnection();
+    return collectPages<Signature>(
+      async (url) =>
+        (await connection.get<ResourceCollection<Signature>>(url)).data,
+      buildSignaturesUrl(id, version),
+      onTruncated,
+    );
   }
 
   async getVersionContent(id: string, version: string): Promise<Uint8Array> {

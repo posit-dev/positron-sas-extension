@@ -1114,6 +1114,16 @@
         "category": "SAS Clinical Acceleration"
       },
       {
+        "command": "SAS.clinical.showSignatureHistory",
+        "title": "%clinical.commands.showSignatureHistory%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.exportSignatureHistory",
+        "title": "%clinical.commands.exportSignatureHistory%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.selectForCompare",
         "title": "%clinical.commands.selectForCompare%",
         "category": "SAS Clinical Acceleration"
@@ -1802,6 +1812,16 @@
           "group": "7_compare@2"
         },
         {
+          "command": "SAS.clinical.showSignatureHistory",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;signed;/ && !listMultiSelection",
+          "group": "8_signatures@0"
+        },
+        {
+          "command": "SAS.clinical.exportSignatureHistory",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;signed;/ && !listMultiSelection",
+          "group": "8_signatures@1"
+        },
+        {
           "command": "SAS.clinical.downloadVersion",
           "when": "view == clinicalversionhistoryprovider && viewItem =~ /;version;/",
           "group": "1_transfer@0"
@@ -1820,6 +1840,16 @@
           "command": "SAS.clinical.compareSelected",
           "when": "view == clinicalversionhistoryprovider && viewItem =~ /;version;/ && SAS.clinical.twoVersionsSelected",
           "group": "2_compare@2"
+        },
+        {
+          "command": "SAS.clinical.showSignatureHistory",
+          "when": "view == clinicalversionhistoryprovider && viewItem =~ /;signed;/ && !listMultiSelection",
+          "group": "4_signatures@0"
+        },
+        {
+          "command": "SAS.clinical.exportSignatureHistory",
+          "when": "view == clinicalversionhistoryprovider && viewItem =~ /;signed;/ && !listMultiSelection",
+          "group": "4_signatures@1"
         },
         {
           "submenu": "SAS.clinical.copyToWorkspaceSubmenu",
@@ -2378,6 +2408,14 @@
         {
           "when": "false",
           "command": "SAS.clinical.downloadVersion"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.showSignatureHistory"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.exportSignatureHistory"
         },
         {
           "when": "false",

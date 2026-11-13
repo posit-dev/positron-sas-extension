@@ -113,6 +113,8 @@
   "clinical.commands.disableSchedule": "Disable Schedule",
   "clinical.commands.disableVersioning": "Disable Versioning...",
   "clinical.commands.download": "Download...",
+  "clinical.commands.showSignatureHistory": "Show Signature History",
+  "clinical.commands.exportSignatureHistory": "Export Signature History...",
   "clinical.commands.editSchedule": "Edit Schedule...",
   "clinical.commands.enableSchedule": "Enable Schedule",
   "clinical.commands.enableVersioning": "Enable Versioning...",

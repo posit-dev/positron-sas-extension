@@ -42,6 +42,28 @@ export interface RepositoryItem {
   checkedOutTimestamp?: string;
   fileVersion?: string;
   synchronizationInfo?: SynchronizationInfo;
+  /** Files only: whether the latest and/or earlier versions are signed. */
+  signingStatus?: SigningStatus | string;
+}
+
+/**
+ * Electronic signatures on a file: of its latest version (CURRENT), of
+ * earlier versions only (PREVIOUS), of both (BOTH), or none.
+ */
+export type SigningStatus = "NONE" | "CURRENT" | "PREVIOUS" | "BOTH";
+
+/** One electronic signature, from `items/{id}/signatures`. */
+export interface Signature {
+  id: string;
+  fileId: string;
+  /** Absent or "-" for a file without versioning. */
+  fileVersion?: string;
+  userId: string;
+  userDisplayName?: string;
+  role?: string;
+  reason?: string;
+  comment?: string;
+  creationTimeStamp?: string;
 }
 
 export type WorkspaceStatus =
@@ -93,6 +115,8 @@ export interface VersionHistoryItem {
   size?: number;
   fileSize?: number;
   latest?: boolean;
+  /** Whether this version has been signed. */
+  signed?: boolean;
 }
 
 /** A version as listed in the Version History view, with its file's name. */
