@@ -24,6 +24,11 @@ export const WORKSPACE_SCHEME = "sasClinicalWorkspace";
 export const SERVICE_ROOT = "/clinicalRepository/";
 export const REPOSITORY_PATHS = "/clinicalRepository/repository/paths";
 export const REPOSITORY_ITEMS = "/clinicalRepository/repository/items";
+// The configured signature reasons and roles (string arrays). Not in the
+// public API documentation; the web app reads them from here.
+export const SIGNATURE_REASONS =
+  "/clinicalRepository/repository/signatureReasons";
+export const SIGNATURE_ROLES = "/clinicalRepository/repository/signatureRoles";
 export const REPOSITORY_ITEMS_BATCH =
   "/clinicalRepository/repository/items/batch";
 export const REPOSITORY_FILES_CONTENT =

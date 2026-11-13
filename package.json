@@ -1114,6 +1114,11 @@
         "category": "SAS Clinical Acceleration"
       },
       {
+        "command": "SAS.clinical.signFiles",
+        "title": "%clinical.commands.signFiles%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.showSignatureHistory",
         "title": "%clinical.commands.showSignatureHistory%",
         "category": "SAS Clinical Acceleration"
@@ -1812,14 +1817,19 @@
           "group": "7_compare@2"
         },
         {
+          "command": "SAS.clinical.signFiles",
+          "when": "view == clinicalrepositorydataprovider && (viewItem =~ /;container;/ || viewItem =~ /;coNone;/)",
+          "group": "8_signatures@0"
+        },
+        {
           "command": "SAS.clinical.showSignatureHistory",
           "when": "view == clinicalrepositorydataprovider && viewItem =~ /;signed;/ && !listMultiSelection",
-          "group": "8_signatures@0"
+          "group": "8_signatures@1"
         },
         {
           "command": "SAS.clinical.exportSignatureHistory",
           "when": "view == clinicalrepositorydataprovider && viewItem =~ /;signed;/ && !listMultiSelection",
-          "group": "8_signatures@1"
+          "group": "8_signatures@2"
         },
         {
           "command": "SAS.clinical.downloadVersion",
@@ -2408,6 +2418,10 @@
         {
           "when": "false",
           "command": "SAS.clinical.downloadVersion"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.signFiles"
         },
         {
           "when": "false",

@@ -25,9 +25,12 @@ import {
   REPOSITORY_ITEM_MEDIA_TYPE,
   REPOSITORY_PATHS,
   ROOT_ITEM_ID,
+  SIGNATURE_REASONS,
+  SIGNATURE_ROLES,
   TYPES,
   WORKSPACE_ITEMS_BATCH,
 } from "./const";
+import { SIGN_ACTION, SignRequest, parseStringList } from "./signing";
 import type {
   ActionStatus,
   CheckoutAction,
@@ -537,6 +540,40 @@ export class RepositoryModel {
       );
       return undefined;
     }
+  }
+
+  /** The signature reasons the administrator configured. */
+  async getSignatureReasons(): Promise<string[]> {
+    return this.getStringList(SIGNATURE_REASONS);
+  }
+
+  /** The signatory roles the administrator configured. */
+  async getSignatureRoles(): Promise<string[]> {
+    return this.getStringList(SIGNATURE_ROLES);
+  }
+
+  private async getStringList(url: string): Promise<string[]> {
+    const connection = await this.getConnection();
+    const { data } = await connection.get<unknown>(url, {
+      headers: { Accept: "application/json" },
+    });
+    return parseStringList(data);
+  }
+
+  /**
+   * Sign files and wait for the server. The request carries the signer's
+   * PIN: never log it.
+   */
+  runSignAction(
+    request: SignRequest,
+    isCancelled: () => boolean,
+  ): Promise<ActionStatus> {
+    return this.runBatchAction(
+      REPOSITORY_ITEMS_BATCH,
+      SIGN_ACTION,
+      request,
+      isCancelled,
+    );
   }
 
   /** Turn versioning on or off for one file, and wait for the server. */

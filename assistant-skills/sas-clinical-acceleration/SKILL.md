@@ -72,10 +72,16 @@ Without Content**, which leaves the workspace file as it is, then check in.
 
 ## Signatures
 
-Files can carry electronic signatures (who signed, when, role, reason). The
-extension only shows them; signing happens in SAS Clinical Acceleration
-Repository, with the signer's own authenticator PIN. Never sign for the user or
-ask for their PIN.
+Files can carry electronic signatures (who signed, when, role, reason). A
+signature is the user's own regulatory act: never sign for the user, never ask
+for or handle their authenticator PIN, and don't suggest signing unless asked.
+
+- **Sign Files...** (right-click files or a folder in the Clinical Repository
+  view) is the user's own command. It asks for the files, a reason and a role
+  configured on the server, a comment, a confirmation, and last the PIN from
+  their authenticator app. It needs the Sign Files privilege and an
+  authenticator app linked in the SAS Clinical Acceleration Repository
+  settings. Checked-out files can't be signed.
 
 - Files whose latest version is signed show **Signed** in the Clinical
   Repository view; signed versions show **Signed** in Clinical Version History.
