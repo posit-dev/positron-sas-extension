@@ -234,23 +234,58 @@ export const Messages = {
   SignWarning: l10n.t("Some files were not signed. {message}"),
   SignError: l10n.t("The files were not signed. {message}"),
   SignRetry: l10n.t("Retry with a New PIN"),
+  SearchStep: l10n.t("Search Repository ({step}/{total})"),
+  SearchNamePrompt: l10n.t(
+    "Name of the item. * matches any characters and ? one character; case is ignored. Leave empty for any name.",
+  ),
+  SearchContentPrompt: l10n.t(
+    'Text in the files, or empty to search by name and properties only. Words match any of them; use AND for all of them and "quotes" for a phrase. Only files match.',
+  ),
+  SearchContentInvalid: l10n.t(
+    "The text can't start with * or ?. Wildcards can follow other characters.",
+  ),
+  SearchRefinePlaceholder: l10n.t(
+    "Optionally narrow the search, then press Enter",
+  ),
+  SearchOnlyFiles: l10n.t("Only files"),
+  SearchOnlyFolders: l10n.t("Only folders and contexts"),
+  SearchOwnedByMe: l10n.t("Owned by me"),
+  SearchCheckedOutByMe: l10n.t("Checked out by me"),
+  SearchSigned: l10n.t("Signed (latest version)"),
+  SearchModified7: l10n.t("Modified in the last 7 days"),
+  SearchModified30: l10n.t("Modified in the last 30 days"),
+  SearchEverything: l10n.t(
+    "The search has no conditions and lists the whole repository, up to 500 items. Search anyway?",
+  ),
+  SearchEverythingButton: l10n.t("Search"),
+  SearchNoResults: l10n.t("No items match the search."),
+  SearchResultCount: l10n.t("{count} item(s) found."),
+  SearchMoreResults: l10n.t(
+    "The first {count} of {total} matching items. Narrow the search to see the others.",
+  ),
+  SearchMayHaveMore: l10n.t(
+    "{count} item(s) found. The content search stopped at its limit, so more files may match: narrow the search.",
+  ),
+  SearchError: l10n.t("Unable to search the repository. {message}"),
+  SearchIn: l10n.t("in"),
   AuditStep: l10n.t("Search Audit History ({step}/{total})"),
   AuditSearching: l10n.t("Searching the audit history..."),
   AuditError: l10n.t("Unable to read the audit history. {message}"),
   AuditNamePrompt: l10n.t(
     "Name of the item. * matches any characters and ? one character; case is ignored. Leave empty for any name.",
   ),
-  AuditLocationPlaceholder: l10n.t(
+  LocationPlaceholder: l10n.t(
     "Where the items are: a folder includes its subfolders",
   ),
-  AuditAnywhere: l10n.t("Anywhere in the repository"),
-  AuditKeep: l10n.t("as in the last search"),
-  AuditChooseFolder: l10n.t("Choose a Folder..."),
-  AuditEnterPath: l10n.t("Enter a Path..."),
-  AuditPathPrompt: l10n.t(
+  LocationSelected: l10n.t("selected folder"),
+  LocationAnywhere: l10n.t("Anywhere in the repository"),
+  LocationKeep: l10n.t("as in the last search"),
+  LocationChooseFolder: l10n.t("Choose a Folder..."),
+  LocationEnterPath: l10n.t("Enter a Path..."),
+  LocationPathPrompt: l10n.t(
     "Repository path of the folder, such as /Acme/Study1",
   ),
-  AuditPathInvalid: l10n.t("Enter a path that starts with /."),
+  LocationPathInvalid: l10n.t("Enter a path that starts with /."),
   AuditActionsPlaceholder: l10n.t(
     "Select the actions to find, or none for any action",
   ),

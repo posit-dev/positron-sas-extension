@@ -27,6 +27,7 @@ import { RepositoryDecorator } from "./RepositoryDecorator";
 import { RepositoryModel } from "./RepositoryModel";
 import { CLINICAL_SCHEME, VIEW_ID } from "./const";
 import { Messages, errorMessage } from "./messages";
+import { parentPath } from "./searchQuery";
 import type { RepositoryItem } from "./types";
 import {
   buildContextValue,
@@ -84,6 +85,25 @@ export class RepositoryDataProvider
   refresh(): void {
     this.treeView.message = undefined;
     this._onDidChangeTreeData.fire(undefined);
+  }
+
+  /** The folder or context an item is in; undefined at the top. */
+  async getParent(item: RepositoryItem): Promise<RepositoryItem | undefined> {
+    const parent = parentPath(item.path);
+    if (parent === "/") {
+      return undefined;
+    }
+    try {
+      return await this.model.getItemByPath(parent);
+    } catch (error) {
+      this.log(`Unable to find the folder ${parent}: ${errorMessage(error)}`);
+      return undefined;
+    }
+  }
+
+  /** Show an item in the tree, expanding the folders above it. */
+  async reveal(item: RepositoryItem): Promise<void> {
+    await this.treeView.reveal(item, { select: true, focus: true });
   }
 
   /** The clicked item plus any other selected items. */
