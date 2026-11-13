@@ -11,6 +11,14 @@ import {
   signatureReportTitle,
   signaturesCsv,
 } from "../../src/clinical/signatureReport";
+import {
+  buildSignRequest,
+  describeSignRequest,
+  isValidPin,
+  normalizePin,
+  parseStringList,
+  partitionSignable,
+} from "../../src/clinical/signing";
 import type {
   RepositoryItem,
   ResourceCollection,
@@ -262,5 +270,87 @@ describe("signaturesCsv", () => {
     expect(csvField("line\nbreak")).to.equal('"line\nbreak"');
     expect(csvField(undefined)).to.equal("");
     expect(toCsv(["a"], [])).to.equal("a\r\n");
+  });
+});
+
+describe("signing", () => {
+  const item = (
+    id: string,
+    extra: Partial<RepositoryItem> = {},
+  ): RepositoryItem => ({
+    id,
+    name: `${id}.sas`,
+    path: `/Acme/${id}.sas`,
+    typeId: "sasprogram",
+    primaryType: "FILE",
+    ...extra,
+  });
+
+  it("builds the SIGN body the web app sends", () => {
+    expect(
+      buildSignRequest(
+        [item("a"), item("b")],
+        { role: "Reviewer", reason: "Approve", comment: " QC done " },
+        " 123456 ",
+      ),
+    ).to.deep.equal({
+      pin: "123456",
+      role: "Reviewer",
+      reason: "Approve",
+      comment: "QC done",
+      paths: ["/Acme/a.sas", "/Acme/b.sas"],
+    });
+    expect(
+      buildSignRequest([item("a")], { role: "R", reason: "A" }, "123456")
+        .comment,
+    ).to.equal("");
+  });
+
+  it("never puts the PIN in what is logged", () => {
+    const request = buildSignRequest(
+      [item("a")],
+      { role: "Reviewer", reason: "Approve", comment: "ok" },
+      "987654",
+    );
+    const line = describeSignRequest(request);
+    expect(line).to.not.include("987654");
+    expect(line).to.include("Reviewer");
+    expect(line).to.include("/Acme/a.sas");
+  });
+
+  it("accepts 6 to 8 digit PINs, spaces ignored", () => {
+    expect(isValidPin("123456")).to.equal(true);
+    expect(isValidPin("123 456")).to.equal(true);
+    expect(isValidPin("12345678")).to.equal(true);
+    expect(isValidPin("12345")).to.equal(false);
+    expect(isValidPin("123456789")).to.equal(false);
+    expect(isValidPin("12a456")).to.equal(false);
+    expect(isValidPin("")).to.equal(false);
+    expect(normalizePin(" 123 456 ")).to.equal("123456");
+  });
+
+  it("leaves out checked-out files, folders and duplicates", () => {
+    const folder = item("f", { primaryType: "FOLDER" });
+    const { signable, checkedOut } = partitionSignable([
+      item("a"),
+      folder,
+      item("b", { checkedOut: true }),
+      item("a"),
+      item("c"),
+    ]);
+    expect(signable.map((f) => f.id)).to.deep.equal(["a", "c"]);
+    expect(checkedOut.map((f) => f.id)).to.deep.equal(["b"]);
+  });
+
+  it("reads the reasons and roles lists", () => {
+    expect(parseStringList(["Approve", "Reject"])).to.deep.equal([
+      "Approve",
+      "Reject",
+    ]);
+    expect(parseStringList({ items: ["Reviewer", 3, ""] })).to.deep.equal([
+      "Reviewer",
+    ]);
+    expect(parseStringList("Approve")).to.deep.equal([]);
+    expect(parseStringList(undefined)).to.deep.equal([]);
   });
 });

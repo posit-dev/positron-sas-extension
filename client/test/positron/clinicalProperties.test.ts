@@ -232,12 +232,20 @@ describe("buildPropertyRows", () => {
     it("lists the versioning privileges, or None", () => {
       expect(
         access(file(), {
-          privileges: { enableVersioning: true, manageVersioning: true },
+          privileges: {
+            enableVersioning: true,
+            manageVersioning: true,
+            signFiles: true,
+          },
         }).privileges,
       ).to.equal("privilegeEnable, privilegeManage");
       expect(
         access(file(), {
-          privileges: { enableVersioning: false, manageVersioning: false },
+          privileges: {
+            enableVersioning: false,
+            manageVersioning: false,
+            signFiles: true,
+          },
         }).privileges,
       ).to.equal("noPermissions");
     });

@@ -190,6 +190,49 @@ export const Messages = {
   SignatureExportError: l10n.t(
     "Unable to save the signature history. {message}",
   ),
+  ShowSignatureHistory: l10n.t("Show Signature History"),
+  SignFilesTitle: l10n.t("Sign Files"),
+  SignFilesStep: l10n.t("Sign Files ({step}/{total})"),
+  SignPreparing: l10n.t("Preparing to sign..."),
+  SignPrepareError: l10n.t("Unable to prepare the signing. {message}"),
+  SignPrivilegeMissing: l10n.t(
+    "You don't have the Sign Files privilege. An administrator can grant it in SAS Clinical Acceleration Repository.",
+  ),
+  SignNoReasonsOrRoles: l10n.t(
+    "The server has no signature reasons or roles configured. An administrator sets them in SAS Environment Manager (sas.clinical.signatures).",
+  ),
+  SignNothing: l10n.t(
+    "None of the selected files can be signed: SAS Clinical Acceleration doesn't sign checked-out files. Check them in, or undo the check-out, first.",
+  ),
+  SignTooMany: l10n.t(
+    "Only the first {max} files are offered for signing. Select fewer files or folders to sign the rest.",
+  ),
+  SignFilesPick: l10n.t("Select the files to sign"),
+  SignFilesPickSkipped: l10n.t(
+    "Select the files to sign ({count} checked-out file(s) left out: they can't be signed)",
+  ),
+  SignReasonPlaceholder: l10n.t("Select the reason for your signature"),
+  SignRolePlaceholder: l10n.t("Select your signatory role"),
+  SignCommentPrompt: l10n.t(
+    "Enter a comment for the audit record. A comment is optional, but best practice.",
+  ),
+  SignConfirm: l10n.t("Sign {count} file(s) electronically?"),
+  SignConfirmDetail: l10n.t(
+    "Signer: {signer}\nReason: {reason}\nRole: {role}\n\n{files}\n\nThe signature is recorded in the audit history and can't be removed.",
+  ),
+  SignConfirmButton: l10n.t("Sign"),
+  SignMoreFiles: l10n.t("and {count} more"),
+  SignPinPrompt: l10n.t(
+    "Enter the current PIN from your authenticator app. To link an authenticator app, enable signatures in the settings of SAS Clinical Acceleration Repository.",
+  ),
+  SignPinInvalid: l10n.t(
+    "Enter the 6 to 8 digits your authenticator app shows.",
+  ),
+  SigningMessage: l10n.t("Signing..."),
+  SignSuccess: l10n.t("Signed {count} file(s)."),
+  SignWarning: l10n.t("Some files were not signed. {message}"),
+  SignError: l10n.t("The files were not signed. {message}"),
+  SignRetry: l10n.t("Retry with a New PIN"),
 };
 
 /** Whether a file is signed, as the Properties view and reports say it. */

@@ -205,6 +205,7 @@ export function parsePrivileges(data: unknown): ItemPrivileges | undefined {
     names && {
       enableVersioning: names.includes("PRIVILEGE_ENABLE_VERSIONING"),
       manageVersioning: names.includes("PRIVILEGE_MANAGE_VERSIONING"),
+      signFiles: names.includes("PRIVILEGE_SIGN_FILE"),
     }
   );
 }

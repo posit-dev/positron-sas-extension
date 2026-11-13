@@ -438,6 +438,37 @@ describe("Clinical RepositoryModel", () => {
       expect(body).to.deep.equal({ comment: "done", paths: [file.path] });
     });
 
+    it("signs files with the SIGN batch action", async () => {
+      finish();
+      const request = {
+        pin: "123456",
+        role: "Reviewer",
+        reason: "Approve",
+        comment: "QC",
+        paths: [file.path],
+      };
+      await model.runSignAction(request, () => false);
+      const [url, body] = connection.post.firstCall.args;
+      expect(String(url)).to.match(
+        /^\/clinicalRepository\/repository\/items\/batch\?action=SIGN&clientId=/,
+      );
+      expect(body).to.deep.equal(request);
+    });
+
+    it("reads the signature reasons and roles", async () => {
+      connection.get
+        .withArgs("/clinicalRepository/repository/signatureReasons")
+        .resolves({ data: ["Approve", "Reject"] });
+      connection.get
+        .withArgs("/clinicalRepository/repository/signatureRoles")
+        .resolves({ data: ["Reviewer"] });
+      expect(await model.getSignatureReasons()).to.deep.equal([
+        "Approve",
+        "Reject",
+      ]);
+      expect(await model.getSignatureRoles()).to.deep.equal(["Reviewer"]);
+    });
+
     it("reads the versioning privileges of the user", async () => {
       connection.get
         .withArgs("/clinicalRepository/authorizations/11/privileges")
@@ -445,6 +476,7 @@ describe("Clinical RepositoryModel", () => {
       expect(await model.getPrivileges("11")).to.deep.equal({
         enableVersioning: false,
         manageVersioning: true,
+        signFiles: false,
       });
     });
 
