@@ -131,6 +131,31 @@ To save the signature history, select **Export Signature History...** and choose
 
 **Show Signature History** is offered only for files that have been signed at least once.
 
+## Audit history
+
+SAS Clinical Acceleration keeps an audit record of every significant action, such as creating, checking in, downloading, or signing a file, and changing permissions. Each record names the action, the item, who acted on it, and when.
+
+To see what was done to a file or folder, right-click it in the **Clinical Repository** view and select **Show Audit History**. For a folder, the history includes the items in it and in its subfolders.
+
+To search the audit history:
+
+1. In the title bar of the **Clinical Repository** view, select **More Actions** (**...**), then **Search Audit History...**. The command is also in the Command Palette.
+2. Enter the name of the item, or leave it empty for any name. `*` matches any characters and `?` one character; case is ignored. For example, `adsl*` finds `adsl.sas` and `ADSL.xpt`.
+3. Select where the items are: anywhere, a folder you choose, or a path you enter. A folder includes its subfolders.
+4. Select the actions to find, such as **Checked in**, or none for any action.
+5. Select the modes to find (**User**, **Administrative**, or **System**), or none for any mode.
+6. Select the period: the last 24 hours, 7, 30, or 90 days, any time, or a custom range of days.
+
+The audit history opens in the Viewer, newest first. Each record shows the date, who acted, the action, the type and name of the item, its location, and the mode. The **Changes** column lists what changed, such as the new permissions of a user, for the first 100 records. Click a file name to open the file.
+
+A report lists at most 1,000 records. When more match, narrow the search, for example to a shorter period. To save the last audit history, select **Export Audit History...** in the same menu, and choose **HTML** for the report or **CSV** for a spreadsheet.
+
+:::info note
+
+SAS Clinical Acceleration lists administrators the actions of all users, and other users only their own actions, as in the Audit History page of SAS Clinical Acceleration Repository.
+
+:::
+
 ## Compare files and versions
 
 You can compare any two files or versions from the repository, your workspace, and the version history.

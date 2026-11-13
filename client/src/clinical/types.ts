@@ -184,3 +184,41 @@ export interface CheckInBody {
   comment: string;
   includeNewFiles: true;
 }
+
+/** One audit record, from `clinicalRepository/audit/entries`. */
+export interface AuditEntry {
+  id: string;
+  timestamp?: string;
+  userId?: string;
+  userDisplayName?: string;
+  /** Such as `checkedIn`; see `audit/actions`. */
+  action?: string;
+  actionDisplayName?: string;
+  sourceId?: string;
+  sourceTypeId?: string;
+  /** FILE, FOLDER, CONTEXT, ... */
+  sourcePrimaryType?: string;
+  sourceName?: string;
+  /** The folder the item was in: no trailing slash. */
+  sourceLocation?: string;
+  /** USER, ADMIN or SYSTEM. */
+  mode?: string;
+  /** Only when one entry is read: what changed. */
+  auditEntryDetails?: AuditDetail[];
+}
+
+export interface AuditDetail {
+  attributeType?: string;
+  attributeId?: string;
+  attributeName?: string;
+  oldValue?: string;
+  newValue?: string;
+}
+
+/** An audited action, from `clinicalRepository/audit/actions`. */
+export interface AuditAction {
+  action: string;
+  displayName?: string;
+  /** The object type the action applies to. */
+  typeId?: string;
+}
