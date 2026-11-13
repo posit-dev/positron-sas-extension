@@ -280,7 +280,7 @@ describe("buildContextValue", () => {
     const menus: Array<{ command?: string; submenu?: string; when: string }> =
       pkg.contributes.menus["view/item/context"].filter(
         (m: { when?: string }) =>
-          /view == clinical(repository|versionhistory|workspace)/.test(
+          /view == clinical(repository|versionhistory|workspace|search)/.test(
             m.when ?? "",
           ),
       );
@@ -332,6 +332,7 @@ describe("buildContextValue", () => {
         "SAS.clinical.uploadAndExpand",
         "SAS.clinical.signFiles",
         "SAS.clinical.showAuditHistory",
+        "SAS.clinical.searchInFolder",
       ]);
     });
 
@@ -396,6 +397,7 @@ describe("buildContextValue", () => {
           "SAS.clinical.copyToWorkspaceSubmenu",
           "SAS.clinical.signFiles",
           "SAS.clinical.showAuditHistory",
+          "SAS.clinical.searchInFolder",
         ]);
       }
     });
@@ -499,6 +501,29 @@ describe("buildContextValue", () => {
       expect(
         shown(buildContextValue(file(), undefined, "me", "write")),
       ).to.not.include("SAS.clinical.downloadVersion");
+    });
+
+    it("offers the repository actions on search results too", () => {
+      const view = "clinicalsearchprovider";
+      for (const value of [
+        buildContextValue(file(), undefined, "me", "write"),
+        buildContextValue(folder, undefined, "me", "write"),
+        buildContextValue(file({ signingStatus: "CURRENT" }), undefined, "me"),
+      ]) {
+        const inRepository = shown(value).filter(
+          (c) => c !== "SAS.clinical.searchInFolder",
+        );
+        expect(shown(value, { view })).to.have.members([
+          ...inRepository,
+          "SAS.clinical.revealInRepository",
+        ]);
+      }
+      expect(
+        shown(buildContextValue(file(), undefined, "me", "write"), {
+          view,
+          multi: true,
+        }),
+      ).to.not.include("SAS.clinical.revealInRepository");
     });
 
     it("offers the audit history of any single item", () => {

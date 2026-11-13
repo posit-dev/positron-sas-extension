@@ -1114,6 +1114,40 @@
         "category": "SAS Clinical Acceleration"
       },
       {
+        "command": "SAS.clinical.search",
+        "title": "%clinical.commands.search%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(search)"
+      },
+      {
+        "command": "SAS.clinical.searchInFolder",
+        "title": "%clinical.commands.searchInFolder%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.editSearch",
+        "title": "%clinical.commands.editSearch%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "SAS.clinical.refreshSearch",
+        "title": "%clinical.commands.refreshSearch%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.clinical.clearSearch",
+        "title": "%clinical.commands.clearSearch%",
+        "category": "SAS Clinical Acceleration",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "SAS.clinical.revealInRepository",
+        "title": "%clinical.commands.revealInRepository%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.showAuditHistory",
         "title": "%clinical.commands.showAuditHistory%",
         "category": "SAS Clinical Acceleration"
@@ -1573,6 +1607,31 @@
           "group": "navigation@1"
         },
         {
+          "command": "SAS.clinical.search",
+          "when": "view == clinicalrepositorydataprovider",
+          "group": "navigation@2"
+        },
+        {
+          "command": "SAS.clinical.search",
+          "when": "view == clinicalsearchprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.clinical.editSearch",
+          "when": "view == clinicalsearchprovider && SAS.clinical.searchActive",
+          "group": "navigation@1"
+        },
+        {
+          "command": "SAS.clinical.refreshSearch",
+          "when": "view == clinicalsearchprovider && SAS.clinical.searchActive",
+          "group": "navigation@2"
+        },
+        {
+          "command": "SAS.clinical.clearSearch",
+          "when": "view == clinicalsearchprovider && SAS.clinical.searchActive",
+          "group": "navigation@3"
+        },
+        {
           "command": "SAS.clinical.searchAuditHistory",
           "when": "view == clinicalrepositorydataprovider",
           "group": "audit@0"
@@ -1773,92 +1832,102 @@
         },
         {
           "command": "SAS.clinical.addFolder",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "1_new@0"
         },
         {
           "submenu": "SAS.clinical.checkOutSubmenu",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;canWrite;/ && (viewItem =~ /;container;/ || viewItem =~ /;coNone;/)",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;canWrite;/ && (viewItem =~ /;container;/ || viewItem =~ /;coNone;/)",
           "group": "2_checkout@0"
         },
         {
           "command": "SAS.clinical.undoCheckout",
-          "when": "view == clinicalrepositorydataprovider && (viewItem =~ /;container;/ || viewItem =~ /;coSelf;/)",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && (viewItem =~ /;container;/ || viewItem =~ /;coSelf;/)",
           "group": "2_checkout@1"
         },
         {
           "command": "SAS.clinical.copyPath",
-          "when": "view == clinicalrepositorydataprovider",
+          "when": "view == clinicalrepositorydataprovider || view == clinicalsearchprovider",
           "group": "3_copy@0"
         },
         {
           "command": "SAS.clinical.rename",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;canRename;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;canRename;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "4_modify@0"
         },
         {
           "command": "SAS.clinical.download",
-          "when": "view == clinicalrepositorydataprovider",
+          "when": "view == clinicalrepositorydataprovider || view == clinicalsearchprovider",
           "group": "5_transfer@0"
         },
         {
           "command": "SAS.clinical.upload",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "5_transfer@1"
         },
         {
           "command": "SAS.clinical.uploadAndExpand",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;container;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "5_transfer@2"
         },
         {
           "command": "SAS.clinical.delete",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;canDelete;/ && viewItem =~ /;canWrite;/",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;canDelete;/ && viewItem =~ /;canWrite;/",
           "group": "4_modify@1"
         },
         {
           "command": "SAS.clinical.enableVersioning",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;unversioned;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;unversioned;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "6_versioning@0"
         },
         {
           "command": "SAS.clinical.disableVersioning",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;versioned;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;versioned;/ && viewItem =~ /;canWrite;/ && !listMultiSelection",
           "group": "6_versioning@0"
         },
         {
           "command": "SAS.clinical.selectForCompare",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;file;/ && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;file;/ && !listMultiSelection",
           "group": "7_compare@0"
         },
         {
           "command": "SAS.clinical.compareWithSelected",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;file;/ && SAS.clinical.compareSourceSet && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;file;/ && SAS.clinical.compareSourceSet && !listMultiSelection",
           "group": "7_compare@1"
         },
         {
           "command": "SAS.clinical.compareSelected",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;file;/ && SAS.clinical.twoItemsSelected",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;file;/ && SAS.clinical.twoItemsSelected",
           "group": "7_compare@2"
         },
         {
+          "command": "SAS.clinical.revealInRepository",
+          "when": "view == clinicalsearchprovider && !listMultiSelection",
+          "group": "0_reveal@0"
+        },
+        {
+          "command": "SAS.clinical.searchInFolder",
+          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;container;/ && !listMultiSelection",
+          "group": "9_audit@1"
+        },
+        {
           "command": "SAS.clinical.showAuditHistory",
-          "when": "view == clinicalrepositorydataprovider && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && !listMultiSelection",
           "group": "9_audit@0"
         },
         {
           "command": "SAS.clinical.signFiles",
-          "when": "view == clinicalrepositorydataprovider && (viewItem =~ /;container;/ || viewItem =~ /;coNone;/)",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && (viewItem =~ /;container;/ || viewItem =~ /;coNone;/)",
           "group": "8_signatures@0"
         },
         {
           "command": "SAS.clinical.showSignatureHistory",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;signed;/ && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;signed;/ && !listMultiSelection",
           "group": "8_signatures@1"
         },
         {
           "command": "SAS.clinical.exportSignatureHistory",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;signed;/ && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;signed;/ && !listMultiSelection",
           "group": "8_signatures@2"
         },
         {
@@ -1893,7 +1962,7 @@
         },
         {
           "submenu": "SAS.clinical.copyToWorkspaceSubmenu",
-          "when": "view == clinicalrepositorydataprovider",
+          "when": "view == clinicalrepositorydataprovider || view == clinicalsearchprovider",
           "group": "2_checkout@2"
         },
         {
@@ -1953,7 +2022,7 @@
         },
         {
           "command": "SAS.clinical.job.run",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
           "group": "0_run@0"
         },
         {
@@ -1983,7 +2052,7 @@
         },
         {
           "command": "SAS.clinical.schedule.new",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;job;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
           "group": "0_run@1"
         },
         {
@@ -2088,12 +2157,12 @@
         },
         {
           "command": "SAS.clinical.job.showManifest",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;manifest;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;manifest;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
           "group": "0_run@0"
         },
         {
           "command": "SAS.clinical.job.exportManifest",
-          "when": "view == clinicalrepositorydataprovider && viewItem =~ /;manifest;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
+          "when": "(view == clinicalrepositorydataprovider || view == clinicalsearchprovider) && viewItem =~ /;manifest;/ && SAS.clinical.jobsAvailable && !listMultiSelection",
           "group": "0_run@1"
         },
         {
@@ -2459,6 +2528,30 @@
         },
         {
           "when": "SAS.clinicalAvailable",
+          "command": "SAS.clinical.search"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.searchInFolder"
+        },
+        {
+          "when": "SAS.clinical.searchActive",
+          "command": "SAS.clinical.editSearch"
+        },
+        {
+          "when": "SAS.clinical.searchActive",
+          "command": "SAS.clinical.refreshSearch"
+        },
+        {
+          "when": "SAS.clinical.searchActive",
+          "command": "SAS.clinical.clearSearch"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.revealInRepository"
+        },
+        {
+          "when": "SAS.clinicalAvailable",
           "command": "SAS.clinical.searchAuditHistory"
         },
         {
@@ -2803,6 +2896,12 @@
           "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable"
         },
         {
+          "id": "clinicalsearchprovider",
+          "name": "%clinical.views.search%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable",
+          "visibility": "collapsed"
+        },
+        {
           "id": "clinicalworkspaceprovider",
           "name": "%clinical.views.workspace%",
           "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable"
@@ -2840,6 +2939,10 @@
       {
         "view": "sas-content-invalid-connection",
         "contents": "%views.SAS.unsupportedConnection%"
+      },
+      {
+        "view": "clinicalsearchprovider",
+        "contents": "%clinical.views.search.welcome%"
       }
     ],
     "notebooks": [

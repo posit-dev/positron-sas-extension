@@ -11,6 +11,7 @@ The **Clinical Acceleration** icon appears in the activity bar, and the views wi
 ## The views
 
 - **Clinical Repository**: the shared store. Files open read-only.
+- **Clinical Repository Search** (collapsed at first): the items your last repository search found.
 - **Clinical Workspace**: your own area on the server. Files open for editing, and saving a file saves it to your workspace.
 - **Clinical Jobs**: your clinical job runs and what each run used and wrote.
 - **Clinical Job Schedules**: your schedules that run clinical jobs at set times.
@@ -35,6 +36,22 @@ Right-click an item to see the actions you can use. The extension shows an actio
 - **Copy Path**: copy the repository path of the selected items.
 
 An upload asks for an optional comment and an optional version. Leave the version empty to upload without versioning, which works without any special privilege. Enter a version such as `1.0` to create a versioned file. You can also enter `MAJOR` or `MINOR` to raise the version of a file that is already versioned.
+
+## Search the repository
+
+To find items in the repository:
+
+1. Select **Search Repository** (the magnifying glass) in the title bar of the **Clinical Repository** view, or right-click a folder and select **Search in This Folder...**.
+2. Enter the name of the item, or leave it empty for any name. `*` matches any characters and `?` one character; case is ignored. For example, `*2021*` finds every item with 2021 in its name, and `adsl*` finds `adsl.sas` and `ADSL.xpt`. Without a wildcard, the whole name must match.
+3. Select where to search: anywhere, the selected folder, a folder you choose, or a path you enter. Subfolders are always included.
+4. Enter text to find in the files, or leave it empty. Words match files that contain any of them; join them with `AND` to require all of them, and put a phrase in double quotes. With text, only files are found.
+5. Optionally narrow the search: only files, only folders and contexts, items you own, files you have checked out, signed files, or items modified in the last 7 or 30 days. Then press **Enter**.
+
+The results appear in the **Clinical Repository Search** view, with the folder of each item. Results work like items in the **Clinical Repository** view: click a file to open it, expand a folder, and right-click an item for the same actions, such as **Check out to Workspace** or **Show Audit History**. Select an item to see its properties and versions. **Reveal in Clinical Repository** shows the item in the **Clinical Repository** view.
+
+A search lists at most 500 items. When more match, the view says so: narrow the search. Use **Edit Search...**, **Refresh Search** and **Clear Search** in the title bar of the view to change, repeat or remove the search. The search runs again when the repository is refreshed.
+
+You see only the items you have permission to read.
 
 ## Work in your workspace
 
@@ -331,4 +348,4 @@ A server can still refuse an action, such as a check-out without write permissio
 
 - The views use the active SAS Viya profile. Switch profiles to work with another server.
 - The views do not detect changes made by other users or other applications. Click **Refresh** to see them.
-- You cannot search the repository, restore deleted items, or change permissions. Use SAS Clinical Acceleration for those tasks.
+- You cannot restore deleted items or change permissions. Use SAS Clinical Acceleration for those tasks.

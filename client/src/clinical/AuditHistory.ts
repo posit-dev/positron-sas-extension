@@ -23,10 +23,8 @@ import {
   AuditQuery,
   buildAuditFilter,
   itemAuditFilter,
-  normalizeLocation,
   parseDay,
   periodStart,
-  validateLocation,
 } from "./auditQuery";
 import {
   QueryRows,
@@ -35,6 +33,7 @@ import {
   renderAuditReport,
 } from "./auditReport";
 import type { ItemPicker } from "./jobs/ItemPicker";
+import { askLocation } from "./locationPrompt";
 import { AuditLabelText, Messages, errorMessage } from "./messages";
 import { formatDate } from "./properties";
 import { ReportPresenter, stem } from "./report/ReportPresenter";
@@ -198,7 +197,10 @@ export class AuditHistory implements Disposable {
     if (name === undefined) {
       return undefined;
     }
-    const location = await this.askLocation(previous.location);
+    const location = await askLocation(this.picker, {
+      title: step(2),
+      previous: previous.location,
+    });
     if (location === undefined) {
       return undefined;
     }
@@ -223,58 +225,6 @@ export class AuditHistory implements Disposable {
     };
     this.query = query;
     return query;
-  }
-
-  /** "" for anywhere; undefined when cancelled. */
-  private async askLocation(
-    previous: string | undefined,
-  ): Promise<string | undefined> {
-    const items: Choice<"any" | "keep" | "pick" | "type">[] = [
-      { label: Messages.AuditAnywhere, value: "any" },
-      ...(previous
-        ? [
-            {
-              label: previous,
-              description: Messages.AuditKeep,
-              value: "keep" as const,
-            },
-          ]
-        : []),
-      { label: Messages.AuditChooseFolder, value: "pick" },
-      { label: Messages.AuditEnterPath, value: "type" },
-    ];
-    const choice = await window.showQuickPick(items, {
-      title: step(2),
-      placeHolder: Messages.AuditLocationPlaceholder,
-      ignoreFocusOut: true,
-    });
-    switch (choice?.value) {
-      case undefined:
-        return undefined;
-      case "any":
-        return "";
-      case "keep":
-        return previous;
-      case "pick": {
-        const path = await this.picker.pick({
-          mode: "folder",
-          location: "REPOSITORY",
-          title: Messages.AuditChooseFolder,
-        });
-        return path === undefined ? undefined : normalizeLocation(path);
-      }
-      default: {
-        const path = await window.showInputBox({
-          title: step(2),
-          prompt: Messages.AuditPathPrompt,
-          value: previous ?? "/",
-          ignoreFocusOut: true,
-          validateInput: (value) =>
-            validateLocation(value) ? Messages.AuditPathInvalid : undefined,
-        });
-        return path === undefined ? undefined : normalizeLocation(path);
-      }
-    }
   }
 
   /** The action ids; [] for any; undefined when cancelled. */

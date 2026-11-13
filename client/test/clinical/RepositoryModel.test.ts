@@ -508,6 +508,30 @@ describe("Clinical RepositoryModel", () => {
       ).to.equal(false);
     });
 
+    it("searches items and reports the total and limit", async () => {
+      connection.get.resolves({
+        data: {
+          count: 12,
+          limitReached: true,
+          items: [{ id: "a", name: "a.sas", path: "/a.sas" }],
+        },
+      });
+      const found = await model.searchItems("like(name,'a*')", "data", 1);
+      expect(found.items.map((i) => i.id)).to.deep.equal(["a"]);
+      expect(found.total).to.equal(12);
+      expect(found.limitReached).to.equal(true);
+      expect(String(connection.get.firstCall.args[0])).to.match(
+        /^\/clinicalRepository\/repository\/files\?start=0&limit=1&filter=.*&text=data$/,
+      );
+    });
+
+    it("finds an item by its path", async () => {
+      connection.get
+        .withArgs("/clinicalRepository/repository/paths?path=%2FAcme%2Fa%20b")
+        .resolves({ data: { id: "x" } });
+      expect((await model.getItemByPath("/Acme/a b")).id).to.equal("x");
+    });
+
     it("lists each audit action once", async () => {
       connection.get
         .withArgs("/clinicalRepository/audit/actions?start=0&limit=500")
