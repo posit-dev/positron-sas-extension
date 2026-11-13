@@ -109,12 +109,29 @@ For files and folders, it also lists **Your permissions**, the permissions the s
 
 Files in SAS Clinical Acceleration can carry electronic signatures. A signature records who signed the file, when, in which role, and for which reason. Signing a file states your approval of or agreement with the file in the repository. It is an electronic signature, recorded in the audit history, and can't be removed.
 
+### Link an authenticator app
+
+The PIN that signs files comes from an authenticator app on your mobile device. To link the app to your account:
+
+1. Run **SAS Clinical Acceleration: Set Up Signing (Authenticator App)...** from the Command Palette, or select it in the **...** menu of the **Clinical Repository** view.
+2. Select **Generate QR Code**. The **Enable Signatures** tab shows a QR code.
+3. In the authenticator app, add an account and scan the code. The app then shows PINs for SAS Clinical Acceleration Repository.
+4. Close the tab. The QR code isn't kept, and the tab closes on its own after 10 minutes.
+
+:::warning
+
+Each new QR code replaces your signing key. If you linked an app before, its PINs stop working, and you need to scan the new code. To use a new mobile device, generate a new code.
+
+:::
+
+The QR code holds the secret behind your PINs. It appears only in its own tab, not in the Viewer, so Posit Assistant can't read it, and it isn't logged or saved. You can also link the app in SAS Clinical Acceleration Repository: open your user **Settings**, then select **Generate a new QR code** under **Enable Signatures**.
+
 ### Sign files
 
 Before you sign for the first time:
 
 - You need the **Sign Files** privilege and read access to the files. An administrator grants the privilege in SAS Clinical Acceleration Repository.
-- Link an authenticator app on your mobile device: in SAS Clinical Acceleration Repository, open your user **Settings**, select **Generate a new QR code** under **Enable Signatures**, and scan the code with the app.
+- Link an authenticator app on your mobile device, such as Microsoft Authenticator or Google Authenticator. See [Link an authenticator app](#link-an-authenticator-app).
 
 To sign files:
 
@@ -125,7 +142,7 @@ To sign files:
 5. Read the confirmation, which names the files, and select **Sign**.
 6. Enter the current PIN from your authenticator app.
 
-If the server refuses the signature, for example because the PIN has expired, select **Retry with a New PIN** to enter a new one; the other choices are kept. After signing one file, select **Show Signature History** in the message to see the new signature.
+If the server refuses the signature, for example because the PIN has expired, select **Retry with a New PIN** to enter a new one; the other choices are kept. If you haven't linked an app yet, select **Set Up Authenticator...** instead, scan the QR code, and enter a PIN from the app. After signing one file, select **Show Signature History** in the message to see the new signature.
 
 :::info note
 

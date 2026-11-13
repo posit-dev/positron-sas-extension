@@ -1168,6 +1168,11 @@
         "category": "SAS Clinical Acceleration"
       },
       {
+        "command": "SAS.clinical.enableSignatures",
+        "title": "%clinical.commands.enableSignatures%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.showSignatureHistory",
         "title": "%clinical.commands.showSignatureHistory%",
         "category": "SAS Clinical Acceleration"
@@ -1640,6 +1645,11 @@
           "command": "SAS.clinical.exportAuditHistory",
           "when": "view == clinicalrepositorydataprovider",
           "group": "audit@1"
+        },
+        {
+          "command": "SAS.clinical.enableSignatures",
+          "when": "view == clinicalrepositorydataprovider",
+          "group": "signatures@0"
         },
         {
           "command": "SAS.clinical.refreshDetails",
@@ -2521,6 +2531,10 @@
         {
           "when": "false",
           "command": "SAS.clinical.signFiles"
+        },
+        {
+          "when": "SAS.clinicalAvailable",
+          "command": "SAS.clinical.enableSignatures"
         },
         {
           "when": "false",

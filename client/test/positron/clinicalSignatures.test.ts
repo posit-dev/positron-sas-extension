@@ -6,6 +6,10 @@ import * as path from "path";
 
 import { csvField, toCsv } from "../../src/clinical/report/html";
 import {
+  parseQrImage,
+  renderSignatureKeyPage,
+} from "../../src/clinical/signatureKey";
+import {
   SignatureReportLabels,
   renderSignatureReport,
   signatureReportTitle,
@@ -352,5 +356,63 @@ describe("signing", () => {
     ]);
     expect(parseStringList("Approve")).to.deep.equal([]);
     expect(parseStringList(undefined)).to.deep.equal([]);
+  });
+});
+
+describe("signature key", () => {
+  // The start of a PNG, as base64.
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ";
+  const labels = {
+    title: "Enable Signatures",
+    description: "Scan <this>",
+    steps: ["Open the app", "Scan"],
+    alt: "QR code",
+    note: "Close the tab",
+  };
+
+  it("reads the base64 PNG the web app shows", () => {
+    expect(parseQrImage(png)).to.equal(png);
+    expect(parseQrImage(` ${png.slice(0, 20)}\n${png.slice(20)} `)).to.equal(
+      png,
+    );
+    expect(parseQrImage(JSON.stringify(png))).to.equal(png);
+    expect(parseQrImage(`data:image/png;base64,${png}`)).to.equal(png);
+    expect(parseQrImage({ image: png })).to.equal(png);
+    expect(parseQrImage(JSON.stringify({ qrCode: png }))).to.equal(png);
+  });
+
+  it("refuses anything else, without repeating it", () => {
+    for (const data of [
+      "<html>secret</html>",
+      '{"message":"secret"}',
+      "c2VjcmV0",
+      "",
+      undefined,
+      { other: png },
+    ]) {
+      let message = "";
+      try {
+        parseQrImage(data);
+      } catch (error) {
+        message = error instanceof Error ? error.message : "";
+      }
+      expect(message).to.equal("The server did not return a QR code.");
+    }
+  });
+
+  it("shows the QR code on a page without scripts", () => {
+    const html = renderSignatureKeyPage(png, labels);
+    expect(html).to.include(`src="data:image/png;base64,${png}"`);
+    expect(html).to.include(
+      `content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"`,
+    );
+    expect(html).to.not.include("<script");
+    expect(html).to.include("Scan &lt;this&gt;");
+    expect(html).to.include("<li>Open the app</li><li>Scan</li>");
+    expect(html).to.include('alt="QR code"');
+  });
+
+  it("refuses an image that would break out of the page", () => {
+    expect(() => renderSignatureKeyPage(`${png}"><script>`, labels)).to.throw();
   });
 });

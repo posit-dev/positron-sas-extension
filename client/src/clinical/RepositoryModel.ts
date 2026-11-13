@@ -30,12 +30,14 @@ import {
   REPOSITORY_ITEM_MEDIA_TYPE,
   REPOSITORY_PATHS,
   ROOT_ITEM_ID,
+  SIGNATURE_KEYS,
   SIGNATURE_REASONS,
   SIGNATURE_ROLES,
   TYPES,
   WORKSPACE_ITEMS_BATCH,
 } from "./const";
 import { buildSearchUrl } from "./searchQuery";
+import { parseQrImage } from "./signatureKey";
 import { SIGN_ACTION, SignRequest, parseStringList } from "./signing";
 import type {
   ActionStatus,
@@ -674,6 +676,37 @@ export class RepositoryModel {
   /** The signatory roles the administrator configured. */
   async getSignatureRoles(): Promise<string[]> {
     return this.getStringList(SIGNATURE_ROLES);
+  }
+
+  /**
+   * Make a new signature key for the signed-in user and return its QR code,
+   * a base64 PNG, for an authenticator app to scan. This replaces the key
+   * of an app linked before. The image holds the user's one-time password
+   * secret: never log it or keep it.
+   */
+  async generateSignatureKey(): Promise<string> {
+    const connection = await this.getConnection();
+    try {
+      const { data } = await connection.post<unknown>(
+        SIGNATURE_KEYS,
+        undefined,
+        {
+          responseType: "text",
+          headers: { Accept: "text/plain, application/json, */*" },
+        },
+      );
+      return parseQrImage(data);
+    } catch (error) {
+      // As text, an error body isn't parsed; parse it for errorMessage.
+      if (isAxiosError(error) && typeof error.response?.data === "string") {
+        try {
+          error.response.data = JSON.parse(error.response.data);
+        } catch {
+          error.response.data = undefined;
+        }
+      }
+      throw error;
+    }
   }
 
   private async getStringList(url: string): Promise<string[]> {

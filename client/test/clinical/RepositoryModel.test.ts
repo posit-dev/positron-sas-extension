@@ -329,6 +329,16 @@ describe("Clinical RepositoryModel", () => {
     expect(connection.post.firstCall.args[1]).to.deep.equal([file.path]);
   });
 
+  it("generates a signature key and returns its QR code", async () => {
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ";
+    connection.post.resolves({ data: png });
+    expect(await model.generateSignatureKey()).to.equal(png);
+    const [url, body, config] = connection.post.firstCall.args;
+    expect(url).to.equal("/clinicalRepository/repository/signatureKeys");
+    expect(body).to.equal(undefined);
+    expect(config?.responseType).to.equal("text");
+  });
+
   it("deletes softly, to the recycle bin", async () => {
     connection.delete.resolves({});
     await model.delete(file);
