@@ -331,6 +331,7 @@ describe("buildContextValue", () => {
         "SAS.clinical.upload",
         "SAS.clinical.uploadAndExpand",
         "SAS.clinical.signFiles",
+        "SAS.clinical.showAuditHistory",
       ]);
     });
 
@@ -384,6 +385,7 @@ describe("buildContextValue", () => {
           "SAS.clinical.selectForCompare",
           "SAS.clinical.copyToWorkspaceSubmenu",
           "SAS.clinical.signFiles",
+          "SAS.clinical.showAuditHistory",
         ]);
         expect(
           shown(buildContextValue(folder, undefined, "me", permission)),
@@ -393,6 +395,7 @@ describe("buildContextValue", () => {
           "SAS.clinical.download",
           "SAS.clinical.copyToWorkspaceSubmenu",
           "SAS.clinical.signFiles",
+          "SAS.clinical.showAuditHistory",
         ]);
       }
     });
@@ -496,6 +499,22 @@ describe("buildContextValue", () => {
       expect(
         shown(buildContextValue(file(), undefined, "me", "write")),
       ).to.not.include("SAS.clinical.downloadVersion");
+    });
+
+    it("offers the audit history of any single item", () => {
+      const audit = (contextValue: string, opts: Shown = {}) =>
+        shown(contextValue, opts).includes("SAS.clinical.showAuditHistory");
+      expect(
+        audit(buildContextValue(file(), undefined, "me", "read")),
+      ).to.equal(true);
+      expect(audit(buildContextValue(org, topType, "me", "read"))).to.equal(
+        true,
+      );
+      expect(
+        audit(buildContextValue(file(), undefined, "me", "read"), {
+          multi: true,
+        }),
+      ).to.equal(false);
     });
 
     it("offers Sign Files for files not checked out, and folders", () => {

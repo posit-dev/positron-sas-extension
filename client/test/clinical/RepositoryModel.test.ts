@@ -13,6 +13,7 @@ import * as sinon from "sinon";
 import { StubbedInstance, stubInterface } from "ts-sinon";
 
 import { RepositoryModel } from "../../src/clinical/RepositoryModel";
+import { buildAuditEntriesUrl } from "../../src/clinical/auditQuery";
 import type { RepositoryItem } from "../../src/clinical/types";
 import { profileConfig } from "../../src/commands/profile";
 import { ConnectionType } from "../../src/components/profile";
@@ -453,6 +454,75 @@ describe("Clinical RepositoryModel", () => {
         /^\/clinicalRepository\/repository\/items\/batch\?action=SIGN&clientId=/,
       );
       expect(body).to.deep.equal(request);
+    });
+
+    it("reads audit entries newest first, up to the maximum", async () => {
+      const entry = (id: string) => ({ id, action: "checkedIn" });
+      connection.get
+        .withArgs(
+          buildAuditEntriesUrl(
+            "/clinicalRepository/audit/entries",
+            "eq(sourceId,'f1')",
+            3,
+          ),
+        )
+        .resolves({
+          data: {
+            count: 5,
+            items: [entry("a"), entry("b")],
+            links: [{ rel: "next", href: "/next" }],
+          },
+        });
+      connection.get.withArgs("/next").resolves({
+        data: { count: 5, items: [entry("c"), entry("d")] },
+      });
+      const { entries, total } = await model.getAuditEntries(
+        "eq(sourceId,'f1')",
+        3,
+      );
+      expect(entries.map((e) => e.id)).to.deep.equal(["a", "b", "c"]);
+      expect(total).to.equal(5);
+      const url = String(connection.get.firstCall.args[0]);
+      expect(url).to.include("sortBy=timestamp%3Adescending");
+      expect(new URLSearchParams(url.split("?")[1]).get("filter")).to.equal(
+        "eq(sourceId,'f1')",
+      );
+    });
+
+    it("adds the details of the first entries and keeps the rest", async () => {
+      connection.get.withArgs("/clinicalRepository/audit/entries/a").resolves({
+        data: { id: "a", auditEntryDetails: [{ newValue: "x" }] },
+      });
+      connection.get
+        .withArgs("/clinicalRepository/audit/entries/b")
+        .rejects(new Error("gone"));
+      const entries = await model.loadAuditDetails(
+        [{ id: "a" }, { id: "b" }, { id: "c" }],
+        2,
+      );
+      expect(entries[0].auditEntryDetails).to.deep.equal([{ newValue: "x" }]);
+      expect(entries[1]).to.deep.equal({ id: "b" });
+      expect(entries[2]).to.deep.equal({ id: "c" });
+      expect(
+        connection.get.calledWith("/clinicalRepository/audit/entries/c"),
+      ).to.equal(false);
+    });
+
+    it("lists each audit action once", async () => {
+      connection.get
+        .withArgs("/clinicalRepository/audit/actions?start=0&limit=500")
+        .resolves({
+          data: {
+            items: [
+              { action: "created", displayName: "Created", typeId: "file" },
+              { action: "created", displayName: "Created", typeId: "folder" },
+              { action: "deleted", displayName: "Deleted", typeId: "file" },
+            ],
+          },
+        });
+      expect(
+        (await model.getAuditActions()).map((a) => a.action),
+      ).to.deep.equal(["created", "deleted"]);
     });
 
     it("reads the signature reasons and roles", async () => {

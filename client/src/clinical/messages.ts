@@ -6,6 +6,7 @@ import { l10n } from "vscode";
 
 import { isAxiosError } from "axios";
 
+import type { AuditReportLabels } from "./auditReport";
 import type { PropertyLabels } from "./properties";
 import type { SignatureReportLabels } from "./signatureReport";
 import type { SigningStatus } from "./types";
@@ -233,6 +234,93 @@ export const Messages = {
   SignWarning: l10n.t("Some files were not signed. {message}"),
   SignError: l10n.t("The files were not signed. {message}"),
   SignRetry: l10n.t("Retry with a New PIN"),
+  AuditStep: l10n.t("Search Audit History ({step}/{total})"),
+  AuditSearching: l10n.t("Searching the audit history..."),
+  AuditError: l10n.t("Unable to read the audit history. {message}"),
+  AuditNamePrompt: l10n.t(
+    "Name of the item. * matches any characters and ? one character; case is ignored. Leave empty for any name.",
+  ),
+  AuditLocationPlaceholder: l10n.t(
+    "Where the items are: a folder includes its subfolders",
+  ),
+  AuditAnywhere: l10n.t("Anywhere in the repository"),
+  AuditKeep: l10n.t("as in the last search"),
+  AuditChooseFolder: l10n.t("Choose a Folder..."),
+  AuditEnterPath: l10n.t("Enter a Path..."),
+  AuditPathPrompt: l10n.t(
+    "Repository path of the folder, such as /Acme/Study1",
+  ),
+  AuditPathInvalid: l10n.t("Enter a path that starts with /."),
+  AuditActionsPlaceholder: l10n.t(
+    "Select the actions to find, or none for any action",
+  ),
+  AuditModesPlaceholder: l10n.t(
+    "Select the modes to find, or none for any mode",
+  ),
+  AuditPeriodPlaceholder: l10n.t("When the actions took place"),
+  AuditLastDay: l10n.t("Last 24 hours"),
+  AuditLast7Days: l10n.t("Last 7 days"),
+  AuditLast30Days: l10n.t("Last 30 days"),
+  AuditLast90Days: l10n.t("Last 90 days"),
+  AuditAnyTime: l10n.t("Any time"),
+  AuditCustomRange: l10n.t("Custom Range..."),
+  AuditFromPrompt: l10n.t("First day (YYYY-MM-DD)"),
+  AuditToPrompt: l10n.t("Last day (YYYY-MM-DD), or empty for today"),
+  AuditDateInvalid: l10n.t("Enter a date as YYYY-MM-DD."),
+  AuditNothingToExport: l10n.t(
+    "Show an audit history first: Show Audit History on an item, or Search Audit History.",
+  ),
+  AuditExportTitle: l10n.t("Export Audit History"),
+  AuditExported: l10n.t('Saved the audit history to "{path}".'),
+  AuditExportError: l10n.t("Unable to save the audit history. {message}"),
+};
+
+/** Labels of the audit history report, its CSV and its search. */
+export const AuditLabelText: AuditReportLabels & {
+  item: string;
+  any: string;
+  from: string;
+  to: string;
+} = {
+  title: l10n.t("Audit History"),
+  query: l10n.t("Search"),
+  entries: l10n.t("Audit records"),
+  date: l10n.t("Date"),
+  user: l10n.t("Acted on by"),
+  action: l10n.t("Action"),
+  object: l10n.t("Object"),
+  name: l10n.t("Name"),
+  location: l10n.t("Location"),
+  mode: l10n.t("Mode"),
+  details: l10n.t("Changes"),
+  attribute: l10n.t("Attribute"),
+  oldValue: l10n.t("Old value"),
+  newValue: l10n.t("New value"),
+  none: l10n.t("No audit records match."),
+  generated: l10n.t("Generated"),
+  count: l10n.t("{shown} of {total} records, newest first."),
+  truncated: l10n.t(
+    "Only the newest records are listed. Narrow the search to see older ones.",
+  ),
+  detailsLimited: l10n.t("Changes are shown for the first {count} records."),
+  scope: l10n.t(
+    "SAS Clinical Acceleration lists administrators the actions of all users, and other users only their own actions.",
+  ),
+  modes: {
+    USER: l10n.t("User"),
+    ADMIN: l10n.t("Administrative"),
+    SYSTEM: l10n.t("System"),
+  },
+  objectTypes: {
+    FILE: l10n.t("File"),
+    JOB_FILE: l10n.t("Job file"),
+    FOLDER: l10n.t("Folder"),
+    CONTEXT: l10n.t("Context"),
+  },
+  item: l10n.t("Item"),
+  any: l10n.t("Any"),
+  from: l10n.t("From"),
+  to: l10n.t("To"),
 };
 
 /** Whether a file is signed, as the Properties view and reports say it. */

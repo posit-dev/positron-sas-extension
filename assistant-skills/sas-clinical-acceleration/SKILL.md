@@ -12,7 +12,8 @@ description: >
   "version history", "enable versioning", "copy to workspace", "signed",
   "signature history", "who approved", "open this
   sas7bdat from the repository", "clinical job", "run the job", "manifest",
-  "audit trail", "which inputs did the run use".
+  "audit trail", "audit history", "who changed", "which inputs did the run
+  use".
 ---
 
 # SAS Clinical Acceleration in Positron
@@ -95,6 +96,20 @@ for or handle their authenticator PIN, and don't suggest signing unless asked.
 
 An upload is versioned only if the user types a version in the prompt. An empty
 version uploads without versioning.
+
+## Audit history
+
+- **Show Audit History** (right-click any item in the Clinical Repository view)
+  opens the audit records of that item, or of a folder and everything in it,
+  as a report in the Viewer: date, who acted, action, item, location, mode,
+  and what changed. Read it there to answer "who checked this in?" or "what
+  happened to this folder last week?".
+- **Search Audit History...** (Clinical Repository view title bar menu, or
+  the Command Palette) asks for a name (wildcards `*` and `?`), a location,
+  actions, modes and a period. **Export Audit History...** saves the last
+  report as HTML or CSV.
+- Administrators see every user's actions; other users only their own. A
+  report lists at most 1,000 records, newest first.
 
 ## Running and opening CA files
 

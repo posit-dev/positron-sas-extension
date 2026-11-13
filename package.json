@@ -1114,6 +1114,21 @@
         "category": "SAS Clinical Acceleration"
       },
       {
+        "command": "SAS.clinical.showAuditHistory",
+        "title": "%clinical.commands.showAuditHistory%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.searchAuditHistory",
+        "title": "%clinical.commands.searchAuditHistory%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.clinical.exportAuditHistory",
+        "title": "%clinical.commands.exportAuditHistory%",
+        "category": "SAS Clinical Acceleration"
+      },
+      {
         "command": "SAS.clinical.signFiles",
         "title": "%clinical.commands.signFiles%",
         "category": "SAS Clinical Acceleration"
@@ -1558,6 +1573,16 @@
           "group": "navigation@1"
         },
         {
+          "command": "SAS.clinical.searchAuditHistory",
+          "when": "view == clinicalrepositorydataprovider",
+          "group": "audit@0"
+        },
+        {
+          "command": "SAS.clinical.exportAuditHistory",
+          "when": "view == clinicalrepositorydataprovider",
+          "group": "audit@1"
+        },
+        {
           "command": "SAS.clinical.refreshDetails",
           "when": "view == clinicalpropertyprovider || view == clinicalversionhistoryprovider",
           "group": "navigation@0"
@@ -1815,6 +1840,11 @@
           "command": "SAS.clinical.compareSelected",
           "when": "view == clinicalrepositorydataprovider && viewItem =~ /;file;/ && SAS.clinical.twoItemsSelected",
           "group": "7_compare@2"
+        },
+        {
+          "command": "SAS.clinical.showAuditHistory",
+          "when": "view == clinicalrepositorydataprovider && !listMultiSelection",
+          "group": "9_audit@0"
         },
         {
           "command": "SAS.clinical.signFiles",
@@ -2422,6 +2452,18 @@
         {
           "when": "false",
           "command": "SAS.clinical.signFiles"
+        },
+        {
+          "when": "false",
+          "command": "SAS.clinical.showAuditHistory"
+        },
+        {
+          "when": "SAS.clinicalAvailable",
+          "command": "SAS.clinical.searchAuditHistory"
+        },
+        {
+          "when": "SAS.clinicalAvailable",
+          "command": "SAS.clinical.exportAuditHistory"
         },
         {
           "when": "false",

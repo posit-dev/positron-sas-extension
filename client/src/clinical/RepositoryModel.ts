@@ -15,8 +15,12 @@ import { profileConfig } from "../commands/profile";
 import { getViyaSession } from "../components/AuthProvider";
 import { ConnectionType } from "../components/profile";
 import { getActionToken, pollActionStatus } from "./actionStatus";
+import { buildAuditEntriesUrl } from "./auditQuery";
 import {
+  AUDIT_ACTIONS,
+  AUDIT_ENTRIES,
   AUTHORIZATIONS,
+  CHILDREN_PAGE_LIMIT,
   PERMISSION_CONCURRENCY,
   REPOSITORY_FILES_CONTENT,
   REPOSITORY_FILE_MEDIA_TYPE,
@@ -33,6 +37,8 @@ import {
 import { SIGN_ACTION, SignRequest, parseStringList } from "./signing";
 import type {
   ActionStatus,
+  AuditAction,
+  AuditEntry,
   CheckoutAction,
   ItemPrivileges,
   ObjectType,
@@ -50,6 +56,7 @@ import {
   buildVersionsUrl,
   collectPages,
   createLimiter,
+  getLink,
   parsePermissionNames,
   parsePrivileges,
   parseWritePermission,
@@ -540,6 +547,87 @@ export class RepositoryModel {
       );
       return undefined;
     }
+  }
+
+  /**
+   * Audit entries matching `filter`, newest first, at most `max`. `total` is
+   * the number the server reports, which can be more.
+   */
+  async getAuditEntries(
+    filter: string | undefined,
+    max: number,
+  ): Promise<{ entries: AuditEntry[]; total?: number }> {
+    const connection = await this.getConnection();
+    const entries: AuditEntry[] = [];
+    const fetched = new Set<string>();
+    let total: number | undefined;
+    let url: string | undefined = buildAuditEntriesUrl(
+      AUDIT_ENTRIES,
+      filter,
+      Math.min(max, CHILDREN_PAGE_LIMIT),
+    );
+    while (url && entries.length < max && !fetched.has(url)) {
+      fetched.add(url);
+      const { data }: { data: ResourceCollection<AuditEntry> } =
+        await connection.get<ResourceCollection<AuditEntry>>(url);
+      // The audit collection's count is the total, unlike children's.
+      total ??= data.count;
+      entries.push(...(data.items ?? []));
+      url = getLink(data.links, "next")?.href;
+    }
+    return { entries: entries.slice(0, max), total };
+  }
+
+  /** One audit entry with what changed (`auditEntryDetails`). */
+  async getAuditEntry(id: string): Promise<AuditEntry> {
+    const connection = await this.getConnection();
+    const { data } = await connection.get<AuditEntry>(
+      `${AUDIT_ENTRIES}/${encodeURIComponent(id)}`,
+    );
+    return data;
+  }
+
+  /** Add the details of the first `max` entries, a few requests at a time. */
+  async loadAuditDetails(
+    entries: AuditEntry[],
+    max: number,
+  ): Promise<AuditEntry[]> {
+    const limit = createLimiter(PERMISSION_CONCURRENCY);
+    return Promise.all(
+      entries.map((entry, index) =>
+        index < max
+          ? limit(() => this.getAuditEntry(entry.id)).then(
+              (full) => ({
+                ...entry,
+                auditEntryDetails: full.auditEntryDetails ?? [],
+              }),
+              (error) => {
+                this.log(
+                  `Audit entry ${entry.id} details are unavailable (${isAxiosError(error) ? `HTTP ${error.response?.status ?? "?"}` : String(error)}).`,
+                );
+                return entry;
+              },
+            )
+          : entry,
+      ),
+    );
+  }
+
+  /** The audited actions, one per action id. */
+  async getAuditActions(): Promise<AuditAction[]> {
+    const connection = await this.getConnection();
+    const actions = await collectPages<AuditAction>(
+      async (url) =>
+        (await connection.get<ResourceCollection<AuditAction>>(url)).data,
+      `${AUDIT_ACTIONS}?start=0&limit=${CHILDREN_PAGE_LIMIT}`,
+    );
+    const unique = new Map<string, AuditAction>();
+    for (const action of actions) {
+      if (action.action && !unique.has(action.action)) {
+        unique.set(action.action, action);
+      }
+    }
+    return [...unique.values()];
   }
 
   /** The signature reasons the administrator configured. */
