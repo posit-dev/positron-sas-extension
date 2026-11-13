@@ -27,6 +27,7 @@ import { PropertyProvider } from "./PropertyProvider";
 import { RepositoryDataProvider, getItemUri } from "./RepositoryDataProvider";
 import { RepositoryDecorator } from "./RepositoryDecorator";
 import { RepositoryModel } from "./RepositoryModel";
+import { SearchDataProvider } from "./SearchDataProvider";
 import { SignFiles } from "./SignFiles";
 import { SignatureHistory, SignatureTarget } from "./SignatureHistory";
 import {
@@ -112,6 +113,8 @@ export class ClinicalRepository {
       context.extensionUri,
       log,
     );
+    const picker = new ItemPicker(model, workspaceModel);
+    const search = new SearchDataProvider(model, provider, picker, log);
     const repository = new ClinicalRepository(
       provider,
       model,
@@ -119,12 +122,14 @@ export class ClinicalRepository {
       properties,
       versions,
       workspaceProvider,
+      search,
     );
-    const audit = new AuditHistory(
-      model,
-      output,
-      new ItemPicker(model, workspaceModel),
-    );
+    const audit = new AuditHistory(model, output, picker);
+    // Commands from the Search Results view act on its selection.
+    const selectionOf = (item: RepositoryItem | undefined) =>
+      search.isSelected(item)
+        ? search.selection(item)
+        : provider.selection(item);
     const signer = new SignFiles(model, output, signatures, () =>
       repository.refreshAll(),
     );
@@ -168,6 +173,7 @@ export class ClinicalRepository {
       versions,
       signatures,
       audit,
+      search,
       workspaceProvider,
       availability,
       jobs,
@@ -188,6 +194,9 @@ export class ClinicalRepository {
       ),
       window.registerFileDecorationProvider(decorator),
       provider.treeView.onDidChangeSelection((event) =>
+        repository.onSelectionChanged(event.selection),
+      ),
+      search.treeView.onDidChangeSelection((event) =>
         repository.onSelectionChanged(event.selection),
       ),
       versions.treeView.onDidChangeSelection((event) =>
@@ -244,7 +253,7 @@ export class ClinicalRepository {
       ),
       commands.registerCommand(
         "SAS.clinical.download",
-        (item: RepositoryItem) => repository.download(provider.selection(item)),
+        (item: RepositoryItem) => repository.download(selectionOf(item)),
       ),
       commands.registerCommand("SAS.clinical.upload", (item: RepositoryItem) =>
         repository.upload(item, false),
@@ -256,28 +265,20 @@ export class ClinicalRepository {
       commands.registerCommand(
         "SAS.clinical.checkoutWithContent",
         (item: RepositoryItem) =>
-          repository.checkout(
-            "REPOSITORY_CHECK_OUT",
-            provider.selection(item),
-            true,
-          ),
+          repository.checkout("REPOSITORY_CHECK_OUT", selectionOf(item), true),
       ),
       commands.registerCommand(
         "SAS.clinical.checkoutWithoutContent",
         (item: RepositoryItem) =>
-          repository.checkout(
-            "REPOSITORY_CHECK_OUT",
-            provider.selection(item),
-            false,
-          ),
+          repository.checkout("REPOSITORY_CHECK_OUT", selectionOf(item), false),
       ),
       commands.registerCommand(
         "SAS.clinical.undoCheckout",
         (item: RepositoryItem) =>
-          repository.checkout("UNDO_CHECKOUT", provider.selection(item), false),
+          repository.checkout("UNDO_CHECKOUT", selectionOf(item), false),
       ),
       commands.registerCommand("SAS.clinical.delete", (item: RepositoryItem) =>
-        repository.delete(provider.selection(item)),
+        repository.delete(selectionOf(item)),
       ),
       commands.registerCommand(
         "SAS.clinical.enableVersioning",
@@ -296,7 +297,27 @@ export class ClinicalRepository {
       ),
       commands.registerCommand(
         "SAS.clinical.signFiles",
-        (item: RepositoryItem) => signer.sign(provider.selection(item)),
+        (item: RepositoryItem) => signer.sign(selectionOf(item)),
+      ),
+      commands.registerCommand("SAS.clinical.search", (item?: RepositoryItem) =>
+        search.newSearch(item),
+      ),
+      commands.registerCommand(
+        "SAS.clinical.searchInFolder",
+        (item: RepositoryItem) => search.newSearch(item),
+      ),
+      commands.registerCommand("SAS.clinical.editSearch", () =>
+        search.editSearch(),
+      ),
+      commands.registerCommand("SAS.clinical.refreshSearch", () =>
+        search.refresh(),
+      ),
+      commands.registerCommand("SAS.clinical.clearSearch", () =>
+        search.clear(),
+      ),
+      commands.registerCommand(
+        "SAS.clinical.revealInRepository",
+        (item: RepositoryItem) => provider.reveal(item),
       ),
       commands.registerCommand(
         "SAS.clinical.showAuditHistory",
@@ -332,19 +353,18 @@ export class ClinicalRepository {
               ? versions.selection(source)
               : isWorkspaceItem(source)
                 ? workspaceProvider.selection(source)
-                : provider.selection(source),
+                : selectionOf(source),
           ),
       ),
       // Copy repository items and versions into the workspace.
       commands.registerCommand(
         "SAS.clinical.copyLatestVersion",
-        (item: RepositoryItem) =>
-          actions.copyLatestVersion(provider.selection(item)),
+        (item: RepositoryItem) => actions.copyLatestVersion(selectionOf(item)),
       ),
       commands.registerCommand(
         "SAS.clinical.copyFolderStructure",
         (item: RepositoryItem) =>
-          actions.copyFolderStructure(provider.selection(item)),
+          actions.copyFolderStructure(selectionOf(item)),
       ),
       commands.registerCommand(
         "SAS.clinical.copySpecificVersion",
@@ -425,12 +445,14 @@ export class ClinicalRepository {
     private readonly properties: PropertyProvider,
     private readonly versions: VersionHistoryProvider,
     private readonly workspaceProvider: WorkspaceDataProvider,
+    private readonly search: SearchDataProvider,
   ) {}
 
-  /** Refresh the tree and the views that describe the selected item. */
+  /** Refresh the trees and the views that describe the selected item. */
   refreshAll(): void {
     this.provider.refresh();
     this.workspaceProvider.refresh();
+    void this.search.refresh();
     void this.showDetails(this.current);
   }
 

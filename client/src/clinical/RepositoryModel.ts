@@ -22,6 +22,7 @@ import {
   AUTHORIZATIONS,
   CHILDREN_PAGE_LIMIT,
   PERMISSION_CONCURRENCY,
+  REPOSITORY_FILES,
   REPOSITORY_FILES_CONTENT,
   REPOSITORY_FILE_MEDIA_TYPE,
   REPOSITORY_ITEMS,
@@ -34,6 +35,7 @@ import {
   TYPES,
   WORKSPACE_ITEMS_BATCH,
 } from "./const";
+import { buildSearchUrl } from "./searchQuery";
 import { SIGN_ACTION, SignRequest, parseStringList } from "./signing";
 import type {
   ActionStatus,
@@ -287,6 +289,40 @@ export class RepositoryModel {
       this.etags.set(id, String(response.headers.etag));
     }
     return response.data;
+  }
+
+  /** The item at a repository path. */
+  async getItemByPath(path: string): Promise<RepositoryItem> {
+    const connection = await this.getConnection();
+    const { data } = await connection.get<RepositoryItem>(
+      `${REPOSITORY_PATHS}?path=${encodeURIComponent(path)}`,
+    );
+    return data;
+  }
+
+  /**
+   * Items matching `filter` (and, with `text`, files whose content matches
+   * it): one page of at most `limit`. `total` is what the server counted;
+   * `limitReached` says that more may match (content search).
+   */
+  async searchItems(
+    filter: string | undefined,
+    text: string | undefined,
+    limit: number,
+  ): Promise<{
+    items: RepositoryItem[];
+    total?: number;
+    limitReached?: boolean;
+  }> {
+    const connection = await this.getConnection();
+    const { data } = await connection.get<
+      ResourceCollection<RepositoryItem> & { limitReached?: boolean }
+    >(buildSearchUrl(REPOSITORY_ITEMS, REPOSITORY_FILES, filter, text, limit));
+    return {
+      items: data.items ?? [],
+      total: data.count,
+      limitReached: data.limitReached,
+    };
   }
 
   /** Content of an item. The service sends a zip for containers. */

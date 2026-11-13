@@ -24,6 +24,9 @@ export const WORKSPACE_SCHEME = "sasClinicalWorkspace";
 export const SERVICE_ROOT = "/clinicalRepository/";
 export const REPOSITORY_PATHS = "/clinicalRepository/repository/paths";
 export const REPOSITORY_ITEMS = "/clinicalRepository/repository/items";
+// Content search: repository/files with `text` (the web app's Search page).
+export const REPOSITORY_FILES = "/clinicalRepository/repository/files";
+export const SEARCH_VIEW_ID = "clinicalsearchprovider";
 // The configured signature reasons and roles (string arrays). Not in the
 // public API documentation; the web app reads them from here.
 export const SIGNATURE_REASONS =

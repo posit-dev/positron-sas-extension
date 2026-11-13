@@ -10,7 +10,8 @@ description: >
   clinical jobs (.cjob) and reviewing their runs and manifests (.cmnf).
   Triggers: "check out", "check in", "clinical repository", "my workspace",
   "version history", "enable versioning", "copy to workspace", "signed",
-  "signature history", "who approved", "open this
+  "signature history", "who approved", "find a file", "search the
+  repository", "open this
   sas7bdat from the repository", "clinical job", "run the job", "manifest",
   "audit trail", "audit history", "who changed", "which inputs did the run
   use".
@@ -96,6 +97,18 @@ for or handle their authenticator PIN, and don't suggest signing unless asked.
 
 An upload is versioned only if the user types a version in the prompt. An empty
 version uploads without versioning.
+
+## Searching the repository
+
+- **Search Repository** (magnifying glass in the Clinical Repository view
+  title bar, **Search in This Folder...** on folders) asks for a name with `*`
+  and `?` (case is ignored), a location (subfolders included), text in the
+  files (`AND`, "phrases"), and optional refinements: only files or folders,
+  owned by me, checked out by me, signed, modified in the last 7 or 30 days.
+- Results go to the **Clinical Repository Search** view, at most 500. They
+  have the same context menu as repository items; **Reveal in Clinical
+  Repository** shows one in the tree. Use it to answer "where is adsl?" or
+  "which files mention penicillin?".
 
 ## Audit history
 
