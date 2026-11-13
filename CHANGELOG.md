@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.6.3 - 2026-11-13
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+This release extends the SAS Clinical Acceleration support with electronic signatures: signature history ([#130](https://github.com/posit-dev/positron-sas-extension/pull/130)), signing files ([#131](https://github.com/posit-dev/positron-sas-extension/pull/131)) and linking an authenticator app for signing ([#136](https://github.com/posit-dev/positron-sas-extension/pull/136)). It also adds the audit history ([#132](https://github.com/posit-dev/positron-sas-extension/pull/132)) and searching the repository ([#133](https://github.com/posit-dev/positron-sas-extension/pull/133)). Signing files and linking an authenticator app haven't been tried against a server yet.
 
 ### Features
 
