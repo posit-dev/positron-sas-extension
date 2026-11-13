@@ -29,6 +29,10 @@ export const REPOSITORY_ITEMS = "/clinicalRepository/repository/items";
 export const SIGNATURE_REASONS =
   "/clinicalRepository/repository/signatureReasons";
 export const SIGNATURE_ROLES = "/clinicalRepository/repository/signatureRoles";
+// The audit history. The API documentation says administrators only; other
+// users get their own actions (checked on a server).
+export const AUDIT_ENTRIES = "/clinicalRepository/audit/entries";
+export const AUDIT_ACTIONS = "/clinicalRepository/audit/actions";
 export const REPOSITORY_ITEMS_BATCH =
   "/clinicalRepository/repository/items/batch";
 export const REPOSITORY_FILES_CONTENT =

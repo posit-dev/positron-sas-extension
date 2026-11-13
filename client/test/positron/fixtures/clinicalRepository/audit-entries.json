@@ -1,0 +1,51 @@
+{
+  "links": [
+    {
+      "method": "GET",
+      "rel": "next",
+      "href": "/clinicalRepository/audit/entries?start=2&limit=2&sortBy=timestamp:descending",
+      "uri": "/clinicalRepository/audit/entries?start=2&limit=2&sortBy=timestamp:descending",
+      "type": "application/vnd.sas.collection"
+    }
+  ],
+  "name": "entries",
+  "accept": "application/vnd.sas.clinical.audit.summary.entry+json",
+  "start": 0,
+  "count": 3,
+  "items": [
+    {
+      "version": 1,
+      "id": "e3",
+      "typeId": "auditEntry",
+      "timestamp": "2026-11-12T08:05:58.724Z",
+      "userId": "user1",
+      "action": "checkedIn",
+      "sourcePrimaryType": "FILE",
+      "sourceTypeId": "sasprogram",
+      "sourceId": "f1",
+      "sourceName": "adsl.sas",
+      "sourceLocation": "/Acme/Study1/programs",
+      "mode": "USER",
+      "userDisplayName": "User One (user1)",
+      "actionDisplayName": "Checked in"
+    },
+    {
+      "version": 1,
+      "id": "e2",
+      "typeId": "auditEntry",
+      "timestamp": "2026-11-11T17:00:00.000Z",
+      "userId": "user1",
+      "action": "aclUpdated",
+      "sourcePrimaryType": "FOLDER",
+      "sourceTypeId": "folder",
+      "sourceId": "d1",
+      "sourceName": "programs",
+      "sourceLocation": "/Acme/Study1",
+      "mode": "ADMIN",
+      "userDisplayName": "User One (user1)",
+      "actionDisplayName": "Permissions changed"
+    }
+  ],
+  "limit": 2,
+  "version": 2
+}

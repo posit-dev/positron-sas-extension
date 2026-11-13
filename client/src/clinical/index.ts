@@ -22,6 +22,7 @@ import {
 
 import * as os from "os";
 
+import { AuditHistory } from "./AuditHistory";
 import { PropertyProvider } from "./PropertyProvider";
 import { RepositoryDataProvider, getItemUri } from "./RepositoryDataProvider";
 import { RepositoryDecorator } from "./RepositoryDecorator";
@@ -53,6 +54,7 @@ import {
 } from "./const";
 import { closeEditors } from "./editors";
 import { registerClinicalJobs } from "./jobs";
+import { ItemPicker } from "./jobs/ItemPicker";
 import { Messages, errorMessage, toInputValidator } from "./messages";
 import { CLINICAL_JOBS_PROBE, ClinicalAvailability } from "./probe";
 import type {
@@ -118,6 +120,11 @@ export class ClinicalRepository {
       versions,
       workspaceProvider,
     );
+    const audit = new AuditHistory(
+      model,
+      output,
+      new ItemPicker(model, workspaceModel),
+    );
     const signer = new SignFiles(model, output, signatures, () =>
       repository.refreshAll(),
     );
@@ -160,6 +167,7 @@ export class ClinicalRepository {
       properties,
       versions,
       signatures,
+      audit,
       workspaceProvider,
       availability,
       jobs,
@@ -289,6 +297,16 @@ export class ClinicalRepository {
       commands.registerCommand(
         "SAS.clinical.signFiles",
         (item: RepositoryItem) => signer.sign(provider.selection(item)),
+      ),
+      commands.registerCommand(
+        "SAS.clinical.showAuditHistory",
+        (item: RepositoryItem) => audit.showItem(item),
+      ),
+      commands.registerCommand("SAS.clinical.searchAuditHistory", () =>
+        audit.search(),
+      ),
+      commands.registerCommand("SAS.clinical.exportAuditHistory", () =>
+        audit.exportLast(),
       ),
       commands.registerCommand(
         "SAS.clinical.showSignatureHistory",

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "e2",
+  "typeId": "auditEntry",
+  "timestamp": "2026-11-11T17:00:00.000Z",
+  "userId": "user1",
+  "action": "aclUpdated",
+  "sourcePrimaryType": "FOLDER",
+  "sourceTypeId": "folder",
+  "sourceId": "d1",
+  "sourceName": "programs",
+  "sourceLocation": "/Acme/Study1",
+  "mode": "ADMIN",
+  "userDisplayName": "User One (user1)",
+  "actionDisplayName": "Permissions changed",
+  "auditEntryDetails": [
+    {
+      "version": 1,
+      "auditEntryId": "e2",
+      "detailId": 1,
+      "attributeType": "permissions",
+      "attributeId": "user2",
+      "attributeName": "user2",
+      "newValue": "- r w d"
+    }
+  ]
+}
