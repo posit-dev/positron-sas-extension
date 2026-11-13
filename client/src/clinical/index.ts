@@ -26,6 +26,7 @@ import { PropertyProvider } from "./PropertyProvider";
 import { RepositoryDataProvider, getItemUri } from "./RepositoryDataProvider";
 import { RepositoryDecorator } from "./RepositoryDecorator";
 import { RepositoryModel } from "./RepositoryModel";
+import { SignatureHistory, SignatureTarget } from "./SignatureHistory";
 import {
   VersionFileSystemProvider,
   VersionHistoryProvider,
@@ -99,6 +100,7 @@ export class ClinicalRepository {
     );
     const properties = new PropertyProvider();
     const versions = new VersionHistoryProvider(model, log);
+    const signatures = new SignatureHistory(model, output);
     const workspaceModel = new WorkspaceModel(model);
     const workspaceProvider = new WorkspaceDataProvider(
       workspaceModel,
@@ -153,6 +155,7 @@ export class ClinicalRepository {
       provider,
       properties,
       versions,
+      signatures,
       workspaceProvider,
       availability,
       jobs,
@@ -278,6 +281,14 @@ export class ClinicalRepository {
         "SAS.clinical.downloadVersion",
         (row: VersionRow) =>
           repository.downloadVersion(versions.selection(row)),
+      ),
+      commands.registerCommand(
+        "SAS.clinical.showSignatureHistory",
+        (target: SignatureTarget) => signatures.show(target),
+      ),
+      commands.registerCommand(
+        "SAS.clinical.exportSignatureHistory",
+        (target: SignatureTarget) => signatures.export(target),
       ),
       commands.registerCommand(
         "SAS.clinical.selectForCompare",

@@ -9,7 +9,8 @@ description: >
   running SAS programs and opening SAS datasets that live in CA, or running
   clinical jobs (.cjob) and reviewing their runs and manifests (.cmnf).
   Triggers: "check out", "check in", "clinical repository", "my workspace",
-  "version history", "enable versioning", "copy to workspace", "open this
+  "version history", "enable versioning", "copy to workspace", "signed",
+  "signature history", "who approved", "open this
   sas7bdat from the repository", "clinical job", "run the job", "manifest",
   "audit trail", "which inputs did the run use".
 ---
@@ -65,8 +66,26 @@ Without Content**, which leaves the workspace file as it is, then check in.
   or versions, across the repository, the workspace and the history. With two
   items selected, **Compare Selected** compares them directly.
 - **Clinical Repository Properties** shows the details of the selected item,
-  including whether the workspace copy is in sync, **Your permissions** on it
-  (such as `READ` and `WRITE`) and **Your versioning privileges**.
+  including whether the workspace copy is in sync, **Signatures** (whether the
+  latest version, earlier versions or both are signed), **Your permissions** on
+  it (such as `READ` and `WRITE`) and **Your versioning privileges**.
+
+## Signatures
+
+Files can carry electronic signatures (who signed, when, role, reason). The
+extension only shows them; signing happens in SAS Clinical Acceleration
+Repository, with the signer's own authenticator PIN. Never sign for the user or
+ask for their PIN.
+
+- Files whose latest version is signed show **Signed** in the Clinical
+  Repository view; signed versions show **Signed** in Clinical Version History.
+- **Show Signature History** (right-click a signed file or version) opens the
+  signatures as a report in the Viewer: date, signer, role, reason and version.
+  Read it there to answer "who approved this file?" or "is this version
+  signed?". For a versioned file, the file's history lists the latest version's
+  signatures; an earlier version's are in that version's own history.
+- **Export Signature History...** saves the report as HTML or the signatures as
+  CSV.
 
 An upload is versioned only if the user types a version in the prompt. An empty
 version uploads without versioning.

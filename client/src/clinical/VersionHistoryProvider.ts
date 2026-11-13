@@ -146,9 +146,12 @@ export class VersionHistoryProvider
     return {
       id: `${row.fileId}--${row.fileVersion}`,
       label: `v${row.fileVersion}`,
-      description: row.comment,
+      // Like the Signed column of SAS's Version History.
+      description: row.signed
+        ? [Messages.Signed, row.comment].filter(Boolean).join(" · ")
+        : row.comment,
       iconPath: new ThemeIcon("git-commit"),
-      contextValue: ";version;",
+      contextValue: row.signed ? ";version;signed;" : ";version;",
       tooltip: versionTooltip(row),
       command: {
         command: "vscode.open",
@@ -199,6 +202,9 @@ function versionTooltip(version: VersionHistoryItem): MarkdownString {
   const size = version.fileSize ?? version.size;
   line(Messages.VersionSize, size === undefined ? "" : formatBytes(size));
   line(Messages.VersionCommentLabel, version.comment);
+  if (version.signed) {
+    tooltip.appendMarkdown(`**${Messages.Signed}**`);
+  }
   return tooltip;
 }
 

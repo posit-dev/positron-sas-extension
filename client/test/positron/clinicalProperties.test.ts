@@ -47,6 +47,13 @@ const labels: PropertyLabels = {
   noPermissions: "noPermissions",
   privilegeEnable: "privilegeEnable",
   privilegeManage: "privilegeManage",
+  signatures: "signatures",
+  signingStatuses: {
+    NONE: "signedNone",
+    CURRENT: "signedCurrent",
+    PREVIOUS: "signedPrevious",
+    BOTH: "signedBoth",
+  },
 };
 
 const file = (extra: Partial<RepositoryItem> = {}): RepositoryItem => ({
@@ -142,6 +149,18 @@ describe("buildPropertyRows", () => {
       checkedOutBy: "Bob",
     });
     expect(r).to.have.property("checkedOutDate");
+  });
+
+  it("says whether the file is signed, as the server reports it", () => {
+    const status = (signingStatus?: string) =>
+      rows(file({ signingStatus })).signingStatus;
+    expect(status("NONE")).to.equal("signedNone");
+    expect(status("CURRENT")).to.equal("signedCurrent");
+    expect(status("PREVIOUS")).to.equal("signedPrevious");
+    expect(status("BOTH")).to.equal("signedBoth");
+    expect(status("SOMETHING_NEW")).to.equal("SOMETHING_NEW");
+    // Older servers don't report it: no row rather than a wrong "not signed".
+    expect(rows(file())).to.not.have.property("signingStatus");
   });
 
   it("falls back to the type id and the path", () => {

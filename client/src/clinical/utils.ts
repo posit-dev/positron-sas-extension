@@ -22,6 +22,7 @@ import type {
   ObjectType,
   RepositoryItem,
   ResourceCollection,
+  Signature,
   SynchronizationInfo,
   SynchronizationItem,
   VersionHistoryItem,
@@ -36,6 +37,14 @@ export const isVersionRow = (
 
 export const isContainer = (item: RepositoryItem): boolean =>
   item.primaryType === "CONTEXT" || item.primaryType === "FOLDER";
+
+/** The latest version of the file is signed: the web app's "Signed" chip. */
+export const isSigned = (item: RepositoryItem): boolean =>
+  item.signingStatus === "CURRENT" || item.signingStatus === "BOTH";
+
+/** Some version of the file has been signed, so it has a signature history. */
+export const hasSignatures = (item: RepositoryItem): boolean =>
+  !isContainer(item) && !!item.signingStatus && item.signingStatus !== "NONE";
 
 /**
  * Context token for the file types with their own commands: clinical jobs
@@ -245,6 +254,9 @@ export function buildContextValue(
       CHECKOUT_TOKENS[getCheckoutState(item, currentUserId)],
       item.versioned ? "versioned" : "unversioned",
     );
+    if (hasSignatures(item)) {
+      tokens.push("signed");
+    }
     const kind = fileKindToken(item.name, item.primaryType);
     if (kind) {
       tokens.push(kind);
@@ -262,6 +274,27 @@ export function buildContextValue(
 
 export function buildVersionsUrl(itemId: string): string {
   return `${REPOSITORY_ITEMS}/${encodeURIComponent(itemId)}/versions`;
+}
+
+/**
+ * Signatures of a file; of one version when `version` is given. Without a
+ * version the server lists what SAS's Signature History window shows.
+ */
+export function buildSignaturesUrl(itemId: string, version?: string): string {
+  const url = `${REPOSITORY_ITEMS}/${encodeURIComponent(itemId)}/signatures?start=0&limit=${CHILDREN_PAGE_LIMIT}`;
+  return version ? `${url}&fileVersion=${encodeURIComponent(version)}` : url;
+}
+
+/** Signatures newest first; undated ones last, in the server's order. */
+export function sortSignatures(signatures: Signature[]): Signature[] {
+  const time = (s: Signature) => {
+    const t = s.creationTimeStamp ? Date.parse(s.creationTimeStamp) : NaN;
+    return Number.isNaN(t) ? -Infinity : t;
+  };
+  return signatures
+    .map((signature, index) => ({ signature, index }))
+    .sort((a, b) => time(b.signature) - time(a.signature) || a.index - b.index)
+    .map(({ signature }) => signature);
 }
 
 /** Order versions newest first: "10.0" is newer than "9.1". */

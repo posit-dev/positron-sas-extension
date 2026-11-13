@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- SAS Clinical Acceleration: **Show Signature History** shows the electronic signatures of a repository file, or of one version of it, as a report in the Viewer: date, signer, role, reason and version, newest first, like the Signature History window of SAS Clinical Acceleration Repository. It is in the context menu of signed files in the **Clinical Repository** view and of signed versions in the **Clinical Version History** view. **Export Signature History...** saves the report as HTML or the signatures as CSV. The **Clinical Repository** view marks files whose latest version is signed with **Signed**, **Clinical Version History** marks signed versions, and **Clinical Repository Properties** has a **Signatures** row. Signing files is not part of this change. The signatures endpoint (`/repository/items/{id}/signatures`) appears in the API documentation only in an example, and the signing status of items (`signingStatus`) not at all; both were found by testing against a server, which had no signed files to list
+
 ## 0.6.2 - 2026-11-12
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

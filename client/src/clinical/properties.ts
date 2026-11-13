@@ -5,7 +5,7 @@
 //
 // The rows of the Properties view. Nothing here imports `vscode`: the labels
 // are passed in, so the logic can be unit tested outside the extension host.
-import type { ItemPrivileges, RepositoryItem } from "./types";
+import type { ItemPrivileges, RepositoryItem, SigningStatus } from "./types";
 
 export type PropertyKind =
   "string" | "user" | "date" | "number" | "sync" | "access";
@@ -53,6 +53,8 @@ export interface PropertyLabels {
   noPermissions: string;
   privilegeEnable: string;
   privilegeManage: string;
+  signatures: string;
+  signingStatuses: Record<SigningStatus, string>;
 }
 
 /** What the signed-in user may do with an item, as the server reports it. */
@@ -73,6 +75,18 @@ export function formatBytes(bytes: number | undefined, decimals = 0): string {
   );
   return `${parseFloat((bytes / 1024 ** i).toFixed(decimals))} ${units[i]}`;
 }
+
+const SIGNING_STATUSES: readonly string[] = [
+  "NONE",
+  "CURRENT",
+  "PREVIOUS",
+  "BOTH",
+];
+
+/** A signing status this version knows; the server may add others. */
+export const isSigningStatus = (
+  value: string | undefined,
+): value is SigningStatus => !!value && SIGNING_STATUSES.includes(value);
 
 export function formatDate(
   value: string | number | undefined,
@@ -168,6 +182,16 @@ export function buildPropertyRows(
     );
     if (item.versioned) {
       add("fileVersion", "number", labels.version, item.fileVersion);
+    }
+    if (item.signingStatus) {
+      add(
+        "signingStatus",
+        "string",
+        labels.signatures,
+        isSigningStatus(item.signingStatus)
+          ? labels.signingStatuses[item.signingStatus]
+          : item.signingStatus,
+      );
     }
     add(
       "checkedOut",
