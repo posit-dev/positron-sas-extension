@@ -26,6 +26,7 @@ import { PropertyProvider } from "./PropertyProvider";
 import { RepositoryDataProvider, getItemUri } from "./RepositoryDataProvider";
 import { RepositoryDecorator } from "./RepositoryDecorator";
 import { RepositoryModel } from "./RepositoryModel";
+import { SignFiles } from "./SignFiles";
 import { SignatureHistory, SignatureTarget } from "./SignatureHistory";
 import {
   VersionFileSystemProvider,
@@ -116,6 +117,9 @@ export class ClinicalRepository {
       properties,
       versions,
       workspaceProvider,
+    );
+    const signer = new SignFiles(model, output, signatures, () =>
+      repository.refreshAll(),
     );
     const actions = new WorkspaceActions(
       workspaceProvider,
@@ -281,6 +285,10 @@ export class ClinicalRepository {
         "SAS.clinical.downloadVersion",
         (row: VersionRow) =>
           repository.downloadVersion(versions.selection(row)),
+      ),
+      commands.registerCommand(
+        "SAS.clinical.signFiles",
+        (item: RepositoryItem) => signer.sign(provider.selection(item)),
       ),
       commands.registerCommand(
         "SAS.clinical.showSignatureHistory",

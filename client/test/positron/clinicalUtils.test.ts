@@ -330,6 +330,7 @@ describe("buildContextValue", () => {
         "SAS.clinical.download",
         "SAS.clinical.upload",
         "SAS.clinical.uploadAndExpand",
+        "SAS.clinical.signFiles",
       ]);
     });
 
@@ -382,6 +383,7 @@ describe("buildContextValue", () => {
           "SAS.clinical.download",
           "SAS.clinical.selectForCompare",
           "SAS.clinical.copyToWorkspaceSubmenu",
+          "SAS.clinical.signFiles",
         ]);
         expect(
           shown(buildContextValue(folder, undefined, "me", permission)),
@@ -390,6 +392,7 @@ describe("buildContextValue", () => {
           "SAS.clinical.copyPath",
           "SAS.clinical.download",
           "SAS.clinical.copyToWorkspaceSubmenu",
+          "SAS.clinical.signFiles",
         ]);
       }
     });
@@ -493,6 +496,35 @@ describe("buildContextValue", () => {
       expect(
         shown(buildContextValue(file(), undefined, "me", "write")),
       ).to.not.include("SAS.clinical.downloadVersion");
+    });
+
+    it("offers Sign Files for files not checked out, and folders", () => {
+      const sign = (contextValue: string, opts: Shown = {}) =>
+        shown(contextValue, opts).includes("SAS.clinical.signFiles");
+      // Signing needs read access and the privilege, not write access.
+      expect(sign(buildContextValue(file(), undefined, "me", "read"))).to.equal(
+        true,
+      );
+      expect(sign(buildContextValue(folder, undefined, "me", "read"))).to.equal(
+        true,
+      );
+      expect(
+        sign(buildContextValue(file(), undefined, "me", "read"), {
+          multi: true,
+        }),
+      ).to.equal(true);
+      for (const checkedOutBy of ["me", "you"]) {
+        expect(
+          sign(
+            buildContextValue(
+              file({ checkedOut: true, checkedOutBy }),
+              undefined,
+              "me",
+              "write",
+            ),
+          ),
+        ).to.equal(false);
+      }
     });
 
     it("offers the signature history of signed files and versions", () => {
@@ -938,16 +970,27 @@ describe("validators", () => {
 });
 
 describe("parsePrivileges", () => {
-  it("reads the versioning privileges", () => {
+  it("reads the versioning and signing privileges", () => {
     expect(
       parsePrivileges(["PRIVILEGE_ENABLE_VERSIONING", "PRIVILEGE_X"]),
-    ).to.deep.equal({ enableVersioning: true, manageVersioning: false });
+    ).to.deep.equal({
+      enableVersioning: true,
+      manageVersioning: false,
+      signFiles: false,
+    });
     expect(
-      parsePrivileges({ items: ["privilege_manage_versioning"] }),
-    ).to.deep.equal({ enableVersioning: false, manageVersioning: true });
+      parsePrivileges({
+        items: ["privilege_manage_versioning", "PRIVILEGE_SIGN_FILE"],
+      }),
+    ).to.deep.equal({
+      enableVersioning: false,
+      manageVersioning: true,
+      signFiles: true,
+    });
     expect(parsePrivileges([])).to.deep.equal({
       enableVersioning: false,
       manageVersioning: false,
+      signFiles: false,
     });
   });
 

@@ -90,7 +90,33 @@ For files and folders, it also lists **Your permissions**, the permissions the s
 
 ## Signatures
 
-Files in SAS Clinical Acceleration can carry electronic signatures. A signature records who signed the file, when, in which role, and for which reason. The extension shows signatures read-only. To sign files, use SAS Clinical Acceleration Repository.
+Files in SAS Clinical Acceleration can carry electronic signatures. A signature records who signed the file, when, in which role, and for which reason. Signing a file states your approval of or agreement with the file in the repository. It is an electronic signature, recorded in the audit history, and can't be removed.
+
+### Sign files
+
+Before you sign for the first time:
+
+- You need the **Sign Files** privilege and read access to the files. An administrator grants the privilege in SAS Clinical Acceleration Repository.
+- Link an authenticator app on your mobile device: in SAS Clinical Acceleration Repository, open your user **Settings**, select **Generate a new QR code** under **Enable Signatures**, and scan the code with the app.
+
+To sign files:
+
+1. In the **Clinical Repository** view, right-click one or more files, or a folder to sign all the files in it, and select **Sign Files...**.
+2. If you selected a folder or several files, clear the check box of any file you don't want to sign, and press **Enter**.
+3. Select the reason for your signature, then your signatory role. An administrator sets the reasons and roles on the server.
+4. Enter a comment. A comment is optional, but best practice: it appears in the audit record.
+5. Read the confirmation, which names the files, and select **Sign**.
+6. Enter the current PIN from your authenticator app.
+
+If the server refuses the signature, for example because the PIN has expired, select **Retry with a New PIN** to enter a new one; the other choices are kept. After signing one file, select **Show Signature History** in the message to see the new signature.
+
+:::info note
+
+SAS Clinical Acceleration doesn't sign files that are checked out or that are in a closed context. **Sign Files...** is not offered for checked-out files, and leaves them out when you sign a folder. At most 500 files are signed at a time.
+
+:::
+
+### Signature history
 
 The **Clinical Repository** view marks a file whose latest version is signed with **Signed**. In the **Clinical Version History** view, a signed version shows **Signed** before its comment. The **Signatures** row of the **Clinical Repository Properties** view tells whether the latest version, earlier versions, or both are signed.
 
@@ -280,4 +306,4 @@ A server can still refuse an action, such as a check-out without write permissio
 
 - The views use the active SAS Viya profile. Switch profiles to work with another server.
 - The views do not detect changes made by other users or other applications. Click **Refresh** to see them.
-- You cannot search the repository, sign files, restore deleted items, or change permissions. Use SAS Clinical Acceleration for those tasks.
+- You cannot search the repository, restore deleted items, or change permissions. Use SAS Clinical Acceleration for those tasks.

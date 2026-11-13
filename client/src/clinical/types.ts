@@ -130,6 +130,8 @@ export type VersionRow = VersionHistoryItem & {
 export interface ItemPrivileges {
   enableVersioning: boolean;
   manageVersioning: boolean;
+  /** Sign Files: electronic signatures, with the signer's PIN. */
+  signFiles: boolean;
 }
 
 export type VersioningAction = "ENABLE_VERSIONING" | "DISABLE_VERSIONING";
