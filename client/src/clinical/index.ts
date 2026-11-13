@@ -23,6 +23,7 @@ import {
 import * as os from "os";
 
 import { AuditHistory } from "./AuditHistory";
+import { EnableSignatures } from "./EnableSignatures";
 import { PropertyProvider } from "./PropertyProvider";
 import { RepositoryDataProvider, getItemUri } from "./RepositoryDataProvider";
 import { RepositoryDecorator } from "./RepositoryDecorator";
@@ -130,8 +131,13 @@ export class ClinicalRepository {
       search.isSelected(item)
         ? search.selection(item)
         : provider.selection(item);
-    const signer = new SignFiles(model, output, signatures, () =>
-      repository.refreshAll(),
+    const enableSignatures = new EnableSignatures(model, output);
+    const signer = new SignFiles(
+      model,
+      output,
+      signatures,
+      () => repository.refreshAll(),
+      (item) => enableSignatures.setUp(item),
     );
     const actions = new WorkspaceActions(
       workspaceProvider,
@@ -172,6 +178,7 @@ export class ClinicalRepository {
       properties,
       versions,
       signatures,
+      enableSignatures,
       audit,
       search,
       workspaceProvider,
@@ -298,6 +305,9 @@ export class ClinicalRepository {
       commands.registerCommand(
         "SAS.clinical.signFiles",
         (item: RepositoryItem) => signer.sign(selectionOf(item)),
+      ),
+      commands.registerCommand("SAS.clinical.enableSignatures", () =>
+        enableSignatures.setUp(),
       ),
       commands.registerCommand("SAS.clinical.search", (item?: RepositoryItem) =>
         search.newSearch(item),

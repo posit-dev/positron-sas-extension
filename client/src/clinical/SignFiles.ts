@@ -5,7 +5,9 @@
 // Acceleration Repository. The signer picks the files, a reason and a role
 // (both configured on the server), adds a comment, confirms, and enters the
 // current PIN of their authenticator app. The PIN is asked for last, since
-// it is only valid for a short time, and is never logged or kept.
+// it is only valid for a short time, and is never logged or kept. When the
+// server refuses it, the signer can link an app (EnableSignatures) and then
+// enter a PIN from it.
 import {
   LogOutputChannel,
   ProgressLocation,
@@ -48,6 +50,10 @@ export class SignFiles {
     private readonly output: LogOutputChannel,
     private readonly history: SignatureHistory,
     private readonly refresh: () => void,
+    /** Link an authenticator app; resolves to true when the QR code shows. */
+    private readonly setUpAuthenticator?: (
+      item: RepositoryItem,
+    ) => Promise<boolean>,
   ) {}
 
   /** Sign the selected files, and the files in the selected folders. */
@@ -198,7 +204,7 @@ export class SignFiles {
         this.output.error(
           l10n.t(Messages.SignError, { message: outcome.details }),
         );
-        if (!(await this.offerRetry(outcome.firstMessage))) {
+        if (!(await this.offerRetry(outcome.firstMessage, chosen[0]))) {
           return;
         }
         continue;
@@ -206,7 +212,7 @@ export class SignFiles {
       this.output.error(
         l10n.t(Messages.SignError, { message: attempt.message }),
       );
-      if (!(await this.offerRetry(attempt.message))) {
+      if (!(await this.offerRetry(attempt.message, chosen[0]))) {
         return;
       }
     }
@@ -270,11 +276,25 @@ export class SignFiles {
     );
   }
 
-  private async offerRetry(message: string): Promise<boolean> {
+  /**
+   * Offer a new PIN, or first linking an authenticator app (the server's
+   * error codes for a missing key have no known texts, so it is always
+   * offered). True to ask for a PIN again.
+   */
+  private async offerRetry(
+    message: string,
+    file: RepositoryItem,
+  ): Promise<boolean> {
+    const choices = this.setUpAuthenticator
+      ? [Messages.SignRetry, Messages.SignSetUpAuthenticator]
+      : [Messages.SignRetry];
     const choice = await window.showErrorMessage(
       l10n.t(Messages.SignError, { message }),
-      Messages.SignRetry,
+      ...choices,
     );
+    if (choice === Messages.SignSetUpAuthenticator && this.setUpAuthenticator) {
+      return this.setUpAuthenticator(file);
+    }
     return choice === Messages.SignRetry;
   }
 

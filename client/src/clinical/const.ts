@@ -32,6 +32,9 @@ export const SEARCH_VIEW_ID = "clinicalsearchprovider";
 export const SIGNATURE_REASONS =
   "/clinicalRepository/repository/signatureReasons";
 export const SIGNATURE_ROLES = "/clinicalRepository/repository/signatureRoles";
+// POST makes a new signature key and answers with its QR code (a base64
+// PNG), as the web app's Enable Signatures setting does. Not documented.
+export const SIGNATURE_KEYS = "/clinicalRepository/repository/signatureKeys";
 // The audit history. The API documentation says administrators only; other
 // users get their own actions (checked on a server).
 export const AUDIT_ENTRIES = "/clinicalRepository/audit/entries";

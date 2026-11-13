@@ -8,6 +8,7 @@ import { isAxiosError } from "axios";
 
 import type { AuditReportLabels } from "./auditReport";
 import type { PropertyLabels } from "./properties";
+import type { SignatureKeyLabels } from "./signatureKey";
 import type { SignatureReportLabels } from "./signatureReport";
 import type { SigningStatus } from "./types";
 import type { CheckInBlock, ValidationError } from "./utils";
@@ -234,6 +235,18 @@ export const Messages = {
   SignWarning: l10n.t("Some files were not signed. {message}"),
   SignError: l10n.t("The files were not signed. {message}"),
   SignRetry: l10n.t("Retry with a New PIN"),
+  SignSetUpAuthenticator: l10n.t("Set Up Authenticator..."),
+  EnableSignaturesTitle: l10n.t("Enable Signatures"),
+  EnableSignaturesConfirm: l10n.t("Generate a new QR code for signing?"),
+  EnableSignaturesConfirmDetail: l10n.t(
+    "The QR code links an authenticator app to your account, and the app's PINs sign files. If you linked an app before, its PINs stop working and you need to scan the new code.",
+  ),
+  EnableSignaturesButton: l10n.t("Generate QR Code"),
+  EnableSignaturesGenerating: l10n.t("Generating a QR code..."),
+  EnableSignaturesError: l10n.t("Unable to generate a QR code. {message}"),
+  EnableSignaturesShown: l10n.t(
+    "Scan the QR code with your authenticator app. Then use the app's current PIN when you sign files.",
+  ),
   SearchStep: l10n.t("Search Repository ({step}/{total})"),
   SearchNamePrompt: l10n.t(
     "Name of the item. * matches any characters and ? one character; case is ignored. Leave empty for any name.",
@@ -367,6 +380,26 @@ export const SigningStatusText: Record<SigningStatus, string> = {
 };
 
 /** Labels of the signature history report and its CSV export. */
+export const SignatureKeyLabelText: SignatureKeyLabels = {
+  title: l10n.t("Enable Signatures"),
+  description: l10n.t(
+    "Open an authenticator app, then scan the QR code to link SAS Clinical Acceleration Repository to the app, which enables you to sign files.",
+  ),
+  steps: [
+    l10n.t(
+      "On your mobile device, open an authenticator app, such as Microsoft Authenticator or Google Authenticator.",
+    ),
+    l10n.t("Add an account, and scan the QR code."),
+    l10n.t(
+      "When you sign files, enter the PIN that the app shows for SAS Clinical Acceleration Repository.",
+    ),
+  ],
+  alt: l10n.t("QR code"),
+  note: l10n.t(
+    "Close this tab when you are done. The QR code is not kept, and the tab closes on its own after 10 minutes. To link another app, generate a new QR code.",
+  ),
+};
+
 export const SignatureLabelText: SignatureReportLabels = {
   title: l10n.t("Signature History"),
   file: l10n.t("File"),

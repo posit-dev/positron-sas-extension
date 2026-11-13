@@ -123,6 +123,7 @@
   "clinical.commands.searchAuditHistory": "Search Audit History...",
   "clinical.commands.exportAuditHistory": "Export Audit History...",
   "clinical.commands.signFiles": "Sign Files...",
+  "clinical.commands.enableSignatures": "Set Up Signing (Authenticator App)...",
   "clinical.commands.showSignatureHistory": "Show Signature History",
   "clinical.commands.exportSignatureHistory": "Export Signature History...",
   "clinical.commands.editSchedule": "Edit Schedule...",

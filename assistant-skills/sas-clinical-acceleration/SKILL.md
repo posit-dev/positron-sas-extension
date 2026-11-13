@@ -81,9 +81,12 @@ for or handle their authenticator PIN, and don't suggest signing unless asked.
 - **Sign Files...** (right-click files or a folder in the Clinical Repository
   view) is the user's own command. It asks for the files, a reason and a role
   configured on the server, a comment, a confirmation, and last the PIN from
-  their authenticator app. It needs the Sign Files privilege and an
-  authenticator app linked in the SAS Clinical Acceleration Repository
-  settings. Checked-out files can't be signed.
+  their authenticator app. It needs the Sign Files privilege and a linked
+  authenticator app. Checked-out files can't be signed.
+- **Set Up Signing (Authenticator App)...** (Command Palette, or the Clinical
+  Repository view's title bar menu) links the app: it shows a QR code to scan.
+  A new code unlinks an app linked before, so only the user runs it. The QR
+  code is a secret: never ask for it, read it or describe it.
 
 - Files whose latest version is signed show **Signed** in the Clinical
   Repository view; signed versions show **Signed** in Clinical Version History.
