@@ -8,6 +8,8 @@ The Positron SAS extension adds SAS to Positron as a language with its own conso
 
 The extension works with SAS Viya, with SAS 9.4 or SAS Analytics Pro over SSH, and with a local SAS installation. Some features depend on the connection type. See [Features by Connection Type](#features-by-connection-type) for details.
 
+To see these features in action, watch the [demo videos](../videos.mdx#positron) for SAS Analytics Pro and SAS Viya.
+
 :::info Builds on the SAS Extension for Visual Studio Code
 
 The SAS Extension for Positron extends the SAS Extension for Visual Studio Code, so the rest of this documentation still applies in Positron. Connection profiles, code editing features such as syntax highlighting, completion, snippets, and folding, [SAS Content](./accessContent.md), [SAS Server](./accessServer.md), [libraries](./accessLibraries.md), and [SAS notebooks](./sasNotebook.md) work as described there. This page covers what Positron adds or changes. To run SAS in Posit Workbench, see [SAS with Posit Workbench](../Workbench/index.md).
@@ -131,6 +133,9 @@ The extension gives Posit Assistant access to the SAS session and its results.
 - **Commands for Quarto reports:**
   - **SAS: Export saspy Configuration** writes the active profile as `sascfg_personal.py`, next to the open `.qmd` file or in the workspace folder. It never asks before replacing a different file: it keeps the old one as `sascfg_personal.py.old-<timestamp>` next to it and tells you where. For a SAS Viya profile, the file uses saspy's HTTP access method and looks for the access token each time saspy connects: the `SAS_VIYA_TOKEN` environment variable, a variable on the Python main module, the Workbench OAuth integration (with posit-sdk and the integration ID), and then the token file. The file never contains secrets. See [SAS Viya with OAuth Tokens](../Workbench/Code/viyaOauth.md#r-with-sasquatch).
   - **SAS: Save Viya Token for saspy** writes the access token of the extension's SAS Viya sign-in, including a Posit Workbench token, to `~/.positron-sas/viya-token.json`. Only you can read the file. Run it again when the token has expired.
+
+  ![The Positron Command Palette filtered to saspy. It offers SAS: Export saspy Configuration and SAS: Save Viya Token for saspy. Behind it, the SAS console shows a program that ran on SAS Viya, and the Viewer shows its scatter plot of weight against height and a table of the first five rows of SASHELP.CLASS.](/images/workbench/saspy-commands.png)
+
 - **Workspace context:** while a SAS console runs, the assistant knows the active profile and how to use the tools above.
 - **Results:** the assistant reads the text copy of each result and looks at graphs in the **Plots** pane.
 - **`sas-results` skill:** in Positron 2026.10 and later, a skill tells the assistant where SAS output goes and how to read the report in the **Viewer**. The first time the assistant uses the skill, Positron asks whether it may load it. Choose **Allow**.

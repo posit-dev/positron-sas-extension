@@ -6,6 +6,8 @@ sidebar_position: 2
 
 An administrator installs SAS where Workbench sessions run, in the same way as R and Python: on the Workbench host for local sessions, or in the session image for container sessions. Positron then runs SAS in the session through the local (stdio) connection.
 
+The [demo video](../../videos.mdx#analytics-pro-image) shows Positron started from the SAS Analytics Pro image, with the `local` profile that the extension adds by itself.
+
 ## What You Get
 
 - SAS in the Positron console, with all the [Positron SAS extension features](../../Features/positron.md) that work with local SAS

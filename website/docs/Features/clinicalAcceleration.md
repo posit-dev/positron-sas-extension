@@ -8,6 +8,8 @@ SAS Clinical Acceleration stores clinical study files in a controlled repository
 
 The **Clinical Acceleration** icon appears in the activity bar, and the views with it, when the active SAS profile is a SAS Viya profile, you are signed in, and the server runs the Clinical Repository service. The extension finds the service on its own and uses your SAS Viya sign-in, so there is nothing to configure.
 
+The [SAS Clinical Acceleration demo video](../videos.mdx#clinical-acceleration) shows a check-out, edit, and check-in round trip, a clinical job run, and its manifest report.
+
 ## The views
 
 - **Clinical Repository**: the shared store. Files open read-only.
@@ -21,6 +23,10 @@ The **Clinical Acceleration** icon appears in the activity bar, and the views wi
 - **Clinical Version History** (collapsed at first): the versions of the file you select in the **Clinical Repository** view.
 
 To refresh the **Clinical Repository** view and detect the service again, click **Refresh** in the title bar of the view.
+
+![The Clinical Acceleration side bar in Positron. The Clinical Repository view shows the PositDemo organization with the SAS-Demo study and its data, outputs, and programs folders. In programs, test.cjob and test.cmnf are marked Signed, and test.sas is selected. Below the collapsed Search, Workspace, Jobs, Schedules, and Properties views, the Clinical Version History view lists version 1.1, "Add outcome summary by treatment group", and version 1.0, "Starter program". The editor shows test.sas read-only, and the Viewer shows SAS output from the SAS Viya console.](/images/clinical/ca-version-history.png)
+
+*The Clinical Acceleration views with a study in the Clinical Repository. Selecting `test.sas` shows its two versions.*
 
 ## Browse the repository
 
@@ -50,6 +56,14 @@ To find items in the repository:
 The results appear in the **Clinical Repository Search** view, with the folder of each item. Results work like items in the **Clinical Repository** view: click a file to open it, expand a folder, and right-click an item for the same actions, such as **Check out to Workspace** or **Show Audit History**. Select an item to see its properties and versions. **Reveal in Clinical Repository** shows the item in the **Clinical Repository** view.
 
 A search lists at most 500 items. When more match, the view says so: narrow the search. Use **Edit Search...**, **Refresh Search** and **Clear Search** in the title bar of the view to change, repeat or remove the search. The search runs again when the repository is refreshed.
+
+![The Search Repository prompt at the top of the Positron window, step 1 of 4, with the name pattern *.sas entered. The help text says that * matches any characters and ? one character, that case is ignored, and that an empty name matches any name.](/images/clinical/ca-search-prompt.png)
+
+*The first step of Search Repository: a name pattern with wildcards.*
+
+![The Clinical Repository Search view under the repository tree, titled with the search *.sas. It says 7 items found and lists SAS programs such as extra.sas and prog.sas, each with the folder it is in.](/images/clinical/ca-search.png)
+
+*The results of the search, with the folder of each item. They have the same actions as items in the Clinical Repository view.*
 
 You see only the items you have permission to read.
 
@@ -104,6 +118,10 @@ To turn versioning on or off for a file, right-click it in the **Clinical Reposi
 The **Clinical Repository Properties** view shows the details of the selected item. For a file, it lists the size, the lock state, the version, whether the file is signed, the check-out state, and whether the copy of the file in your workspace is in sync with the repository.
 
 For files and folders, it also lists **Your permissions**, the permissions the server grants you on the item, such as `READ` and `WRITE`, and **Your versioning privileges**. They explain a missing action: without `WRITE` on a file, for example, **Check out to Workspace** is not offered. Permissions can differ between folders, and adding new files to a folder is not the same as changing a file that is already there.
+
+![The Clinical Repository Properties view for test.sas, with the other views collapsed. It lists the name, location, type, owner, creator, creation and modification dates, size, lock status Unlocked, version status Versioned, version 1.1, signatures Not signed, check-out status Not checked out, workspace file status Synced, your permissions READ, DELETE, WRITE, and your versioning privileges, starting with Enable versioning and Manage versions.](/images/clinical/ca-properties.png)
+
+*The properties of a versioned SAS program, including the permissions and versioning privileges the server grants you.*
 
 ## Signatures
 
@@ -165,6 +183,10 @@ To save the signature history, select **Export Signature History...** and choose
 
 **Show Signature History** is offered only for files that have been signed at least once.
 
+![The Viewer, maximized, with the report Signature History: test.cjob. It lists the file, its location /PositDemo/SAS-Demo/programs/test.cjob, and the signing status Signed. The Signatures table, for the latest version, has one signature with the date signed, the signer, the role Approver, the reason Approve, version 1.0, and the comment ok.](/images/clinical/ca-signature-history.png)
+
+*The signature history of a signed clinical job file.*
+
 ## Audit history
 
 SAS Clinical Acceleration keeps an audit record of every significant action, such as creating, checking in, downloading, or signing a file, and changing permissions. Each record names the action, the item, who acted on it, and when.
@@ -184,6 +206,10 @@ The audit history opens in the Viewer, newest first. Each record shows the date,
 
 A report lists at most 1,000 records. When more match, narrow the search, for example to a shorter period. To save the last audit history, select **Export Audit History...** in the same menu, and choose **HTML** for the report or **CSV** for a spreadsheet.
 
+![The Viewer, maximized, with the report Audit History: test.sas. It shows the item searched for, /PositDemo/SAS-Demo/programs/test.sas, and the audit records, newest first, in a table with the columns Date, Acted on by, Action, Object, Name, Location, Mode, and Changes. Each record is a download of the file, and its changes list the version, the file source Repository, the destination IP, and the client used.](/images/clinical/ca-audit-history.png)
+
+*The audit history of a SAS program in the Viewer. A user who is not an administrator sees only their own actions.*
+
 :::info note
 
 SAS Clinical Acceleration lists administrators the actions of all users, and other users only their own actions, as in the Audit History page of SAS Clinical Acceleration Repository.
@@ -198,6 +224,10 @@ You can compare any two files or versions from the repository, your workspace, a
 2. Right-click the second one and select **Compare with Selected**.
 
 To compare two items in the same view, select both, right-click one of them, and select **Compare Selected**.
+
+![A diff editor titled test.sas (v1.0) ↔ test.sas (v1.1). Both versions are the same up to line 51. Version 1.1 adds lines 52 to 57, highlighted in green: a comment "Summary of the outcome by treatment group" and a PROC MEANS step on demo.large_study_data with class treatment_group and var outcome.](/images/clinical/ca-compare.png)
+
+*Two versions of `test.sas` compared side by side. Version 1.1 adds a PROC MEANS step.*
 
 ## Run programs and open datasets
 
@@ -270,6 +300,10 @@ To create a job, right-click a folder in the **Clinical Workspace** view, select
 
 Jobs in the **Clinical Repository** view open read-only. To change one, copy it or check it out to your workspace.
 
+![The clinical job editor for test.cjob. Above the form are the buttons Run, Test..., Run and Populate..., Schedule..., and Open as JSON. The form has a General section with an empty description, a Programs section listing ./test.sas at the latest version with Open and arrow buttons, a Parameters section with an Add Parameter button, and Output locations for the log, the results, and the manifest, each ./ with a Browse button.](/images/clinical/ca-job-editor.png)
+
+*A clinical job open in the clinical job editor.*
+
 ### The Clinical Jobs view
 
 The **Clinical Jobs** view lists your runs, newest first, with their state. Runs other than a normal run are marked with their kind: **Test**, **Run and populate** (with or without relative paths), or **Scheduled**. Runs that have not ended update on their own while the view is visible. Click **Load more...** at the end of the list for older runs.
@@ -296,6 +330,10 @@ Right-click a run for more actions:
 
 To hide every finished run, click **Clear Finished Runs** in the title bar of the view. Runs that are still going stay in the list. Hidden runs are hidden only in Positron, for your user on that server: the run history on the server, with its manifests, stays as it is. To see hidden runs again, click **Show Hidden Runs** in the title bar; they are marked as hidden, and **Restore to List** brings one back. **Restore All Hidden Runs** is in the **...** menu of the view.
 
+![The Clinical Jobs view. The newest run, test.cjob, Completed successful, is expanded and shows Programs 1, Inputs 2, Outputs 3, Logs 1, and Results 1. Older runs follow, such as a Run and populate run with relative paths and a Test run of test2.cjob, all completed successfully, and a failed run of probe.cjob.](/images/clinical/ca-jobs-view.png)
+
+*The Clinical Jobs view with a finished run expanded to show what it used and wrote.*
+
 :::info note
 
 A run of a repository job checks its outputs in to the repository. If an output file is checked out, or you lack write permission for its folder, the run ends with a check-in error, and **Check-in failures** lists the files. The outputs of a workspace job stay in your workspace.
@@ -316,6 +354,10 @@ A schedule runs a job at set times, with set parameter values, under your user. 
 4. For repeated runs, enter the first day and when the schedule ends: never, on a date, or after a number of runs.
 5. Confirm the time zone. It defaults to the time zone of your computer.
 6. Enter the parameter values of the job.
+
+![The first step of scheduling a job: a prompt titled Schedule test.cjob asks for the name of the schedule. The Clinical Job Schedules view in the side bar says No clinical job schedules.](/images/clinical/ca-new-schedule.png)
+
+*Scheduling a job starts with the name of the schedule.*
 
 A notification shows the next run. The **Clinical Job Schedules** view lists your schedules with when they run. Expand a schedule to see its job, its parameter values, and its next runs, as the server calculates them.
 
@@ -340,6 +382,10 @@ To show the report, do one of the following:
 - Click **Show Manifest Report** on a run in the **Clinical Jobs** view.
 - Click **Show Manifest** in the notification at the end of a run.
 - Right-click a `.cmnf` file in the **Clinical Workspace** or **Clinical Repository** view and select **Show Manifest Report**.
+
+![The Viewer, maximized, with the report Clinical job manifest: test.cjob. The Summary lists the job /PositDemo/SAS-Demo/programs/test.cjob from the repository at version 1.0, the state Completed successful, the run ID, who submitted and ran it and when, the total time of 3.09 seconds, and the manifest file test.cmnf. Below are the parameters (none), the program test.sas at version 1.1 with its result Successful and its MD5 checksum, the input large_study_data.sas7bdat at version 1.0 with its size, modification time, and MD5 checksum, and an external input from SASHELP.](/images/clinical/ca-manifest-report.png)
+
+*The manifest report of a repository run: the exact versions and checksums of the program and the data it read.*
 
 In Positron, the report opens in the Viewer, where Posit Assistant can read it. Click a path in the report to open that file. A versioned repository file opens at the version the run used. Ask the Assistant, for example, which version of a dataset a run read.
 
