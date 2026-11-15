@@ -6,6 +6,8 @@ sidebar_position: 3
 
 Positron connects to a SAS 9.4 server, or to a standalone SAS Analytics Pro server, over SSH. SAS runs on that server, and the session sends code and receives the log and results.
 
+The [SAS Analytics Pro demo video](../../videos.mdx#positron) shows this setup.
+
 ## What You Get
 
 - SAS in the Positron console, with the [Positron SAS extension features](../../Features/positron.md) that work over SSH

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- A new **Demo Videos** page shows eight short, captioned walk-throughs recorded on Posit Workbench: the extension on SAS Analytics Pro and SAS Viya, Posit Assistant with a SAS dataset and a Quarto report, SAS Clinical Acceleration, SAS Studio and local SAS from the SAS Analytics Pro image, and SAS in a Shiny app. The videos are assets of the `demo-videos` GitHub release and are downloaded into the site when it is deployed, so they don't add to the repository. Pages about the same topics link to them
+- Screenshots for SAS Clinical Acceleration and more of the Positron features
+
 ## 0.6.3 - 2026-11-13
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

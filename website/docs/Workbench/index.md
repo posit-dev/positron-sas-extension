@@ -13,6 +13,8 @@ This section builds on the rest of this documentation. The [Features](../Feature
 | [SAS within Positron](./Positron/index.md) | SAS in the Positron console, next to R and Python, with Positron's Viewer, Plots pane, Connections pane, and Data Explorer | Locally in the session, or on a remote SAS server or SAS Viya |
 | [SAS in your R and Python code](./Code/index.md) | SAS called from R or Python code, in Workbench sessions and in content on Posit Connect | SAS Viya, a SAS server, or a local SAS installation |
 
+The [Demo Videos](../videos.mdx) show each scenario on a live Workbench, including [SAS Studio and Positron sessions from the SAS Analytics Pro image](../videos.mdx#analytics-pro-image).
+
 For what each scenario needs, see [Requirements by Scenario](./requirements.md). For the shared setup underneath all of them, such as single sign-on and shared home directories with SAS Viya, see [Across All Scenarios](./foundations.md).
 
 ## Which Scenario Fits

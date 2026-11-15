@@ -1,0 +1,96 @@
+---
+sidebar_position: 1.5
+title: Demo Videos
+description: Short, captioned walk-throughs of the SAS Extension for Positron in Posit Workbench, on SAS Analytics Pro and SAS Viya.
+---
+
+import DemoVideo, { DemoVideoRow } from "@site/src/components/DemoVideo";
+
+# Demo Videos
+
+Each video is a short, captioned walk-through recorded on a live Posit Workbench with SAS Analytics Pro (SAS 9.4) and
+SAS Viya. Where a story was recorded for both platforms, the two versions are shown side by side. The videos have no
+sound.
+
+The videos were recorded in November 2026 with versions 0.5.3 to 0.6.0 of the extension, so some screens can look
+slightly different in the current version.
+
+## The SAS Extension for Positron {#positron}
+
+Open `test.sas` and run it with one click: the SAS log streams into the Console, ODS output opens in the Viewer and
+graphs in the Plots pane. Data Connections lists the SAS libraries of the session, the Data Explorer opens a SAS dataset
+with column profiles, sorting and filters, and Convert to Code turns the view into SAS code. Posit Assistant fixes a SAS
+error and explains a plot from the run.
+
+<DemoVideoRow>
+  <DemoVideo name="demo-apro">
+    <strong>SAS Analytics Pro</strong> over SSH · 2:58
+  </DemoVideo>
+  <DemoVideo name="demo-viya">
+    <strong>SAS Viya</strong> over the REST API, signed in through Workbench ·
+    2:59
+  </DemoVideo>
+</DemoVideoRow>
+
+More: [Positron SAS Extension Features](./Features/positron.md), [Remote SAS over SSH](./Workbench/Positron/remoteSsh.md), [Remote SAS Viya](./Workbench/Positron/remoteViya.md).
+
+## Explore a SAS dataset with Posit Assistant {#assistant}
+
+Posit Assistant explains a SAS dataset with more than 3,000 variables (`ahs2023n.sas7bdat`, the American Housing
+Survey), summarizes and plots its key variables with SAS code that runs in your session, and writes a Quarto report with
+`/report`. Quarto Preview renders the report and runs every SAS chunk again in a fresh SAS session.
+
+<DemoVideoRow>
+  <DemoVideo name="demo-apro-housing">
+    <strong>SAS Analytics Pro</strong> · 4:39
+  </DemoVideo>
+  <DemoVideo name="demo-viya-housing">
+    <strong>SAS Viya</strong> · 4:22
+  </DemoVideo>
+</DemoVideoRow>
+
+More: [Posit Assistant](./Features/positron.md#posit-assistant), [Reports with Posit Assistant](./Features/positron.md#reports-with-posit-assistant).
+
+## SAS Clinical Acceleration {#clinical-acceleration}
+
+A programmer's round trip with the SAS Clinical Acceleration repository, all inside Positron: check out `test.sas` and
+copy the study data to your workspace, run the program on SAS Viya, add a summary step and check it in as version 1.1.
+Then run it as a clinical job from the repository, with its inputs recorded by Run and Populate, and open the manifest
+report with the exact versions and checksums of the program, the data, and the outputs.
+
+<DemoVideo name="demo-viya-clinical">
+  <strong>SAS Viya</strong> with SAS Clinical Acceleration · 4:37
+</DemoVideo>
+
+More: [SAS Clinical Acceleration](./Features/clinicalAcceleration.md).
+
+## SAS from the SAS Analytics Pro image {#analytics-pro-image}
+
+Posit Workbench can start sessions from the SAS Analytics Pro container image itself. On the left, Workbench launches
+**SAS Studio** from that image and runs `test.sas` there. On the right, **Positron** starts from the same image: the SAS
+extension finds the SAS 9.4 installation in the container and adds a `local` connection profile by itself, so SAS runs
+inside the session, with no SAS server and no SSH.
+
+<DemoVideoRow>
+  <DemoVideo name="demo-apro-studio">
+    <strong>SAS Studio</strong> in Posit Workbench · 1:54
+  </DemoVideo>
+  <DemoVideo name="demo-apro-local">
+    <strong>Positron</strong> with the local SAS 9.4 · 2:07
+  </DemoVideo>
+</DemoVideoRow>
+
+More: [SAS with Posit Workbench](./Workbench/index.md), [Local SAS: SAS Installed with Workbench](./Workbench/Positron/localInstalled.md).
+
+## SAS in a Shiny app {#shiny}
+
+Run a trusted SAS procedure from R and Shiny. The SAS extension exports the SAS Viya connection as a saspy
+configuration (`sascfg_personal.py`, without secrets) and saves the SAS Viya token from the Workbench sign-in. The
+Shiny app uses sasquatch to upload its R data to SAS Viya, run PROC HPMIXED and bring the residuals back for a
+histogram, first for one study, then for ten.
+
+<DemoVideo name="demo-viya-shiny">
+  <strong>SAS Viya</strong> with R, Shiny, sasquatch and saspy · 2:54
+</DemoVideo>
+
+More: [SAS Viya with OAuth Tokens](./Workbench/Code/viyaOauth.md).

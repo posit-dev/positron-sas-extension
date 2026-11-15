@@ -8,6 +8,8 @@ Positron connects to SAS Viya over its REST APIs. SAS code runs in a SAS Viya co
 
 The profile settings are the ones in [SAS Viya Connection Profile](../../Configurations/Profiles/viya.md). This page shows how the pieces fit together in Posit Workbench.
 
+The [SAS Viya demo video](../../videos.mdx#positron) shows this setup, starting with the SAS Viya sign-in in Workbench.
+
 ## What You Get
 
 - SAS in the Positron console on SAS Viya compute, with all the [Positron SAS extension features](../../Features/positron.md), including the ones that need SAS Viya

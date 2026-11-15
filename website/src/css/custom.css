@@ -29,3 +29,40 @@
 [data-theme="dark"] img[src$="#gh-light-mode-only"] {
   display: none;
 }
+
+/* Demo videos (src/components/DemoVideo.tsx): 16:9 players, side by side on wide screens. */
+.demo-video-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.demo-video {
+  margin: 0 0 1.5rem;
+}
+
+.demo-video-row .demo-video {
+  margin-bottom: 0;
+}
+
+.demo-video video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #111c26;
+  border-radius: 8px;
+  box-shadow: var(--ifm-global-shadow-md);
+}
+
+.demo-video figcaption {
+  margin-top: 0.5rem;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.9rem;
+}
+
+/* MDX wraps the caption text in a paragraph: keep it on one line with the download link. */
+.demo-video figcaption p {
+  display: inline;
+  margin: 0;
+}

@@ -8,6 +8,8 @@ In this variant, R and Python code sends SAS work to SAS Viya 4. Posit Workbench
 
 For the libraries and the overall pattern, see [Scenario 3: SAS in Your R and Python Code](./index.md).
 
+The [Shiny demo video](../../videos.mdx#shiny) shows this pattern: a Shiny app that runs PROC HPMIXED on SAS Viya through sasquatch and saspy, with the token from the Workbench sign-in.
+
 ## What You Get
 
 - No sign-in in code: users sign in to SAS Viya once in Workbench, and their code reads a short-lived token.
