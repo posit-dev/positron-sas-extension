@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.6.4 - 2026-11-15
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+This release changes only the documentation ([#138](https://github.com/posit-dev/positron-sas-extension/pull/138)): demo videos and new screenshots. The extension itself is the same as in 0.6.3; the README in the package now links to the videos.
 
 ### Documentation
 
