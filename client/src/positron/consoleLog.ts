@@ -71,3 +71,104 @@ export function isWrapperLogLine(text: string): boolean {
   }
   return WRAPPER_SOURCE.some((re) => re.test(code));
 }
+
+/** Log categories the console can show or hide (`SAS.console.logOutput`). */
+export const LOG_CATEGORIES = [
+  "source",
+  "notes",
+  "warnings",
+  "errors",
+] as const;
+export type LogCategory = (typeof LOG_CATEGORIES)[number];
+
+/**
+ * Classify a SAS log line by its text, for sessions that don't type their
+ * lines (SSH and stdio send every line as "normal"). Returns "error",
+ * "warning", "note", "source", or "normal".
+ */
+export function classifyLogLine(text: string): string {
+  const trimmed = text.trimStart();
+  if (/^ERROR\b/i.test(trimmed)) {
+    return "error";
+  }
+  if (/^WARNING\b/i.test(trimmed)) {
+    return "warning";
+  }
+  if (/^NOTE\b/i.test(trimmed)) {
+    return "note";
+  }
+  // Source echo: line number followed by spaces and code
+  if (/^\d+\s/.test(trimmed)) {
+    return "source";
+  }
+  return "normal";
+}
+
+/** The console category of an effective log line type. */
+export function logCategory(effectiveType: string): LogCategory {
+  switch (effectiveType) {
+    case "error":
+      return "errors";
+    case "warning":
+      return "warnings";
+    case "source":
+      return "source";
+    default:
+      return "notes";
+  }
+}
+
+export interface ClassifiedLogLine {
+  /** "error", "warning", "note", "source", or another log line type. */
+  effective: string;
+  category: LogCategory;
+  /** An indented line that continues the ERROR or WARNING before it. */
+  continuation: boolean;
+}
+
+/**
+ * Classifier for one run's log lines. Untyped lines are classified by their
+ * text, and an indented untyped line right after an ERROR or WARNING belongs
+ * to that message, so hiding notes never cuts a multi-line error in half.
+ */
+export function createLogLineClassifier(): (
+  text: string,
+  type: string,
+) => ClassifiedLogLine {
+  let previous: "error" | "warning" | undefined;
+  return (text, type) => {
+    let effective = (type ?? "").toLowerCase();
+    const untyped =
+      effective === "normal" || effective === "" || effective === "message";
+    if (untyped) {
+      effective = classifyLogLine(text);
+    }
+    if (
+      untyped &&
+      effective === "normal" &&
+      previous &&
+      /^\s/.test(text) &&
+      text.trim() !== ""
+    ) {
+      return {
+        effective: previous,
+        category: logCategory(previous),
+        continuation: true,
+      };
+    }
+    previous =
+      effective === "error" || effective === "warning" ? effective : undefined;
+    return { effective, category: logCategory(effective), continuation: false };
+  };
+}
+
+/**
+ * The categories in a `SAS.console.logOutput` value. Unknown entries are
+ * ignored; a value that is not an array means all categories.
+ */
+export function parseLogOutputSetting(value: unknown): Set<LogCategory> {
+  if (!Array.isArray(value)) {
+    return new Set(LOG_CATEGORIES);
+  }
+  return new Set(LOG_CATEGORIES.filter((category) => value.includes(category)));
+}

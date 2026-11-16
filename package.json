@@ -705,6 +705,33 @@
             "scope": "machine",
             "markdownDescription": "%configuration.SAS.audit.logFile%"
           },
+          "SAS.console.logOutput": {
+            "order": 11,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "source",
+                "notes",
+                "warnings",
+                "errors"
+              ],
+              "enumDescriptions": [
+                "%configuration.SAS.console.logOutput.source%",
+                "%configuration.SAS.console.logOutput.notes%",
+                "%configuration.SAS.console.logOutput.warnings%",
+                "%configuration.SAS.console.logOutput.errors%"
+              ]
+            },
+            "uniqueItems": true,
+            "default": [
+              "source",
+              "notes",
+              "warnings",
+              "errors"
+            ],
+            "markdownDescription": "%configuration.SAS.console.logOutput%"
+          },
           "SAS.localSasPaths": {
             "order": 12,
             "type": "array",
@@ -805,6 +832,11 @@
       {
         "command": "SAS.saveViyaTokenForSaspy",
         "title": "%commands.SAS.saveViyaTokenForSaspy%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.console.chooseLogOutput",
+        "title": "%commands.SAS.console.chooseLogOutput%",
         "category": "SAS"
       },
       {
@@ -2288,6 +2320,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "when": "isPositron",
+          "command": "SAS.console.chooseLogOutput"
+        },
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
           "command": "SAS.run"

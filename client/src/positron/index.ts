@@ -1,10 +1,11 @@
 // Copyright © 2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ExtensionContext, workspace, window } from "vscode";
+import { ExtensionContext, commands, workspace, window } from "vscode";
 import { SASLanguageRuntimeManager } from "./PositronLanguageRuntimeManager";
 import { SASLanguageRuntimeManager_Supervisor } from "./PositronLanguageRuntimeManager_Supervisor";
 import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
+import { chooseConsoleLogOutput } from "./consoleLogFilter";
 import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
 import { registerAssistantIntegration } from "./sasAssistant";
@@ -121,6 +122,13 @@ export async function initializePositronIntegration(
     }
   });
   context.subscriptions.push(configWatcher);
+
+  context.subscriptions.push(
+    commands.registerCommand(
+      "SAS.console.chooseLogOutput",
+      chooseConsoleLogOutput,
+    ),
+  );
 
   // Auto-start a Console session when a .sas file becomes the active editor
   // and no SAS Console session is already running.
