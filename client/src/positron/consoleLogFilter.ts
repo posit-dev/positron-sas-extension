@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
   ConfigurationTarget,
+  type Disposable,
   type QuickPickItem,
+  commands,
   window,
   workspace,
 } from "vscode";
@@ -14,6 +16,11 @@ import {
 } from "./consoleLog";
 
 const SETTING = "console.logOutput";
+
+/** The command, with the filter icon; shown while the console shows all. */
+export const CHOOSE_LOG_OUTPUT = "SAS.console.chooseLogOutput";
+/** The same command, with the filled filter icon; shown while filtering. */
+export const CHOOSE_LOG_OUTPUT_FILTERED = "SAS.console.chooseLogOutputFiltered";
 
 const LABELS: Record<LogCategory, { label: string; detail: string }> = {
   source: {
@@ -64,4 +71,24 @@ export async function chooseConsoleLogOutput(): Promise<void> {
       "The SAS console now shows no log lines, only results and the error and warning summary. The SAS Log output channel still has the full log.",
     );
   }
+}
+
+/**
+ * Keep the `SAS.consoleLogFiltered` context key in step with the setting, so
+ * the Console title bar shows a filled filter icon while part of the log is
+ * hidden.
+ */
+export function trackConsoleLogFilter(): Disposable {
+  const update = () =>
+    void commands.executeCommand(
+      "setContext",
+      "SAS.consoleLogFiltered",
+      getConsoleLogOutput().size < LOG_CATEGORIES.length,
+    );
+  update();
+  return workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration(`SAS.${SETTING}`)) {
+      update();
+    }
+  });
 }

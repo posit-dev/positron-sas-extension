@@ -4,7 +4,7 @@
 
 ### Features
 
-- Positron: choose what the SAS console shows of the log. **SAS: Choose Console Log Output** in the Command Palette picks any of source, notes, warnings, and errors, for example only errors and warnings. The choice is saved in the new `SAS.console.logOutput` setting and applies from the next run. Errors and warnings are still counted, so the error summary with its Posit Assistant actions and the warning count always appear. The indented lines of a multi-line ERROR or WARNING stay with it. The **SAS Log** output channel still has the full log. By default, the console shows everything, as before
+- Positron: choose what the SAS console shows of the log. The filter icon in the title bar of the **Console** pane, shown while a SAS console is in front, or **SAS: Choose Console Log Output** in the Command Palette picks any of source, notes, warnings, and errors, for example only errors and warnings. The choice is saved in the new `SAS.console.logOutput` setting and applies from the next run; the icon is filled while part of the log is hidden. Errors and warnings are still counted, so the error summary with its Posit Assistant actions and the warning count always appear. The indented lines of a multi-line ERROR or WARNING stay with it. The **SAS Log** output channel still has the full log. By default, the console shows everything, as before
 
 ## 0.6.4 - 2026-11-15
 

@@ -837,7 +837,14 @@
       {
         "command": "SAS.console.chooseLogOutput",
         "title": "%commands.SAS.console.chooseLogOutput%",
-        "category": "SAS"
+        "category": "SAS",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "SAS.console.chooseLogOutputFiltered",
+        "title": "%commands.SAS.console.chooseLogOutput%",
+        "category": "SAS",
+        "icon": "$(filter-filled)"
       },
       {
         "command": "SAS.content.copyPath",
@@ -1558,6 +1565,16 @@
         }
       ],
       "view/title": [
+        {
+          "command": "SAS.console.chooseLogOutput",
+          "when": "view == workbench.panel.positronConsole && SAS.consoleForeground && !SAS.consoleLogFiltered",
+          "group": "navigation"
+        },
+        {
+          "command": "SAS.console.chooseLogOutputFiltered",
+          "when": "view == workbench.panel.positronConsole && SAS.consoleForeground && SAS.consoleLogFiltered",
+          "group": "navigation"
+        },
         {
           "command": "SAS.clinical.jobs.clearFinished",
           "when": "view == clinicaljobsprovider",
@@ -2323,6 +2340,10 @@
         {
           "when": "isPositron",
           "command": "SAS.console.chooseLogOutput"
+        },
+        {
+          "when": "false",
+          "command": "SAS.console.chooseLogOutputFiltered"
         },
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
