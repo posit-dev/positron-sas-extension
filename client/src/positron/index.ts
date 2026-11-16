@@ -1,10 +1,16 @@
 // Copyright © 2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ExtensionContext, workspace, window } from "vscode";
+import { ExtensionContext, commands, workspace, window } from "vscode";
 import { SASLanguageRuntimeManager } from "./PositronLanguageRuntimeManager";
 import { SASLanguageRuntimeManager_Supervisor } from "./PositronLanguageRuntimeManager_Supervisor";
 import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
+import {
+  CHOOSE_LOG_OUTPUT,
+  CHOOSE_LOG_OUTPUT_FILTERED,
+  chooseConsoleLogOutput,
+  trackConsoleLogFilter,
+} from "./consoleLogFilter";
 import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
 import { registerAssistantIntegration } from "./sasAssistant";
@@ -122,6 +128,13 @@ export async function initializePositronIntegration(
   });
   context.subscriptions.push(configWatcher);
 
+  // Log filter button in the Console title bar, shown for SAS consoles.
+  context.subscriptions.push(
+    commands.registerCommand(CHOOSE_LOG_OUTPUT, chooseConsoleLogOutput),
+    commands.registerCommand(CHOOSE_LOG_OUTPUT_FILTERED, chooseConsoleLogOutput),
+    trackConsoleLogFilter(),
+  );
+
   // Auto-start a Console session when a .sas file becomes the active editor
   // and no SAS Console session is already running.
   const ensureSasConsoleSession = async () => {
@@ -152,6 +165,17 @@ export async function initializePositronIntegration(
     });
   };
 
+  // `SAS.consoleForeground`: the console in front is a SAS console, so the
+  // Console title bar shows the SAS log filter button.
+  const updateSasConsoleContext = async () => {
+    const session = await api.runtime.getForegroundSession();
+    await commands.executeCommand(
+      "setContext",
+      "SAS.consoleForeground",
+      session?.runtimeMetadata.languageId === "sas",
+    );
+  };
+
   context.subscriptions.push(
     window.onDidChangeActiveTextEditor(() => {
       ensureSasConsoleSession().catch(() => {});
@@ -160,9 +184,11 @@ export async function initializePositronIntegration(
       if (sessionId) {
         consoleSessions.get(sessionId)?.activate();
       }
+      updateSasConsoleContext().catch(() => {});
       ensureSasConsoleSession().catch(() => {});
     }),
   );
+  updateSasConsoleContext().catch(() => {});
 
   // Run once immediately in case a .sas file is already open.
   ensureSasConsoleSession().catch(() => {});

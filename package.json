@@ -705,6 +705,33 @@
             "scope": "machine",
             "markdownDescription": "%configuration.SAS.audit.logFile%"
           },
+          "SAS.console.logOutput": {
+            "order": 11,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "source",
+                "notes",
+                "warnings",
+                "errors"
+              ],
+              "enumDescriptions": [
+                "%configuration.SAS.console.logOutput.source%",
+                "%configuration.SAS.console.logOutput.notes%",
+                "%configuration.SAS.console.logOutput.warnings%",
+                "%configuration.SAS.console.logOutput.errors%"
+              ]
+            },
+            "uniqueItems": true,
+            "default": [
+              "source",
+              "notes",
+              "warnings",
+              "errors"
+            ],
+            "markdownDescription": "%configuration.SAS.console.logOutput%"
+          },
           "SAS.localSasPaths": {
             "order": 12,
             "type": "array",
@@ -806,6 +833,18 @@
         "command": "SAS.saveViyaTokenForSaspy",
         "title": "%commands.SAS.saveViyaTokenForSaspy%",
         "category": "SAS"
+      },
+      {
+        "command": "SAS.console.chooseLogOutput",
+        "title": "%commands.SAS.console.chooseLogOutput%",
+        "category": "SAS",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "SAS.console.chooseLogOutputFiltered",
+        "title": "%commands.SAS.console.chooseLogOutput%",
+        "category": "SAS",
+        "icon": "$(filter-filled)"
       },
       {
         "command": "SAS.content.copyPath",
@@ -1526,6 +1565,16 @@
         }
       ],
       "view/title": [
+        {
+          "command": "SAS.console.chooseLogOutput",
+          "when": "view == workbench.panel.positronConsole && SAS.consoleForeground && !SAS.consoleLogFiltered",
+          "group": "navigation"
+        },
+        {
+          "command": "SAS.console.chooseLogOutputFiltered",
+          "when": "view == workbench.panel.positronConsole && SAS.consoleForeground && SAS.consoleLogFiltered",
+          "group": "navigation"
+        },
         {
           "command": "SAS.clinical.jobs.clearFinished",
           "when": "view == clinicaljobsprovider",
@@ -2288,6 +2337,14 @@
         }
       ],
       "commandPalette": [
+        {
+          "when": "isPositron",
+          "command": "SAS.console.chooseLogOutput"
+        },
+        {
+          "when": "false",
+          "command": "SAS.console.chooseLogOutputFiltered"
+        },
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
           "command": "SAS.run"

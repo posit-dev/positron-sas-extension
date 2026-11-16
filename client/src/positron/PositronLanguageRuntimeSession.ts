@@ -33,10 +33,13 @@ import { locateCodeInDocument } from "./consoleDiagnostics";
 import {
   CONSOLE_OPTIONS,
   CONSOLE_POSTAMBLE,
+  type LogCategory,
+  createLogLineClassifier,
   isWrapperLogLine,
   odsOpenCode,
   stripSubmissionTag,
 } from "./consoleLog";
+import { getConsoleLogOutput } from "./consoleLogFilter";
 import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
 import { OutputFiles } from "./outputFiles";
 import { showHtmlInViewer } from "./viewer";
@@ -169,6 +172,11 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   private _execErrorCount = 0;
   private _execWarningCount = 0;
   private _execErrorLines: string[] = [];
+
+  // Log categories the console shows (SAS.console.logOutput), and the
+  // classifier for the current run's log lines. Both reset on each run.
+  private _logFilter: Set<LogCategory> = getConsoleLogOutput();
+  private _classifyLogLine = createLogLineClassifier();
 
   // SAS query client - created lazily when the session starts
   private _sasClient: SasClient | undefined;
@@ -777,6 +785,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this._execErrorCount = 0;
     this._execWarningCount = 0;
     this._execErrorLines = [];
+    this._logFilter = getConsoleLogOutput();
+    this._classifyLogLine = createLogLineClassifier();
 
     // Clear stale diagnostics from the previous run so squiggles don't linger.
     if (codeDoc?.getUri()) {
@@ -913,9 +923,10 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
           const detail = `Code:\n${code}\n\nErrors:\n${this._execErrorLines.join("\n")}`;
           this.emitErrorMessage(detail, id, warningNote);
         } else if (this._execWarningCount > 0) {
-          this.emitLogMessage(
+          // Shown even when the console hides warning lines.
+          this.emitStream(
             `⚠ ${this._execWarningCount} warning(s)`,
-            "warning",
+            "stderr",
             id,
           );
         }
@@ -1432,26 +1443,40 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
    *   "warning" → stderr stream, increment warning counter
    *   everything else (source, note, normal…) → stdout stream
    *
-   * Callers drop the lines produced by our wrapper code, so the console shows
-   * the user's SAS log line by line.
+   * Errors and warnings are always counted for the run summary, but a line is
+   * shown only when its category is in SAS.console.logOutput. Callers drop the
+   * lines produced by our wrapper code, so the console shows the user's log.
    */
   private emitLogMessage(text: string, type: string, parent_id: string = ""): void {
-    // The SSH session may deliver all lines as type "normal" without
-    // classification. Apply content-based heuristics to detect the actual type.
-    let effective = type.toLowerCase();
-    if (effective === "normal" || effective === "" || effective === "message") {
-      effective = this.classifyLogLine(text);
-    }
+    // SSH and stdio deliver all lines as type "normal"; the classifier types
+    // them by their text and keeps multi-line errors together.
+    const { effective, category, continuation } = this._classifyLogLine(
+      text,
+      type,
+    );
 
     if (effective === "error") {
-      this._execErrorCount++;
+      if (!continuation) {
+        this._execErrorCount++;
+      }
       this._execErrorLines.push(text);
-    } else if (effective === "warning") {
+    } else if (effective === "warning" && !continuation) {
       this._execWarningCount++;
     }
 
+    if (!this._logFilter.has(category)) {
+      return;
+    }
     const streamName = (effective === "error" || effective === "warning") ? "stderr" : "stdout";
+    this.emitStream(text, streamName, parent_id);
+  }
 
+  /** Helper: Emit one line of text to the console's stdout or stderr. */
+  private emitStream(
+    text: string,
+    streamName: "stdout" | "stderr",
+    parent_id: string = "",
+  ): void {
     const message: LanguageRuntimeMessage & { name: string; text: string } = {
       id: uuidv4(),
       parent_id: parent_id,
@@ -1464,28 +1489,6 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
     this._onDidReceiveRuntimeMessage.fire(message);
     this._onDidReceiveRuntimeMessageStream.fire(message);
-  }
-
-  /**
-   * Classify a SAS log line by content when the session doesn't provide types.
-   * Returns "error", "warning", "note", "source", or "normal".
-   */
-  private classifyLogLine(text: string): string {
-    const trimmed = text.trimStart();
-    if (/^ERROR\b/i.test(trimmed)) {
-      return "error";
-    }
-    if (/^WARNING\b/i.test(trimmed)) {
-      return "warning";
-    }
-    if (/^NOTE\b/i.test(trimmed)) {
-      return "note";
-    }
-    // Source echo: line number followed by spaces and code
-    if (/^\d+\s/.test(trimmed)) {
-      return "source";
-    }
-    return "normal";
   }
 
   /**
