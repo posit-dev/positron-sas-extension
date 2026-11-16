@@ -917,7 +917,25 @@ export class ClinicalRepository {
     return { uri: getItemUri(source), label: source.name };
   }
 
-  private diff(left: CompareTarget, right: CompareTarget): Thenable<unknown> {
+  private async diff(
+    left: CompareTarget,
+    right: CompareTarget,
+  ): Promise<unknown> {
+    // In Positron, two SAS data files compare as datasets with PROC COMPARE
+    // (#140); a text diff of them shows nothing useful.
+    const dataFile = /\.(sas7bdat|xpt)$/i;
+    if (
+      dataFile.test(left.uri.path) &&
+      dataFile.test(right.uri.path) &&
+      (await commands.getCommands(true)).includes("SAS.compareDatasets.files")
+    ) {
+      return commands.executeCommand(
+        "SAS.compareDatasets.files",
+        left.uri,
+        right.uri,
+        [left.label, right.label],
+      );
+    }
     return commands.executeCommand(
       "vscode.diff",
       left.uri,

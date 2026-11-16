@@ -194,6 +194,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   // Active data explorer comms (one per open dataset)
   private readonly _dataExplorers = new Map<string, SasDataExplorer>();
+  // The title each open Data Explorer was opened with, by comm id.
+  private readonly _dataExplorerTitles = new Map<string, string>();
   // HTML reports opened in the Viewer as files (#74).
   private readonly _outputFiles = new OutputFiles();
   // Plots sent to the Plots pane as positron.plot comms (#74).
@@ -546,6 +548,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   openDataExplorer(lib: string, mem: string, title = `${lib}.${mem}`): void {
     const explorer = new SasDataExplorer(this.getSasClient(), lib, mem);
     this._dataExplorers.set(explorer.id, explorer);
+    this._dataExplorerTitles.set(explorer.id, title);
 
     const dataListener = explorer.onDidEmitData(({ messageId, data }) => {
       this.fireCommMessage("comm_data", { comm_id: explorer.id, parent_id: messageId, data });
@@ -583,6 +586,16 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this._dataExplorerListeners.delete(id);
     explorer.dispose();
     this._dataExplorers.delete(id);
+    this._dataExplorerTitles.delete(id);
+  }
+
+  /** The datasets open in a Data Explorer of this session, with their titles. */
+  listDataExplorers(): Array<{ title: string; lib: string; mem: string }> {
+    return [...this._dataExplorers.values()].map((explorer) => ({
+      title: this._dataExplorerTitles.get(explorer.id) ?? `${explorer.lib}.${explorer.mem}`,
+      lib: explorer.lib,
+      mem: explorer.mem,
+    }));
   }
 
   /**
@@ -1409,6 +1422,16 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   /** Return the DATA/VIEW members of a library. */
   listMembers(lib: string): Promise<Array<{ name: string; type: string }>> {
     return this.getSasClient().getLibraryMembers(lib);
+  }
+
+  /** Return the librefs assigned in this session. */
+  listLibraries(): Promise<string[]> {
+    return this.getSasClient().getLibraryList();
+  }
+
+  /** Return the columns of a dataset, in variable-number order. */
+  getDatasetColumns(lib: string, mem: string): Promise<SasColumnInfo[]> {
+    return this.getSasClient().getDatasetColumns(lib, mem);
   }
 
   /** Return (or lazily create) the SasClient bound to this session's silentExecute. */

@@ -225,6 +225,8 @@ You can compare any two files or versions from the repository, your workspace, a
 
 To compare two items in the same view, select both, right-click one of them, and select **Compare Selected**.
 
+In Positron, two `.sas7bdat` or `.xpt` files compare as datasets: the extension runs `PROC COMPARE` in the SAS console instead of showing a text diff. See [Comparing Datasets](./compareDatasets.md).
+
 ![A diff editor titled test.sas (v1.0) ↔ test.sas (v1.1). Both versions are the same up to line 51. Version 1.1 adds lines 52 to 57, highlighted in green: a comment "Summary of the outcome by treatment group" and a PROC MEANS step on demo.large_study_data with class treatment_group and var outcome.](/images/clinical/ca-compare.png)
 
 *Two versions of `test.sas` compared side by side. Version 1.1 adds a PROC MEANS step.*

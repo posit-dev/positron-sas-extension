@@ -59,6 +59,7 @@ The following screenshot shows `SASHELP.CLASS`, opened from the **Data Connectio
 - **Row filters:** compare (`=`, `!=`, `<`, `<=`, `>`, `>=`), between, not between, is missing, is not missing, is empty, is not empty, is true, is false, set membership, and text search. Text search supports contains, does not contain, starts with, ends with, and regular expression match, with or without case sensitivity.
 - **Column profiles:** missing-value counts, summary statistics, histograms for numeric columns, and frequency tables.
 - **Side by side:** each dataset opens in its own Data Explorer tab, so you can open several at once. To see two next to each other, drag one tab to the side of the editor, or right-click the tab and choose **Split Right** and close the original. Each Data Explorer scrolls, sorts, and filters on its own: Positron doesn't synchronize scrolling between them.
+- **Compare:** **Compare with Another Dataset...** in the editor title bar compares the dataset with another one with `PROC COMPARE`. See [Comparing Datasets](./compareDatasets.md).
 - **Dates:** numeric columns with a SAS date format (for example `DATE9.` or `YYMMDD10.`) are date columns. Columns with `DATETIME` or `DATEAMPM` formats are datetime columns. Positron offers date-range filters for both.
 - **Convert to Code:** creates a `PROC SQL` query that selects the dataset with the current filters and sort order.
 

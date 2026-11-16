@@ -46,6 +46,30 @@ Positron build is older than 2026.10 and can't read the Viewer; say so, and
 ask the user to describe the output or re-run the code yourself to get the
 text copy.
 
+## Comparing datasets
+
+To compare two SAS datasets (for example a double-programmed QC dataset with
+the original), run `PROC COMPARE` in the SAS console. With ID variables, sort
+both datasets by them first; without, observations are compared by position.
+
+```sas
+proc sort data=LIB1.ADSL out=work._cmpbase; by USUBJID; run;
+proc sort data=LIB2.ADSL out=work._cmpcomp; by USUBJID; run;
+proc compare base=work._cmpbase compare=work._cmpcomp listall
+    out=work._compare outnoequal outbase outcomp outdif;
+  id USUBJID;
+run;
+%put COMPARE RESULT=&sysinfo;
+```
+
+The report goes to the Viewer. `&sysinfo` is 0 when the datasets are
+identical; otherwise it is a sum of bits: 64 and 128 for observations only in
+the base or compare dataset, 1024 and 2048 for variables only in one of them,
+4096 for unequal values, 32768 for a fatal error. `work._compare` holds a
+BASE, COMPARE and DIF row (`_TYPE_`) for each observation that differs. For
+numeric tolerance add `method=absolute criterion=<value>`. The user can also
+run **SAS: Compare Datasets...** from the Command Palette.
+
 ## Reports
 
 When the user wants the analysis as a report or Quarto document, including the

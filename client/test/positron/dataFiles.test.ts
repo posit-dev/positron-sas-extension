@@ -4,7 +4,9 @@ import { expect } from "chai";
 
 import {
   type DataFileSession,
+  NotTransportFileError,
   assignDataFileLibrary,
+  loadTransportFile,
 } from "../../src/positron/dataFiles";
 
 function fakeSession(log = "") {
@@ -17,7 +19,9 @@ function fakeSession(log = "") {
     },
     uploadToWork: async (subdir, name) => {
       uploads.push(`${subdir}/${name}`);
+      return `'${subdir}/${name}'`;
     },
+    listMembers: async () => [{ name: "CLASS" }, { name: "FISH" }],
   };
   return { session, code, uploads };
 }
@@ -78,6 +82,41 @@ describe("assignDataFileLibrary", () => {
       expect.fail("should have thrown");
     } catch (error) {
       expect(String(error)).to.contain("does not exist");
+    }
+  });
+});
+
+describe("loadTransportFile", () => {
+  it("unpacks a copied XPORT file into its own library", async () => {
+    const { session, code, uploads } = fakeSession();
+    const header = new TextEncoder().encode(
+      "HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!000000000000000000000000000000  ",
+    );
+    const lib = await loadTransportFile(session, {
+      key: "sasClinical:/repo/multi.xpt",
+      local: false,
+      filePath: "/repo/multi.xpt",
+      read: async () => header,
+    });
+
+    expect(lib.libref).to.match(/^_FXPT\d+$/);
+    expect(lib.members).to.deep.equal(["CLASS", "FISH"]);
+    expect(uploads).to.deep.equal([`_fxptsrc/${lib.libref.toLowerCase()}.xpt`]);
+    expect(code[0]).to.contain(lib.libref);
+  });
+
+  it("refuses a file that is not a transport file", async () => {
+    const { session } = fakeSession();
+    try {
+      await loadTransportFile(session, {
+        key: "sasClinical:/repo/notes.xpt",
+        local: false,
+        filePath: "/repo/notes.xpt",
+        read: async () => new TextEncoder().encode("just some text"),
+      });
+      expect.fail("should have thrown");
+    } catch (error) {
+      expect(error).to.be.instanceOf(NotTransportFileError);
     }
   });
 });
