@@ -53,14 +53,18 @@ the original), run `PROC COMPARE` in the SAS console. With ID variables, sort
 both datasets by them first; without, observations are compared by position.
 
 ```sas
-proc sort data=LIB1.ADSL out=work._cmpbase; by USUBJID; run;
-proc sort data=LIB2.ADSL out=work._cmpcomp; by USUBJID; run;
-proc compare base=work._cmpbase compare=work._cmpcomp listall
+proc sort data=LIB1.ADSL out=work._b_adsl; by USUBJID; run;
+proc sort data=LIB2.ADSL out=work._c_adsl; by USUBJID; run;
+options nocenter ls=132;
+proc compare base=work._b_adsl compare=work._c_adsl listall
     out=work._compare outnoequal outbase outcomp outdif;
   id USUBJID;
 run;
 %put COMPARE RESULT=&sysinfo;
 ```
+
+PROC COMPARE writes a text report centered on the line size; `nocenter` and
+`ls=132` keep it readable in the Viewer.
 
 The report goes to the Viewer. `&sysinfo` is 0 when the datasets are
 identical; otherwise it is a sum of bits: 64 and 128 for observations only in

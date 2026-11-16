@@ -17,12 +17,15 @@ describe("buildCompareCode", () => {
     const code = buildCompareCode({ base, compare, idVars: [] });
     expect(code).to.equal(
       [
+        "%let _sas_cmpopt=%sysfunc(getoption(center)) ls=%sysfunc(getoption(linesize));",
+        "options nocenter ls=132;",
         "title 'Compare WORK.ADSL (base) with adsl.sas7bdat';",
         "proc compare base=WORK.ADSL compare=QC.ADSL listall",
         "    out=WORK._COMPARE outnoequal outbase outcomp outdif;",
         "run;",
         "%let _sas_cmprc=&sysinfo;",
         "title;",
+        "options &_sas_cmpopt;",
       ].join("\n"),
     );
   });
@@ -34,19 +37,29 @@ describe("buildCompareCode", () => {
       idVars: ["usubjid", "STUDYID"],
     });
     expect(code).to.contain(
-      "proc sort data=WORK.ADSL out=WORK._CMPBASE; by USUBJID STUDYID; run;",
+      "proc sort data=WORK.ADSL out=WORK._B_ADSL; by USUBJID STUDYID; run;",
     );
     expect(code).to.contain(
-      "proc sort data=QC.ADSL out=WORK._CMPCOMP; by USUBJID STUDYID; run;",
+      "proc sort data=QC.ADSL out=WORK._C_ADSL; by USUBJID STUDYID; run;",
     );
     expect(code).to.contain(
-      "proc compare base=WORK._CMPBASE compare=WORK._CMPCOMP listall",
+      "proc compare base=WORK._B_ADSL compare=WORK._C_ADSL listall",
     );
     expect(code).to.contain("  id USUBJID STUDYID;");
     // The return code is saved before the sorted copies are deleted.
     expect(code.indexOf("%let _sas_cmprc=&sysinfo;")).to.be.lessThan(
-      code.indexOf("delete _CMPBASE _CMPCOMP"),
+      code.indexOf("delete _B_ADSL _C_ADSL"),
     );
+  });
+
+  it("keeps the sorted copies' names within 32 characters", () => {
+    const long = "A".repeat(32);
+    const code = buildCompareCode({
+      base: { ...base, mem: long },
+      compare,
+      idVars: ["USUBJID"],
+    });
+    expect(code).to.contain(`out=WORK._B_${"A".repeat(29)};`);
   });
 
   it("adds a tolerance for numeric values", () => {

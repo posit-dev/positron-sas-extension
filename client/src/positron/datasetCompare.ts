@@ -24,8 +24,13 @@ export interface CompareOptions {
 /** The dataset that holds the differing observations of the last compare. */
 export const COMPARE_OUT = { lib: "WORK", mem: "_COMPARE" };
 
-const SORTED_BASE = "WORK._CMPBASE";
-const SORTED_COMPARE = "WORK._CMPCOMP";
+/**
+ * The sorted copy of a dataset, named after it (`_B_ADSL`, `_C_ADSL`) because
+ * the report names the datasets it compared.
+ */
+function sortedCopy(prefix: "_B_" | "_C_", mem: string): string {
+  return `${prefix}${sasIdent(mem).slice(0, 32 - prefix.length)}`;
+}
 
 /** A string as a single-quoted SAS literal, which SAS doesn't macro-resolve. */
 function quote(text: string): string {
@@ -62,20 +67,29 @@ export function buildCompareCode(options: CompareOptions): string {
   const lines: string[] = [];
   let baseData = base;
   let compareData = compare;
+  const sortedCopies: string[] = [];
   if (ids.length > 0) {
     const by = ids.join(" ");
+    const sortedBase = sortedCopy("_B_", options.base.mem);
+    const sortedCompare = sortedCopy("_C_", options.compare.mem);
     lines.push(
-      `proc sort data=${base} out=${SORTED_BASE}; by ${by}; run;`,
-      `proc sort data=${compare} out=${SORTED_COMPARE}; by ${by}; run;`,
+      `proc sort data=${base} out=WORK.${sortedBase}; by ${by}; run;`,
+      `proc sort data=${compare} out=WORK.${sortedCompare}; by ${by}; run;`,
     );
-    baseData = SORTED_BASE;
-    compareData = SORTED_COMPARE;
+    baseData = `WORK.${sortedBase}`;
+    compareData = `WORK.${sortedCompare}`;
+    sortedCopies.push(sortedBase, sortedCompare);
   }
   const method =
     tolerance !== undefined && tolerance > 0
       ? ` method=absolute criterion=${tolerance}`
       : "";
+  // PROC COMPARE writes a text report, centered on the line size (often
+  // 256): left-align it on 132 columns so the Viewer shows it, then restore
+  // the user's options.
   lines.push(
+    "%let _sas_cmpopt=%sysfunc(getoption(center)) ls=%sysfunc(getoption(linesize));",
+    "options nocenter ls=132;",
     `title ${quote(compareTitle(options))};`,
     `proc compare base=${baseData} compare=${compareData} listall${method}`,
     `    out=${COMPARE_OUT.lib}.${COMPARE_OUT.mem} outnoequal outbase outcomp outdif;`,
@@ -83,10 +97,15 @@ export function buildCompareCode(options: CompareOptions): string {
   if (ids.length > 0) {
     lines.push(`  id ${ids.join(" ")};`);
   }
-  lines.push("run;", "%let _sas_cmprc=&sysinfo;", "title;");
-  if (ids.length > 0) {
+  lines.push(
+    "run;",
+    "%let _sas_cmprc=&sysinfo;",
+    "title;",
+    "options &_sas_cmpopt;",
+  );
+  if (sortedCopies.length > 0) {
     lines.push(
-      `proc datasets lib=WORK nolist nowarn; delete _CMPBASE _CMPCOMP; quit;`,
+      `proc datasets lib=WORK nolist nowarn; delete ${sortedCopies.join(" ")}; quit;`,
     );
   }
   return lines.join("\n");
