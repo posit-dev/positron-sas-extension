@@ -334,6 +334,32 @@ describe("SasDataExplorer filter → WHERE clause", () => {
 // ─── get_column_profiles ──────────────────────────────────────────────────────
 
 describe("SasDataExplorer.get_column_profiles", () => {
+  it("runs one profile query at a time", async () => {
+    let running = 0;
+    let maxRunning = 0;
+    const slow = <T>(value: T) =>
+      sinon.stub().callsFake(async () => {
+        running++;
+        maxRunning = Math.max(maxRunning, running);
+        await new Promise((r) => setTimeout(r, 5));
+        running--;
+        return value;
+      });
+    const client = makeClient({
+      getColumnNullCounts: slow([0]),
+      getColumnSummaryStats: slow([]),
+      getColumnStringStats: slow([]),
+      getColumnFrequencyTables: slow([]),
+      getColumnBinningStats: slow([]),
+    });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await sendRpcForEvent(explorer, "get_column_profiles", {
+      callback_id: "cb-seq",
+      profiles: [{ column_index: 0, profiles: [{ profile_type: "null_count" }] }],
+    });
+    expect(maxRunning).to.equal(1);
+  });
+
   it("fires return_column_profiles event with null counts", async () => {
     const explorer = new SasDataExplorer(makeClient(), "WORK", "CLASS");
     const event = await sendRpcForEvent(explorer, "get_column_profiles", {
