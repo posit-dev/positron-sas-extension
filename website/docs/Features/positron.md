@@ -139,8 +139,8 @@ To always open the files through the SAS session, make the extension's viewers t
 
 When no SAS session is running, a file opened through the SAS session goes to Positron's own Data Explorer if Positron can read it. Otherwise, a message offers **Start SAS Session**, and the file opens once the session is up.
 
-- **Datasets:** for a `.sas7bdat` file on disk, the extension assigns a library to the file's folder with a `LIBNAME` statement. Each folder gets its own library, `_FVIEW1`, `_FVIEW2`, and so on, so files from different folders can be open at the same time.
-- **Transport files:** for an `.xpt` file, the extension detects the format from the file header: XPORT version 5, XPORT version 8 or 9, or `PROC CPORT`. It unpacks the file into a library in the WORK folder of the session.
+- **Datasets:** for a `.sas7bdat` file on disk, the extension assigns a library to the file's folder with a `LIBNAME` statement. Each folder gets its own library, `_FVIEW1`, `_FVIEW2`, and so on, so files from different folders can be open at the same time. When SAS runs on a server that can't see the folder, such as SAS Viya without shared storage, the extension copies the file into the WORK folder instead.
+- **Transport files:** for an `.xpt` file, the extension detects the format from the file header: XPORT version 5, XPORT version 8 or 9, or `PROC CPORT`. It unpacks the file into a library in the WORK folder of the session. When SAS can't see the file, it copies the file into the WORK folder first.
 - **Several datasets:** when a transport file holds more than one dataset, a picker asks which ones to open.
 - **Files from other views:** files that are not on disk, such as files from the **Clinical Repository** or **SAS Content** views, are copied into the WORK folder first. This copy also works when SAS runs in lockdown mode.
 
@@ -277,7 +277,7 @@ The profile's `autoExec` lines run once, right after SAS starts.
 | Libraries in the **Connections** or **Data Connections** pane | Yes | Yes | Yes |
 | **SAS Server Files** connection | Yes | No | No |
 | **Data Explorer** | Yes | Yes | Yes |
-| `.sas7bdat` and `.xpt` files on disk | If the server sees the path | If the server sees the path | Yes |
+| `.sas7bdat` and `.xpt` files on disk | Yes (copied into WORK if the server can't see the path) | Yes (copied into WORK if the server can't see the path) | Yes |
 | `.sas7bdat` and `.xpt` files from other views | Yes | No | No |
 | Posit Assistant tools, context, and skill | Yes | Yes | Yes |
 | Audit log, submission comment, and macro variables | Yes | Yes | Yes |

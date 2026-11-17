@@ -56,9 +56,21 @@ const localLibrefs = new TransportLibrefPool("_FVIEW");
 // into WORK, one directory and libref per file.
 const uploadLibrefs = new TransportLibrefPool("_FVW");
 
+const EXISTS_MARKER = "_SASFEXIST=";
+
+/**
+ * Whether an existence check found what it looked for: false when the log
+ * says 0, true otherwise (also when the check didn't run).
+ */
+function checkPassed(log: string): boolean {
+  const match = new RegExp(`${EXISTS_MARKER}(\\d+)`).exec(log);
+  return !match || match[1] !== "0";
+}
+
 /**
  * Assign a libref through which SAS reads a .sas7bdat file, copying the file
- * into WORK first when SAS can't read it where it is.
+ * into WORK first when SAS can't read it where it is: a file from a view,
+ * or a file on this machine that a SAS server can't see.
  */
 export async function assignDataFileLibrary(
   session: DataFileSession,
@@ -66,29 +78,49 @@ export async function assignDataFileLibrary(
 ): Promise<DataFileLibrary> {
   const ext = path.extname(file.filePath);
   const member = path.basename(file.filePath, ext).toUpperCase();
-  let libref: string;
-  let location: string;
   if (file.local) {
     const dir = path.dirname(file.filePath);
-    libref = localLibrefs.librefFor(dir);
-    location = quoteLocalPath(dir);
-  } else {
-    // SAS on UNIX only finds datasets whose file names are lowercase.
-    libref = uploadLibrefs.librefFor(file.key);
-    await session.uploadToWork(
-      libref.toLowerCase(),
-      `${member.toLowerCase()}${ext.toLowerCase()}`,
-      await file.read(),
+    const libref = localLibrefs.librefFor(dir);
+    const log = await session.runSilent(
+      [
+        `libname ${libref} ${quoteLocalPath(dir)};`,
+        `%put ${EXISTS_MARKER}%sysfunc(max(%sysfunc(exist(${libref}.${member})), %sysfunc(exist(${libref}.${member}, VIEW))));`,
+      ].join("\n"),
     );
-    location = workPathLiteral(libref.toLowerCase());
+    if (findSasErrors(log).length === 0 && checkPassed(log)) {
+      return { libref, member };
+    }
+    // SAS doesn't see the file there, e.g. SAS on a server without this
+    // machine's disk: copy it into WORK as for files from views.
   }
+  // SAS on UNIX only finds datasets whose file names are lowercase.
+  const libref = uploadLibrefs.librefFor(file.key);
+  await session.uploadToWork(
+    libref.toLowerCase(),
+    `${member.toLowerCase()}${ext.toLowerCase()}`,
+    await file.read(),
+  );
   const errors = findSasErrors(
-    await session.runSilent(`libname ${libref} ${location};`),
+    await session.runSilent(
+      `libname ${libref} ${workPathLiteral(libref.toLowerCase())};`,
+    ),
   );
   if (errors.length > 0) {
     throw new Error(errors.join(" "));
   }
   return { libref, member };
+}
+
+/** Whether SAS can read the file at `filePath` itself. */
+async function sasSeesFile(
+  session: DataFileSession,
+  filePath: string,
+): Promise<boolean> {
+  return checkPassed(
+    await session.runSilent(
+      `%put ${EXISTS_MARKER}%sysfunc(fileexist(${quoteLocalPath(filePath)}));`,
+    ),
+  );
 }
 
 // One libref per transport file (_FXPT1, _FXPT2, ...).
@@ -123,7 +155,12 @@ export async function loadTransportFile(
   session: DataFileSession,
   file: DataFile,
 ): Promise<{ libref: string; members: string[] }> {
-  const content = file.local ? undefined : await file.read();
+  // A file on this machine that a SAS server can't see is copied into WORK,
+  // as files from views are.
+  const content =
+    !file.local || !(await sasSeesFile(session, file.filePath))
+      ? await file.read()
+      : undefined;
   const format = detectTransportFormat(
     content
       ? content.subarray(0, TRANSPORT_HEADER_BYTES)
