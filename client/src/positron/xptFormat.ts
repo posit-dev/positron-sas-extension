@@ -37,6 +37,46 @@ export function detectTransportFormat(
   return undefined;
 }
 
+// Each dataset of an XPORT file starts with a member header record, at a
+// multiple of 80 bytes.
+const MEMBER_HEADERS = [
+  "HEADER RECORD*******MEMBER  HEADER RECORD!!!!!!!",
+  "HEADER RECORD*******MEMBV8  HEADER RECORD!!!!!!!",
+];
+
+/** The number of datasets in an XPORT (v5 or v8/9) file. */
+export function countTransportMembers(content: Uint8Array): number {
+  const bytes = Buffer.from(content.buffer, content.byteOffset, content.length);
+  let count = 0;
+  for (const marker of MEMBER_HEADERS) {
+    for (
+      let at = bytes.indexOf(marker, 0, "latin1");
+      at >= 0;
+      at = bytes.indexOf(marker, at + 1, "latin1")
+    ) {
+      if (at % 80 === 0) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
+
+/**
+ * Whether Positron's own reader (DuckDB read_stat) can show a transport file:
+ * an XPORT file with one dataset. It can't read PROC CPORT files and reads
+ * only the first dataset of a file with several.
+ */
+export function positronCanReadTransport(content: Uint8Array): boolean {
+  const format = detectTransportFormat(
+    content.subarray(0, TRANSPORT_HEADER_BYTES),
+  );
+  return (
+    (format === "xport5" || format === "xport8") &&
+    countTransportMembers(content) <= 1
+  );
+}
+
 /** A local path as a SAS string literal; single quotes keep `&` and `%` inert. */
 export function quoteLocalPath(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;

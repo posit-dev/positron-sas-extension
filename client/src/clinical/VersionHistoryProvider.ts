@@ -24,6 +24,7 @@ import {
   window,
 } from "vscode";
 
+import { openCommand } from "../positron/dataFileEditorFallback";
 import { RepositoryModel } from "./RepositoryModel";
 import { VERSIONS_VIEW_ID, VERSION_SCHEME } from "./const";
 import { Messages, errorMessage } from "./messages";
@@ -153,11 +154,7 @@ export class VersionHistoryProvider
       iconPath: new ThemeIcon("git-commit"),
       contextValue: row.signed ? ";version;signed;" : ";version;",
       tooltip: versionTooltip(row),
-      command: {
-        command: "vscode.open",
-        title: "Open Version",
-        arguments: [getVersionUri(row)],
-      },
+      command: openCommand(getVersionUri(row), "Open Version"),
     };
   }
 

@@ -8,8 +8,10 @@ import {
   buildBase64WriteCode,
   buildTransportLoadCode,
   buildWorkSubdirCode,
+  countTransportMembers,
   detectTransportFormat,
   findSasErrors,
+  positronCanReadTransport,
   quoteLocalPath,
   splitIntoChunks,
   workPathLiteral,
@@ -51,6 +53,46 @@ describe("detectTransportFormat", () => {
     expect(detectTransportFormat(header("data class; set sashelp.class;"))).to
       .be.undefined;
     expect(detectTransportFormat(new Uint8Array())).to.be.undefined;
+  });
+});
+
+describe("countTransportMembers", () => {
+  const record = (text: string) => text.padEnd(80, " ");
+  const file = (...records: string[]) =>
+    new Uint8Array(Buffer.from(records.map(record).join(""), "latin1"));
+  const LIBRARY5 = "HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!000000";
+  const LIBRARY8 = "HEADER RECORD*******LIBV8   HEADER RECORD!!!!!!!000000";
+  const MEMBER5 = "HEADER RECORD*******MEMBER  HEADER RECORD!!!!!!!000000";
+  const MEMBER8 = "HEADER RECORD*******MEMBV8  HEADER RECORD!!!!!!!000000";
+  const DATA = "Alfred  M 14";
+
+  it("counts the datasets of XPORT v5 and v8 files", () => {
+    expect(countTransportMembers(file(LIBRARY5, MEMBER5, DATA))).to.equal(1);
+    expect(
+      countTransportMembers(file(LIBRARY5, MEMBER5, DATA, MEMBER5, DATA)),
+    ).to.equal(2);
+    expect(
+      countTransportMembers(file(LIBRARY8, MEMBER8, DATA, MEMBER8, DATA)),
+    ).to.equal(2);
+  });
+
+  it("ignores a member header that is not at a record boundary", () => {
+    expect(
+      countTransportMembers(file(LIBRARY5, MEMBER5, `xx${MEMBER5}`)),
+    ).to.equal(1);
+  });
+
+  it("tells which files Positron's reader can show", () => {
+    expect(positronCanReadTransport(file(LIBRARY5, MEMBER5, DATA))).to.equal(
+      true,
+    );
+    expect(
+      positronCanReadTransport(file(LIBRARY5, MEMBER5, DATA, MEMBER5, DATA)),
+    ).to.equal(false);
+    expect(
+      positronCanReadTransport(file("**COMPRESSED** **COMPRESSED**", DATA)),
+    ).to.equal(false);
+    expect(positronCanReadTransport(file("data class;"))).to.equal(false);
   });
 });
 

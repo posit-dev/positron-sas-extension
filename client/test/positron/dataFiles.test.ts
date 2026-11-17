@@ -105,6 +105,23 @@ describe("loadTransportFile", () => {
     expect(code[0]).to.contain(lib.libref);
   });
 
+  it("reads the header of a file on the SAS server, which SAS reads in place", async () => {
+    const { session, code, uploads } = fakeSession();
+    const header = new TextEncoder().encode(
+      "HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!000000000000000000000000000000  ",
+    );
+    const lib = await loadTransportFile(session, {
+      key: "sasServer:/tmp/x/one.xpt",
+      local: true,
+      filePath: "/tmp/x/one.xpt",
+      read: async () => header,
+      readHeader: async () => header,
+    });
+    expect(uploads).to.deep.equal([]);
+    expect(code[0]).to.contain("'/tmp/x/one.xpt'");
+    expect(lib.members).to.deep.equal(["CLASS", "FISH"]);
+  });
+
   it("refuses a file that is not a transport file", async () => {
     const { session } = fakeSession();
     try {

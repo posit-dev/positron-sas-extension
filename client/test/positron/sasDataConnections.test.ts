@@ -284,6 +284,26 @@ describe("SasDataConnectionsDriver", () => {
       expect((source.serverFiles!.readFile as sinon.SinonStub).called).to.be
         .false;
     });
+
+    it("opens datasets in the Data Explorer when the session can", async () => {
+      const driver = new SasDataConnectionsDriver();
+      const source = makeFilesSource();
+      const open = sinon.stub().resolves();
+      source.openServerDataFile = open;
+      driver.addSource(source);
+      const connection = await driver.connect("session", {
+        profile: "Viya",
+        content: "files",
+      });
+      const [, dataset] = await connection.getChildren();
+      expect(dataset).to.include({ name: "data.sas7bdat", kind: "table" });
+      await dataset.preview!();
+      expect(open.calledOnceWith(["data.sas7bdat"])).to.be.true;
+      const details = await dataset.getDetails!();
+      expect(details.description).to.include("Data Explorer");
+      expect((source.serverFiles!.readFile as sinon.SinonStub).called).to.be
+        .false;
+    });
   });
 });
 

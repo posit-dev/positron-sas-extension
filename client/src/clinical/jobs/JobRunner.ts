@@ -12,6 +12,8 @@ import {
   window,
 } from "vscode";
 
+import { openResource } from "../../positron/dataFileEditorFallback";
+import { sasDataFileKind } from "../../positron/dataFileReaders";
 import type { ItemPicker } from "./ItemPicker";
 import type { JobsModel } from "./JobsModel";
 import { JobMessages, OutcomeMessages, jobErrorMessage } from "./messages";
@@ -376,10 +378,13 @@ export class JobRunner {
     }
     for (const file of files) {
       const uri = uriForResource(file.resource);
-      if (uri) {
-        await commands.executeCommand("vscode.open", uri, { preview: false });
-      } else {
+      if (!uri) {
         window.showWarningMessage(JobMessages.CannotOpen);
+      } else if (sasDataFileKind(uri.path)) {
+        // Datasets a job wrote open through the SAS session (#141).
+        await openResource(uri);
+      } else {
+        await commands.executeCommand("vscode.open", uri, { preview: false });
       }
     }
   }

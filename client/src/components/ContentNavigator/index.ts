@@ -17,6 +17,7 @@ import {
 } from "vscode";
 
 import { profileConfig } from "../../commands/profile";
+import { openResource } from "../../positron/dataFileEditorFallback";
 import { getGlobalStorageUri } from "../ExtensionContext";
 import { SubscriptionProvider } from "../SubscriptionProvider";
 import { ConnectionType, ProfileWithFileRootOptions } from "../profile";
@@ -520,7 +521,9 @@ class ContentNavigator implements SubscriptionProvider {
 
   private async defaultOpenResource(item: ContentItem): Promise<void> {
     const itemUri = await this.contentModel.getUri(item, false);
-    await commands.executeCommand("vscode.open", itemUri);
+    // In Positron, datasets open through the SAS session connected to this
+    // content (#141); anything else as before.
+    await openResource(itemUri);
   }
 
   private imagePreviewCacheUri(): Uri {

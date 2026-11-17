@@ -66,6 +66,7 @@ import {
   workPathLiteral,
 } from "./xptFormat";
 import { SasDataExplorer } from "./sasDataExplorer";
+import { openServerDataFile } from "./serverDataFiles";
 import {
   SasServerFilesConnection,
   ServerFilesBrowser,
@@ -406,12 +407,16 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     // which Positron would dispose.
     const dataConnections = getDataConnectionsDriver();
     if (dataConnections) {
+      const serverFiles = this.createServerFilesBrowser();
       this._dataConnectionSource = dataConnections.addSource({
         profileName: this._profileName,
         host,
         client: this.getSasClient(),
         openDataExplorer: (lib, mem) => this.openDataExplorer(lib, mem),
-        serverFiles: this.createServerFilesBrowser(),
+        serverFiles,
+        openServerDataFile: serverFiles
+          ? (segments) => openServerDataFile(this, serverFiles, segments)
+          : undefined,
       });
       return;
     }
@@ -517,6 +522,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       name,
       this._profileName,
       host,
+      (segments) => openServerDataFile(this, browser, segments),
     );
 
     const dataListener = conn.onDidEmitData(({ messageId, data }) => {

@@ -19,6 +19,7 @@
   "commands.SAS.compareDatasets.withSelectedFile": "Compare Dataset with Selected",
   "commands.SAS.datasetProperties": "Dataset Properties",
   "commands.SAS.datasetProperties.file": "Show Dataset Properties",
+  "commands.SAS.openDataFileWithSas": "Open with SAS",
   "commands.SAS.deleteResource": "Delete",
   "commands.SAS.deleteTable": "Delete",
   "commands.SAS.download": "Download",

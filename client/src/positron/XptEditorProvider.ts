@@ -12,9 +12,12 @@ import {
 
 import * as path from "path";
 
-import { reopenOutsidePositron } from "./dataFileEditorFallback";
+import {
+  reopenOutsidePositron,
+  sessionForDataFile,
+} from "./dataFileEditorFallback";
 import { NotTransportFileError, loadTransportFile } from "./dataFiles";
-import { getActiveSession } from "./index";
+import { positronCanReadTransport } from "./xptFormat";
 
 /** Minimal document representing a .xpt file. */
 class XptDocument implements CustomDocument {
@@ -71,13 +74,22 @@ export class XptEditorProvider implements CustomReadonlyEditorProvider<XptDocume
       `<h2>Opening ${escapeHtml(fileName)} in Data Explorer...</h2>`,
     );
 
-    const session = getActiveSession();
+    // Positron's own reader can't read PROC CPORT files, and reads only the
+    // first dataset of a file with several: those need SAS.
+    const session = await sessionForDataFile(
+      uri,
+      webviewPanel,
+      (message) => {
+        webview.html = this.getErrorHtml(message);
+      },
+      async () => positronCanReadTransport(await workspace.fs.readFile(uri)),
+    );
     if (!session) {
-      webview.html = this.getErrorHtml(
-        "No active SAS session. Please start a SAS session first.",
-      );
       return;
     }
+    webview.html = this.getHtml(
+      `<h2>Opening ${escapeHtml(fileName)} in Data Explorer...</h2>`,
+    );
 
     try {
       // Files from non-local views (Clinical Repository, SAS Content) are

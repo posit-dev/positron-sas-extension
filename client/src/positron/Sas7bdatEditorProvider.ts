@@ -14,9 +14,11 @@ import {
   window,
   workspace,
 } from "vscode";
-import { reopenOutsidePositron } from "./dataFileEditorFallback";
+import {
+  reopenOutsidePositron,
+  sessionForDataFile,
+} from "./dataFileEditorFallback";
 import { assignDataFileLibrary } from "./dataFiles";
-import { getActiveSession } from "./index";
 
 /** Minimal document representing a .sas7bdat file. */
 class Sas7bdatDocument implements CustomDocument {
@@ -74,13 +76,13 @@ export class Sas7bdatEditorProvider
 
     webviewPanel.webview.html = this.getLoadingHtml(member);
 
-    const session = getActiveSession();
+    const session = await sessionForDataFile(uri, webviewPanel, (message) => {
+      webviewPanel.webview.html = this.getErrorHtml(message);
+    });
     if (!session) {
-      webviewPanel.webview.html = this.getErrorHtml(
-        "No active SAS session. Please start a SAS session first.",
-      );
       return;
     }
+    webviewPanel.webview.html = this.getLoadingHtml(member);
 
     try {
       const { libref } = await assignDataFileLibrary(session, {

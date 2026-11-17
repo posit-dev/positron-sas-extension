@@ -884,6 +884,11 @@
         "category": "SAS"
       },
       {
+        "command": "SAS.openDataFileWithSas",
+        "title": "%commands.SAS.openDataFileWithSas%",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.content.copyPath",
         "title": "%commands.SAS.copyPath%",
         "category": "SAS"
@@ -1775,6 +1780,11 @@
       ],
       "explorer/context": [
         {
+          "command": "SAS.openDataFileWithSas",
+          "when": "isPositron && resourceExtname =~ /^\\.(sas7bdat|xpt)$/i && !listMultiSelection",
+          "group": "navigation@20"
+        },
+        {
           "command": "SAS.compareDatasets.selectFile",
           "when": "isPositron && resourceExtname =~ /^\\.(sas7bdat|xpt)$/i && !listMultiSelection",
           "group": "3_compare@10"
@@ -2439,6 +2449,10 @@
         {
           "when": "false",
           "command": "SAS.datasetProperties.file"
+        },
+        {
+          "when": "false",
+          "command": "SAS.openDataFileWithSas"
         },
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
@@ -3134,7 +3148,7 @@
             "filenamePattern": "*.SAS7BDAT"
           }
         ],
-        "priority": "default"
+        "priority": "option"
       },
       {
         "viewType": "sas.xptViewer",
@@ -3147,7 +3161,7 @@
             "filenamePattern": "*.XPT"
           }
         ],
-        "priority": "default"
+        "priority": "option"
       },
       {
         "viewType": "SAS.clinical.jobEditor",

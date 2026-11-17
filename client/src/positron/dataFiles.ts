@@ -36,6 +36,11 @@ export interface DataFile {
   filePath: string;
   /** Reads the file, for files SAS can't read itself. */
   read(): Thenable<Uint8Array> | Promise<Uint8Array>;
+  /**
+   * Reads the start of a file SAS can read itself, when it isn't on this
+   * machine (files on the SAS server); by default, from `filePath`.
+   */
+  readHeader?(): Promise<Uint8Array>;
 }
 
 export interface DataFileLibrary {
@@ -122,7 +127,7 @@ export async function loadTransportFile(
   const format = detectTransportFormat(
     content
       ? content.subarray(0, TRANSPORT_HEADER_BYTES)
-      : await readHeader(file.filePath),
+      : await (file.readHeader?.() ?? readHeader(file.filePath)),
   );
   if (!format) {
     throw new NotTransportFileError(
