@@ -6,6 +6,13 @@ import { SASLanguageRuntimeManager } from "./PositronLanguageRuntimeManager";
 import { SASLanguageRuntimeManager_Supervisor } from "./PositronLanguageRuntimeManager_Supervisor";
 import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
 import {
+  compareActiveDataset,
+  compareDatasetFileWithSelected,
+  compareDatasetFiles,
+  compareDatasets,
+  selectDatasetFileForCompare,
+} from "./compareDatasets";
+import {
   CHOOSE_LOG_OUTPUT,
   CHOOSE_LOG_OUTPUT_FILTERED,
   chooseConsoleLogOutput,
@@ -133,6 +140,22 @@ export async function initializePositronIntegration(
     commands.registerCommand(CHOOSE_LOG_OUTPUT, chooseConsoleLogOutput),
     commands.registerCommand(CHOOSE_LOG_OUTPUT_FILTERED, chooseConsoleLogOutput),
     trackConsoleLogFilter(),
+  );
+
+  // Compare Datasets (PROC COMPARE), from the Command Palette, the Data
+  // Explorer title bar, the Explorer, and the Clinical Repository (#140).
+  context.subscriptions.push(
+    commands.registerCommand("SAS.compareDatasets", () => compareDatasets()),
+    commands.registerCommand("SAS.compareDatasets.active", compareActiveDataset),
+    commands.registerCommand("SAS.compareDatasets.files", compareDatasetFiles),
+    commands.registerCommand(
+      "SAS.compareDatasets.selectFile",
+      selectDatasetFileForCompare,
+    ),
+    commands.registerCommand(
+      "SAS.compareDatasets.withSelectedFile",
+      compareDatasetFileWithSelected,
+    ),
   );
 
   // Auto-start a Console session when a .sas file becomes the active editor

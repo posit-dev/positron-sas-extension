@@ -847,6 +847,32 @@
         "icon": "$(filter-filled)"
       },
       {
+        "command": "SAS.compareDatasets",
+        "title": "%commands.SAS.compareDatasets%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.compareDatasets.active",
+        "title": "%commands.SAS.compareDatasets.active%",
+        "category": "SAS",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "SAS.compareDatasets.files",
+        "title": "%commands.SAS.compareDatasets.files%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.compareDatasets.selectFile",
+        "title": "%commands.SAS.compareDatasets.selectFile%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.compareDatasets.withSelectedFile",
+        "title": "%commands.SAS.compareDatasets.withSelectedFile%",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.content.copyPath",
         "title": "%commands.SAS.copyPath%",
         "category": "SAS"
@@ -1538,6 +1564,11 @@
     "menus": {
       "editor/title": [
         {
+          "command": "SAS.compareDatasets.active",
+          "when": "activeEditor == 'workbench.editor.positronDataExplorer' && SAS.consoleForeground",
+          "group": "navigation@10"
+        },
+        {
           "command": "SAS.clinical.job.run",
           "when": "resourceExtname == .cjob && resourceScheme =~ /^sasClinical(Workspace)?$/ && SAS.clinical.jobsAvailable",
           "group": "navigation@0"
@@ -1727,6 +1758,21 @@
         }
       ],
       "explorer/context": [
+        {
+          "command": "SAS.compareDatasets.selectFile",
+          "when": "isPositron && resourceExtname =~ /^\\.(sas7bdat|xpt)$/i && !listMultiSelection",
+          "group": "3_compare@10"
+        },
+        {
+          "command": "SAS.compareDatasets.withSelectedFile",
+          "when": "isPositron && resourceExtname =~ /^\\.(sas7bdat|xpt)$/i && SAS.datasetSelectedForCompare && !listMultiSelection",
+          "group": "3_compare@11"
+        },
+        {
+          "command": "SAS.compareDatasets.files",
+          "when": "isPositron && resourceExtname =~ /^\\.(sas7bdat|xpt)$/i && listMultiSelection",
+          "group": "3_compare@12"
+        },
         {
           "command": "SAS.content.convertNotebookToFlow",
           "when": "resourceExtname == .sasnb && SAS.connectionType == rest && !SAS.connection.direct",
@@ -2344,6 +2390,26 @@
         {
           "when": "false",
           "command": "SAS.console.chooseLogOutputFiltered"
+        },
+        {
+          "when": "isPositron",
+          "command": "SAS.compareDatasets"
+        },
+        {
+          "when": "false",
+          "command": "SAS.compareDatasets.active"
+        },
+        {
+          "when": "false",
+          "command": "SAS.compareDatasets.files"
+        },
+        {
+          "when": "false",
+          "command": "SAS.compareDatasets.selectFile"
+        },
+        {
+          "when": "false",
+          "command": "SAS.compareDatasets.withSelectedFile"
         },
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",

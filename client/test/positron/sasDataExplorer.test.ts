@@ -96,6 +96,12 @@ describe("SasDataExplorer.get_state", () => {
     expect(result.display_name).to.equal("WORK.CLASS");
   });
 
+  it("reports its title as the display name", async () => {
+    const explorer = new SasDataExplorer(makeClient(), "_XPT1", "ADSL", "adsl.xpt: ADSL");
+    const { result } = await sendRpc(explorer, "get_state") as { result: Record<string, unknown> };
+    expect(result.display_name).to.equal("adsl.xpt: ADSL");
+  });
+
   it("advertises column profile types as {profile_type, support_status} objects", async () => {
     const explorer = new SasDataExplorer(makeClient(), "WORK", "CLASS");
     const { result } = await sendRpc(explorer, "get_state") as { result: Record<string, unknown> };

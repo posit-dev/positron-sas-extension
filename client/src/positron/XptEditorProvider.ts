@@ -10,41 +10,16 @@ import {
   workspace,
 } from "vscode";
 
-import * as fs from "fs";
 import * as path from "path";
 
 import { reopenOutsidePositron } from "./dataFileEditorFallback";
+import { NotTransportFileError, loadTransportFile } from "./dataFiles";
 import { getActiveSession } from "./index";
-import {
-  TRANSPORT_HEADER_BYTES,
-  TransportLibrefPool,
-  buildTransportLoadCode,
-  detectTransportFormat,
-  findSasErrors,
-  quoteLocalPath,
-} from "./xptFormat";
 
 /** Minimal document representing a .xpt file. */
 class XptDocument implements CustomDocument {
   constructor(readonly uri: Uri) {}
   dispose(): void {}
-}
-
-/** Read the first bytes of a file without loading all of it. */
-async function readHeader(filePath: string): Promise<Uint8Array> {
-  const handle = await fs.promises.open(filePath, "r");
-  try {
-    const buffer = new Uint8Array(TRANSPORT_HEADER_BYTES);
-    const { bytesRead } = await handle.read(
-      buffer,
-      0,
-      TRANSPORT_HEADER_BYTES,
-      0,
-    );
-    return buffer.subarray(0, bytesRead);
-  } finally {
-    await handle.close();
-  }
 }
 
 function escapeHtml(text: string): string {
@@ -65,7 +40,6 @@ function escapeHtml(text: string): string {
 export class XptEditorProvider implements CustomReadonlyEditorProvider<XptDocument> {
   static readonly viewType = "sas.xptViewer";
 
-  private readonly librefs = new TransportLibrefPool();
 
   static register(context: ExtensionContext): void {
     context.subscriptions.push(
@@ -108,39 +82,23 @@ export class XptEditorProvider implements CustomReadonlyEditorProvider<XptDocume
     try {
       // Files from non-local views (Clinical Repository, SAS Content) are
       // read through VS Code and copied into WORK, where SAS can read them.
-      const content = local ? undefined : await workspace.fs.readFile(uri);
-      const format = detectTransportFormat(
-        content
-          ? content.subarray(0, TRANSPORT_HEADER_BYTES)
-          : await readHeader(uri.fsPath),
-      );
-      if (!format) {
+      let loaded: { libref: string; members: string[] };
+      try {
+        loaded = await loadTransportFile(session, {
+          key: uri.toString(),
+          local,
+          filePath: local ? uri.fsPath : uri.path,
+          read: () => workspace.fs.readFile(uri),
+        });
+      } catch (error) {
         webview.html = this.getErrorHtml(
-          `${fileName} is not a SAS transport file (XPORT or CPORT).`,
+          error instanceof NotTransportFileError
+            ? error.message
+            : `Failed to read ${fileName}:\n${error instanceof Error ? error.message : String(error)}`,
         );
         return;
       }
-
-      const libref = this.librefs.librefFor(uri.toString());
-      const file = content
-        ? await session.uploadToWork(
-            "_fxptsrc",
-            `${libref.toLowerCase()}.xpt`,
-            content,
-          )
-        : quoteLocalPath(uri.fsPath);
-      const log = await session.runSilent(
-        buildTransportLoadCode(format, file, libref),
-      );
-      const errors = findSasErrors(log);
-      if (errors.length > 0) {
-        webview.html = this.getErrorHtml(
-          `Failed to read ${fileName}:\n${errors.join("\n")}`,
-        );
-        return;
-      }
-
-      const members = (await session.listMembers(libref)).map((m) => m.name);
+      const { libref, members } = loaded;
       if (members.length === 0) {
         webview.html = this.getErrorHtml(`${fileName} contains no datasets.`);
         return;

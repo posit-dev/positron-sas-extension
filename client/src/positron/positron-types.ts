@@ -303,6 +303,11 @@ export interface PositronApi {
     /** Positron 2026.10 and later: add a folder of agent skills. */
     registerAgentSkillRoot?(root: string): vscode.Disposable;
   };
+  /** Data Explorer; only the parts the SAS extension uses. */
+  readonly dataExplorer?: {
+    /** Positron 2026.11 and later: the Data Explorer in front, if any. */
+    getContext?(): Thenable<{ displayName: string } | undefined>;
+  };
 }
 
 // Data Connections (Positron 2026.10+). Minimal subset of positron.d.ts used

@@ -1,0 +1,3 @@
+proc sgplot data=sashelp.class;
+  scatter x=height y=weight;
+run;

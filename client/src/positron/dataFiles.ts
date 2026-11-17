@@ -1,9 +1,13 @@
 // Copyright © 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+import * as fs from "fs";
 import * as path from "path";
 
 import {
+  TRANSPORT_HEADER_BYTES,
   TransportLibrefPool,
+  buildTransportLoadCode,
+  detectTransportFormat,
   findSasErrors,
   quoteLocalPath,
   workPathLiteral,
@@ -18,10 +22,11 @@ export interface DataFileSession {
     subdir: string,
     name: string,
     bytes: Uint8Array,
-  ): Promise<unknown>;
+  ): Promise<string>;
+  listMembers(lib: string): Promise<Array<{ name: string }>>;
 }
 
-/** A .sas7bdat file, described without VS Code types. */
+/** A .sas7bdat or .xpt file, described without VS Code types. */
 export interface DataFile {
   /** Identifies the file, e.g. its URI as a string. */
   key: string;
@@ -79,4 +84,65 @@ export async function assignDataFileLibrary(
     throw new Error(errors.join(" "));
   }
   return { libref, member };
+}
+
+// One libref per transport file (_FXPT1, _FXPT2, ...).
+const transportLibrefs = new TransportLibrefPool();
+
+/** Read the first bytes of a file without loading all of it. */
+async function readHeader(filePath: string): Promise<Uint8Array> {
+  const handle = await fs.promises.open(filePath, "r");
+  try {
+    const buffer = new Uint8Array(TRANSPORT_HEADER_BYTES);
+    const { bytesRead } = await handle.read(
+      buffer,
+      0,
+      TRANSPORT_HEADER_BYTES,
+      0,
+    );
+    return buffer.subarray(0, bytesRead);
+  } finally {
+    await handle.close();
+  }
+}
+
+/** The file is not an XPORT or CPORT transport file. */
+export class NotTransportFileError extends Error {}
+
+/**
+ * Unpack a transport file (XPORT v5, v8/9 or CPORT) into a library of its
+ * own, and list its datasets. Files SAS can't read where they are are
+ * copied into WORK first.
+ */
+export async function loadTransportFile(
+  session: DataFileSession,
+  file: DataFile,
+): Promise<{ libref: string; members: string[] }> {
+  const content = file.local ? undefined : await file.read();
+  const format = detectTransportFormat(
+    content
+      ? content.subarray(0, TRANSPORT_HEADER_BYTES)
+      : await readHeader(file.filePath),
+  );
+  if (!format) {
+    throw new NotTransportFileError(
+      `${path.basename(file.filePath)} is not a SAS transport file (XPORT or CPORT).`,
+    );
+  }
+  const libref = transportLibrefs.librefFor(file.key);
+  const source = content
+    ? await session.uploadToWork(
+        "_fxptsrc",
+        `${libref.toLowerCase()}.xpt`,
+        content,
+      )
+    : quoteLocalPath(file.filePath);
+  const errors = findSasErrors(
+    await session.runSilent(buildTransportLoadCode(format, source, libref)),
+  );
+  if (errors.length > 0) {
+    throw new Error(errors.join("\n"));
+  }
+  const members = (await session.listMembers(libref)).map((m) => m.name);
+  return { libref, members };
 }

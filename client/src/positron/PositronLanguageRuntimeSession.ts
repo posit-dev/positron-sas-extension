@@ -194,6 +194,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   // Active data explorer comms (one per open dataset)
   private readonly _dataExplorers = new Map<string, SasDataExplorer>();
+  // The title each open Data Explorer was opened with, by comm id.
   // HTML reports opened in the Viewer as files (#74).
   private readonly _outputFiles = new OutputFiles();
   // Plots sent to the Plots pane as positron.plot comms (#74).
@@ -544,7 +545,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   /** Open a Data Explorer comm for a dataset. */
   openDataExplorer(lib: string, mem: string, title = `${lib}.${mem}`): void {
-    const explorer = new SasDataExplorer(this.getSasClient(), lib, mem);
+    const explorer = new SasDataExplorer(this.getSasClient(), lib, mem, title);
     this._dataExplorers.set(explorer.id, explorer);
 
     const dataListener = explorer.onDidEmitData(({ messageId, data }) => {
@@ -583,6 +584,15 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this._dataExplorerListeners.delete(id);
     explorer.dispose();
     this._dataExplorers.delete(id);
+  }
+
+  /** The datasets open in a Data Explorer of this session, with their titles. */
+  listDataExplorers(): Array<{ title: string; lib: string; mem: string }> {
+    return [...this._dataExplorers.values()].map((explorer) => ({
+      title: explorer.title,
+      lib: explorer.lib,
+      mem: explorer.mem,
+    }));
   }
 
   /**
@@ -1409,6 +1419,39 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   /** Return the DATA/VIEW members of a library. */
   listMembers(lib: string): Promise<Array<{ name: string; type: string }>> {
     return this.getSasClient().getLibraryMembers(lib);
+  }
+
+  /** Return the librefs assigned in this session. */
+  listLibraries(): Promise<string[]> {
+    return this.getSasClient().getLibraryList();
+  }
+
+  /** Return the columns of a dataset, in variable-number order. */
+  getDatasetColumns(lib: string, mem: string): Promise<SasColumnInfo[]> {
+    return this.getSasClient().getDatasetColumns(lib, mem);
+  }
+
+  /**
+   * Return rows of a dataset as `|value|value` strings of formatted values,
+   * from the first row on.
+   */
+  getDatasetRows(
+    lib: string,
+    mem: string,
+    columns: string[],
+    numRows: number,
+  ): Promise<string[]> {
+    return this.getSasClient().getDatasetRows(lib, mem, columns, 0, numRows);
+  }
+
+  /** Show an HTML page in the Viewer, as a file Posit Assistant can read. */
+  showHtml(html: string, title: string, fileName: string): Promise<boolean> {
+    return showHtmlInViewer(html, this._outputFiles, {
+      viewType: "sas.output",
+      title,
+      preserveFocus: false,
+      fileName,
+    });
   }
 
   /** Return (or lazily create) the SasClient bound to this session's silentExecute. */
