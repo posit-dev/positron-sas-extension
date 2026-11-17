@@ -251,6 +251,8 @@ export class SasDataExplorer {
     private readonly client: SasClient,
     readonly lib: string,
     readonly mem: string,
+    /** The name Positron shows for the explorer, on its tab and elsewhere. */
+    readonly title = `${lib}.${mem}`,
   ) {}
 
   /**
@@ -403,7 +405,7 @@ export class SasDataExplorer {
     const unfilteredRows = where ? this.unfilteredRowCount : filteredRows;
 
     return {
-      display_name: `${this.lib}.${this.mem}`,
+      display_name: this.title,
       table_shape: { num_rows: filteredRows, num_columns: columns.length },
       table_unfiltered_shape: { num_rows: unfilteredRows, num_columns: columns.length },
       has_row_labels: false,

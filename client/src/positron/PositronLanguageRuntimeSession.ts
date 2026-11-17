@@ -195,7 +195,6 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   // Active data explorer comms (one per open dataset)
   private readonly _dataExplorers = new Map<string, SasDataExplorer>();
   // The title each open Data Explorer was opened with, by comm id.
-  private readonly _dataExplorerTitles = new Map<string, string>();
   // HTML reports opened in the Viewer as files (#74).
   private readonly _outputFiles = new OutputFiles();
   // Plots sent to the Plots pane as positron.plot comms (#74).
@@ -546,9 +545,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   /** Open a Data Explorer comm for a dataset. */
   openDataExplorer(lib: string, mem: string, title = `${lib}.${mem}`): void {
-    const explorer = new SasDataExplorer(this.getSasClient(), lib, mem);
+    const explorer = new SasDataExplorer(this.getSasClient(), lib, mem, title);
     this._dataExplorers.set(explorer.id, explorer);
-    this._dataExplorerTitles.set(explorer.id, title);
 
     const dataListener = explorer.onDidEmitData(({ messageId, data }) => {
       this.fireCommMessage("comm_data", { comm_id: explorer.id, parent_id: messageId, data });
@@ -586,13 +584,12 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this._dataExplorerListeners.delete(id);
     explorer.dispose();
     this._dataExplorers.delete(id);
-    this._dataExplorerTitles.delete(id);
   }
 
   /** The datasets open in a Data Explorer of this session, with their titles. */
   listDataExplorers(): Array<{ title: string; lib: string; mem: string }> {
     return [...this._dataExplorers.values()].map((explorer) => ({
-      title: this._dataExplorerTitles.get(explorer.id) ?? `${explorer.lib}.${explorer.mem}`,
+      title: explorer.title,
       lib: explorer.lib,
       mem: explorer.mem,
     }));

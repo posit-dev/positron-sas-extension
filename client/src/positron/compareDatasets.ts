@@ -23,6 +23,7 @@ import {
   type DatasetRef,
   buildCompareCode,
   commonColumns,
+  dataExplorerTabLabel,
   describeCompareResult,
   parseCompareStatus,
 } from "./datasetCompare";
@@ -198,16 +199,28 @@ async function pickOptions(
   };
 }
 
-/** Resolves with the next tab opened whose label contains `title`. */
-function nextTab(title: string, timeoutMs = 60_000): Promise<Tab | undefined> {
+/** The open tabs, in all editor groups. */
+function allTabs(): Tab[] {
+  return window.tabGroups.all.flatMap((group) => group.tabs);
+}
+
+/**
+ * Resolves with the first tab, not open before, that gets the label `label`.
+ * A Data Explorer tab opens as "Data Explorer" and is renamed once its data
+ * loads, so renamed tabs count too.
+ */
+function nextTab(label: string, timeoutMs = 60_000): Promise<Tab | undefined> {
+  const before = new Set(allTabs());
   return new Promise((resolve) => {
     let listener: Disposable | undefined = undefined;
     const timer = setTimeout(() => {
       listener?.dispose();
       resolve(undefined);
     }, timeoutMs);
-    listener = window.tabGroups.onDidChangeTabs(({ opened }) => {
-      const tab = opened.find((t) => t.label.includes(title));
+    listener = window.tabGroups.onDidChangeTabs(({ opened, changed }) => {
+      const tab = [...opened, ...changed].find(
+        (t) => t.label === label && !before.has(t),
+      );
       if (tab) {
         clearTimeout(timer);
         listener?.dispose();
@@ -217,28 +230,42 @@ function nextTab(title: string, timeoutMs = 60_000): Promise<Tab | undefined> {
   });
 }
 
-/** Open two datasets in Data Explorers next to each other. */
+/** Open a dataset in a Data Explorer and wait for its tab. */
+async function openExplorerTab(
+  session: SASLanguageRuntimeSession,
+  dataset: DatasetRef,
+): Promise<Tab | undefined> {
+  const tab = nextTab(dataExplorerTabLabel(dataset.label));
+  session.openDataExplorer(dataset.lib, dataset.mem, dataset.label);
+  const opened = await tab;
+  // Keep the editor if it opened as a preview, so the next one doesn't
+  // replace it.
+  await commands.executeCommand("workbench.action.keepEditor");
+  return opened;
+}
+
+/**
+ * Open two datasets in Data Explorers next to each other. The left one is
+ * reused if it is already open, as when the compare started from its Data
+ * Explorer.
+ */
 export async function openSideBySide(
   session: SASLanguageRuntimeSession,
   left: DatasetRef,
   right: DatasetRef,
 ): Promise<void> {
-  const leftTab = nextTab(left.label);
-  session.openDataExplorer(left.lib, left.mem, left.label);
-  const leftOpened = await leftTab;
-  // Keep the editor if it opened as a preview, so the next one doesn't
-  // replace it.
-  await commands.executeCommand("workbench.action.keepEditor");
-
-  const rightTab = nextTab(right.label);
-  session.openDataExplorer(right.lib, right.mem, right.label);
-  const rightOpened = await rightTab;
-  await commands.executeCommand("workbench.action.keepEditor");
+  const leftLabel = dataExplorerTabLabel(left.label);
+  const leftOpen =
+    session.listDataExplorers().some(({ title }) => title === left.label) &&
+    allTabs().find((t) => t.label === leftLabel);
+  const leftTab = leftOpen || (await openExplorerTab(session, left));
+  const rightTab = await openExplorerTab(session, right);
   if (
-    leftOpened &&
-    rightOpened &&
-    leftOpened.group.viewColumn === rightOpened.group.viewColumn
+    leftTab &&
+    rightTab &&
+    leftTab.group.viewColumn === rightTab.group.viewColumn
   ) {
+    // The right one is the active editor: it was opened last.
     await commands.executeCommand("workbench.action.moveEditorToRightGroup");
   }
 }

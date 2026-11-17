@@ -12,6 +12,7 @@
 
 - Positron: `.sas7bdat` files from different folders can be open in the Data Explorer at the same time. Every file on disk used the library `_FVIEW`, so opening a file from a second folder pointed the library there, and the Data Explorer of the first file then read the wrong folder. Each folder now gets its own library, `_FVIEW1`, `_FVIEW2`, and so on ([#140](https://github.com/posit-dev/positron-sas-extension/issues/140))
 - Positron: several Data Explorers loading their column profiles at once could fail with "Silent execution queue full". Each Data Explorer now sends its profile queries one at a time
+- Positron: the Data Explorer tab of a dataset from a transport file is named after the file and dataset, for example **Data: adsl.xpt: ADSL**, instead of the library that the extension assigned
 
 ## 0.6.4 - 2026-11-15
 

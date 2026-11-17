@@ -197,3 +197,11 @@ export function commonColumns(
   const names = new Set(compare.map((c) => c.name.toUpperCase()));
   return base.map((c) => c.name).filter((n) => names.has(n.toUpperCase()));
 }
+
+/**
+ * The label of a Data Explorer tab for a title: Positron shows
+ * `Data: <title>`, with titles over 30 characters cut to 27 and `...`.
+ */
+export function dataExplorerTabLabel(title: string): string {
+  return `Data: ${title.length > 30 ? `${title.substring(0, 27)}...` : title}`;
+}

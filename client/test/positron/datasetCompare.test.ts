@@ -5,6 +5,7 @@ import { expect } from "chai";
 import {
   buildCompareCode,
   commonColumns,
+  dataExplorerTabLabel,
   describeCompareResult,
   parseCompareStatus,
 } from "../../src/positron/datasetCompare";
@@ -160,5 +161,21 @@ describe("commonColumns", () => {
         [{ name: "usubjid" }, { name: "studyid" }, { name: "SEX" }],
       ),
     ).to.deep.equal(["STUDYID", "USUBJID"]);
+  });
+});
+
+describe("dataExplorerTabLabel", () => {
+  it("prefixes the title with Data:", () => {
+    expect(dataExplorerTabLabel("WORK.A")).to.equal("Data: WORK.A");
+  });
+
+  it("cuts titles over 30 characters as Positron does", () => {
+    const title = "Differences: WORK.ADSL vs WORK.ADSL_QC";
+    expect(dataExplorerTabLabel(title)).to.equal(
+      "Data: Differences: WORK.ADSL vs W...",
+    );
+    expect(dataExplorerTabLabel("x".repeat(30))).to.equal(
+      `Data: ${"x".repeat(30)}`,
+    );
   });
 });
