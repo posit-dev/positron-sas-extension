@@ -133,13 +133,28 @@ describe("SasClient.getDatasetColumns", () => {
   it("returns parsed column metadata", async () => {
     const { client } = makeClient({
       "~~SAS_START~~": sentinelWrap(
-        "COL=NAME|char|20|$\nCOL=AGE|num|8|BEST12.",
+        "COL=NAME|char|20|$||Student name\nCOL=AGE|num|8|BEST12.|F8.|Age | years",
       ),
     });
     const cols = await client.getDatasetColumns("work", "class");
     expect(cols).to.deep.equal([
-      { name: "NAME", type: "char", length: 20, format: "$" },
-      { name: "AGE", type: "num", length: 8, format: "BEST12." },
+      {
+        name: "NAME",
+        type: "char",
+        length: 20,
+        format: "$",
+        informat: undefined,
+        label: "Student name",
+      },
+      // A label may contain the delimiter.
+      {
+        name: "AGE",
+        type: "num",
+        length: 8,
+        format: "BEST12.",
+        informat: "F8.",
+        label: "Age|years",
+      },
     ]);
   });
 
@@ -462,5 +477,119 @@ describe("SasClient.getColumnStringStats", () => {
       { numUnique: 19, numEmpty: 0 },
       { numUnique: 2, numEmpty: 3 },
     ]);
+  });
+});
+
+// ─── SasClient.getDatasetProperties ───────────────────────────────────────────
+
+describe("SasClient.getDatasetProperties", () => {
+  it("parses what dictionary.tables says", async () => {
+    const { client, executor } = makeClient({
+      "~~SAS_START~~": sentinelWrap(
+        [
+          "PROP_MEMTYPE=DATA",
+          "PROP_LABEL=Student Data | 2026",
+          "PROP_CREATED=2026-11-17T09:30:00",
+          "PROP_MODIFIED=2026-11-17T10:15:42",
+          "PROP_ROWS=19",
+          "PROP_DELETED=0",
+          "PROP_COLUMNS=5",
+          "PROP_ROWLENGTH=40",
+          "PROP_FILESIZE=131072",
+          "PROP_COMPRESS=NO",
+          "PROP_ENCODING=utf-8  Unicode (UTF-8)",
+          "PROP_DATAREP=SOLARIS_X86_64",
+          "PROP_SORTEDBY=Sex Name",
+        ].join("\n"),
+      ),
+    });
+    const props = await client.getDatasetProperties("sashelp", "class");
+    expect(props).to.deep.equal({
+      lib: "SASHELP",
+      mem: "CLASS",
+      memtype: "DATA",
+      label: "Student Data | 2026",
+      created: "2026-11-17T09:30:00",
+      modified: "2026-11-17T10:15:42",
+      rows: 19,
+      deletedRows: 0,
+      columns: 5,
+      rowLength: 40,
+      fileSize: 131072,
+      compression: "NO",
+      encoding: "utf-8  Unicode (UTF-8)",
+      dataRepresentation: "SOLARIS_X86_64",
+      sortedBy: ["Sex", "Name"],
+    });
+    const code = String(executor.firstCall.args[0]);
+    expect(code).to.include('where libname="SASHELP" and memname="CLASS"');
+    // Long labels need a long line; the user's line size comes back.
+    expect(code).to.include("ls=max");
+    expect(code).to.include("options notes source &_sas_opt;");
+  });
+
+  it("leaves out what a view doesn't have", async () => {
+    const { client } = makeClient({
+      "~~SAS_START~~": sentinelWrap(
+        "PROP_MEMTYPE=VIEW\nPROP_LABEL=\nPROP_ROWS=.\nPROP_FILESIZE=.\nPROP_SORTEDBY=",
+      ),
+    });
+    const props = await client.getDatasetProperties("sashelp", "vcolumn");
+    expect(props?.memtype).to.equal("VIEW");
+    expect(props?.label).to.equal(undefined);
+    expect(props?.rows).to.equal(undefined);
+    expect(props?.fileSize).to.equal(undefined);
+    expect(props?.sortedBy).to.deep.equal([]);
+  });
+
+  it("returns undefined for a dataset that doesn't exist", async () => {
+    const { client } = makeClient({ "~~SAS_START~~": sentinelWrap("") });
+    expect(await client.getDatasetProperties("work", "gone")).to.equal(
+      undefined,
+    );
+  });
+});
+
+// ─── SasClient.getDatasetStamps ───────────────────────────────────────────────
+
+describe("SasClient.getDatasetStamps", () => {
+  it("returns a stamp per existing dataset", async () => {
+    const { client, executor } = makeClient({
+      "~~SAS_START~~": sentinelWrap(
+        "STAMP=WORK|A|DATA|2.0123E9|19|5\nSTAMP=WORK|V|VIEW|.|.|3",
+      ),
+    });
+    const stamps = await client.getDatasetStamps([
+      { lib: "work", mem: "a" },
+      { lib: "work", mem: "v" },
+      { lib: "work", mem: "gone" },
+    ]);
+    expect([...stamps.entries()]).to.deep.equal([
+      ["WORK.A", { memtype: "DATA", stamp: "2.0123E9|19|5" }],
+      ["WORK.V", { memtype: "VIEW", stamp: ".|.|3" }],
+    ]);
+    const code = String(executor.firstCall.args[0]);
+    expect(code).to.include('(libname="WORK" and memname="GONE")');
+  });
+
+  it("runs nothing without datasets", async () => {
+    const { client, executor } = makeClient({});
+    expect((await client.getDatasetStamps([])).size).to.equal(0);
+    expect(executor.called).to.equal(false);
+  });
+});
+
+// ─── SasClient.getDatasetRows options ─────────────────────────────────────────
+
+describe("SasClient.getDatasetRows options", () => {
+  it("restores the user's line size and macro options", async () => {
+    const { client, executor } = makeClient({});
+    await client.getDatasetRows("work", "a", ["NAME"], 0, 10);
+    await client.getDatasetRows("work", "a", ["NAME"], 0, 10, "AGE > 12");
+    for (const call of executor.getCalls()) {
+      const code = String(call.args[0]);
+      expect(code).to.include("%sysfunc(getoption(ls,keyword))");
+      expect(code.trimEnd()).to.match(/options notes source &_sas_opt;$/);
+    }
   });
 });

@@ -23,6 +23,11 @@ import { PositronPlotsProvider } from "./PositronPlotsProvider";
 import { registerAssistantIntegration } from "./sasAssistant";
 import type { SasWorkspaceContextProvider } from "./sasAssistant";
 import { PositronDataViewerProvider } from "./PositronDataViewerProvider";
+import {
+  showDatasetFileProperties,
+  showDatasetProperties,
+} from "./datasetDetails";
+import { supportsTableSections } from "./datasetProperties";
 import type { SasClient } from "./sasClient";
 import {
   SasDataConnectionsDriver,
@@ -156,6 +161,12 @@ export async function initializePositronIntegration(
       "SAS.compareDatasets.withSelectedFile",
       compareDatasetFileWithSelected,
     ),
+    // Dataset properties, like SAS Studio's table properties.
+    commands.registerCommand("SAS.datasetProperties", showDatasetProperties),
+    commands.registerCommand(
+      "SAS.datasetProperties.file",
+      showDatasetFileProperties,
+    ),
   );
 
   // Auto-start a Console session when a .sas file becomes the active editor
@@ -226,7 +237,9 @@ export async function initializePositronIntegration(
       workspace.getConfiguration().get<boolean>("dataConnections.enabled"),
     )
   ) {
-    dataConnectionsDriver = new SasDataConnectionsDriver();
+    dataConnectionsDriver = new SasDataConnectionsDriver(
+      supportsTableSections(api.version),
+    );
     context.subscriptions.push(
       dataConnectionsDriver,
       api.dataConnections!.registerDriver(dataConnectionsDriver),

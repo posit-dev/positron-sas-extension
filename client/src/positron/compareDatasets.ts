@@ -44,11 +44,11 @@ function sameDataset(a: DatasetRef, b: { lib: string; mem: string }): boolean {
 }
 
 /** The SAS console the datasets live in, or a message saying there is none. */
-function requireSession(): SASLanguageRuntimeSession | undefined {
+export function requireSession(): SASLanguageRuntimeSession | undefined {
   const session = getActiveSession();
   if (!session) {
     void window.showErrorMessage(
-      "Start a SAS console first: datasets are compared in the SAS session.",
+      "Start a SAS console first: datasets are read through the SAS session.",
     );
   }
   return session;
@@ -70,7 +70,7 @@ function openDatasets(session: SASLanguageRuntimeSession): DatasetRef[] {
 }
 
 /** The SAS dataset in the Data Explorer in front, if any. */
-async function activeDataExplorerDataset(
+export async function activeDataExplorerDataset(
   session: SASLanguageRuntimeSession,
 ): Promise<DatasetRef | undefined> {
   const getContext = getPositronApi()?.dataExplorer?.getContext;
@@ -92,7 +92,7 @@ async function activeDataExplorerDataset(
 type DatasetItem = QuickPickItem & { ref?: DatasetRef; browse?: boolean };
 
 /** Pick a dataset: one open in a Data Explorer, or one from a library. */
-async function pickDataset(
+export async function pickDataset(
   session: SASLanguageRuntimeSession,
   title: string,
   first?: DatasetRef,
@@ -422,7 +422,7 @@ export async function compareActiveDataset(): Promise<void> {
 }
 
 /** A .sas7bdat or .xpt file as a dataset in the SAS session. */
-async function datasetFromFile(
+export async function datasetFromFile(
   session: SASLanguageRuntimeSession,
   uri: Uri,
   label?: string,
@@ -449,7 +449,7 @@ async function datasetFromFile(
       ? members[0]
       : await window.showQuickPick(members, {
           title: `${fileName} contains ${members.length} datasets`,
-          placeHolder: "Pick the dataset to compare",
+          placeHolder: "Pick a dataset",
         });
   return member
     ? { lib: libref, mem: member, label: `${fileName}: ${member}` }

@@ -7,6 +7,7 @@
 // the base, blue for the compare (not green, which red-green color vision
 // can't tell from red).
 import { type CompareOptions } from "./datasetCompare";
+import { escape, plural, renderPage } from "./htmlPage";
 
 // No VS Code imports: this module is unit-tested without VS Code.
 
@@ -136,16 +137,6 @@ export interface HighlightInput {
   totalRows: number;
 }
 
-const escape = (text: string): string =>
-  text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-
-const plural = (n: number, one: string, many = `${one}s`): string =>
-  `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
-
 /** The highlighted differences of a compare, as a complete HTML page. */
 export function buildHighlightHtml({
   options,
@@ -260,53 +251,31 @@ export function buildHighlightHtml({
 ${body}
 </table></div>`;
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="Positron SAS extension">
-<title>${escape(title)}</title>
-<style>${STYLE}</style>
-</head>
-<body>
-<h1>${escape(title)}</h1>
-<p class="legend"><span class="swatch base"></span>${escape(base.label)} (base) <span class="swatch compare"></span>${escape(compare.label)} (compare)</p>
+  return renderPage(
+    title,
+    `<p class="legend"><span class="swatch base"></span>${escape(base.label)} (base) <span class="swatch compare"></span>${escape(compare.label)} (compare)</p>
 ${summary.length > 0 ? `<p>${summary.join("; ")}.</p>` : ""}
 ${variables ? `<ul class="vars">${variables}</ul>` : ""}
 <p class="muted">${notes.join(" ")}</p>
-${table}
-</body>
-</html>
-`;
+${table}`,
+    STYLE,
+  );
 }
 
 const STYLE = `
 :root {
-  color-scheme: light dark;
-  --fg: #1f2328; --muted: #59636e; --bg: #ffffff; --line: #d1d9e0; --head: #f6f8fa;
   --base-bg: #ffcecb; --base-fg: #82071e; --compare-bg: #b6e3ff; --compare-fg: #0a3069;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    --fg: #e6edf3; --muted: #9198a1; --bg: #0d1117; --line: #3d444d; --head: #151b23;
-    --base-bg: #8e1519; --base-fg: #ffebe9; --compare-bg: #0c4a8f; --compare-fg: #ddf4ff;
-  }
+  :root { --base-bg: #8e1519; --base-fg: #ffebe9; --compare-bg: #0c4a8f; --compare-fg: #ddf4ff; }
 }
-body { font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--fg); background: var(--bg); margin: 0; padding: 16px 24px 32px; }
-h1 { font-size: 18px; margin: 0 0 8px; }
-.muted { color: var(--muted); }
-code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .legend { margin: 0 0 8px; }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin: 0 4px 0 12px; }
 .swatch:first-child { margin-left: 0; }
 .swatch.base { background: var(--base-bg); border: 1px solid var(--base-fg); }
 .swatch.compare { background: var(--compare-bg); border: 1px solid var(--compare-fg); }
 .vars { margin: 0 0 8px; padding-left: 20px; columns: 3 14em; }
-.scroll { overflow-x: auto; }
-table { border-collapse: collapse; font-size: 13px; }
-th, td { text-align: left; padding: 3px 8px; white-space: pre; border-right: 1px solid var(--line); }
-thead th { background: var(--head); font-weight: 600; position: sticky; top: 0; border-bottom: 1px solid var(--line); }
+th, td { white-space: pre; }
 tbody { border-bottom: 1px solid var(--line); }
 tbody th { font-weight: 600; vertical-align: top; }
 td.side { color: var(--muted); }

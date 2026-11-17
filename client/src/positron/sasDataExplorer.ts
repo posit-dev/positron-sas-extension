@@ -233,6 +233,16 @@ function filterToCondition(
  * into SAS queries via SasClient and emits responses and frontend events via
  * the onDidEmitData / onDidEmitEvent events.
  */
+/** Whether two column lists have the same names, types, formats and labels. */
+function sameColumns(
+  a: ColumnInfo[] | undefined,
+  b: ColumnInfo[],
+): boolean {
+  const key = (c: ColumnInfo) =>
+    [c.name.toUpperCase(), c.type, c.format ?? "", c.label ?? ""].join("\u0000");
+  return a !== undefined && a.length === b.length && a.every((c, i) => key(c) === key(b[i]));
+}
+
 export class SasDataExplorer {
   readonly id = uuidv4();
 
@@ -464,6 +474,8 @@ export class SasDataExplorer {
             type_name: col.type === "num" ? "numeric" : "character",
             type_display: display,
             description: "",
+            // Shown when hovering over the column name.
+            ...(col.label ? { column_label: col.label } : {}),
           };
         }),
     };
@@ -713,6 +725,29 @@ export class SasDataExplorer {
     lines.push(";", "quit;");
 
     return { converted_code: lines };
+  }
+
+  /**
+   * Reload after the dataset changed: re-read its columns, then tell Positron
+   * to fetch the schema again when they changed (sorts and filters are
+   * dropped, as they may name columns that are gone), or else the data.
+   * Does nothing when the dataset is gone.
+   */
+  async refresh(): Promise<void> {
+    const columns = await this.client.getDatasetColumns(this.lib, this.mem);
+    if (columns.length === 0) {
+      return;
+    }
+    const schemaChanged = !sameColumns(this.columns, columns);
+    this.columns = columns;
+    this.unfilteredRowCount = undefined;
+    if (schemaChanged) {
+      this.sortKeys = [];
+      this.rowFilters = [];
+      this.eventEmitter.fire({ method: "schema_update", params: {} });
+    } else {
+      this.eventEmitter.fire({ method: "data_update", params: {} });
+    }
   }
 
   /** Clear cached counts so the next get_state re-queries from SAS. */
