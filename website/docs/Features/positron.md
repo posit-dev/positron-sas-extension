@@ -58,6 +58,7 @@ The following screenshot shows `SASHELP.CLASS`, opened from the **Data Connectio
 - **Sorting:** sort by one or more columns.
 - **Row filters:** compare (`=`, `!=`, `<`, `<=`, `>`, `>=`), between, not between, is missing, is not missing, is empty, is not empty, is true, is false, set membership, and text search. Text search supports contains, does not contain, starts with, ends with, and regular expression match, with or without case sensitivity.
 - **Column profiles:** missing-value counts, summary statistics, histograms for numeric columns, and frequency tables.
+- **Side by side:** each dataset opens in its own Data Explorer tab, so you can open several at once. To see two next to each other, drag one tab to the side of the editor, or right-click the tab and choose **Split Right** and close the original. Each Data Explorer scrolls, sorts, and filters on its own: Positron doesn't synchronize scrolling between them.
 - **Dates:** numeric columns with a SAS date format (for example `DATE9.` or `YYMMDD10.`) are date columns. Columns with `DATETIME` or `DATEAMPM` formats are datetime columns. Positron offers date-range filters for both.
 - **Convert to Code:** creates a `PROC SQL` query that selects the dataset with the current filters and sort order.
 
@@ -103,14 +104,14 @@ The Libraries view that [Accessing Libraries and Tables](./accessLibraries.md) d
 
 The extension opens `.sas7bdat` and `.xpt` files in the Data Explorer. Open the file from the **Explorer**, or from a view such as the **Clinical Repository**.
 
-- **Datasets:** for a `.sas7bdat` file on disk, the extension assigns a library to the file's folder with a `LIBNAME` statement.
+- **Datasets:** for a `.sas7bdat` file on disk, the extension assigns a library to the file's folder with a `LIBNAME` statement. Each folder gets its own library, `_FVIEW1`, `_FVIEW2`, and so on, so files from different folders can be open at the same time.
 - **Transport files:** for an `.xpt` file, the extension detects the format from the file header: XPORT version 5, XPORT version 8 or 9, or `PROC CPORT`. It unpacks the file into a library in the WORK folder of the session.
 - **Several datasets:** when a transport file holds more than one dataset, a picker asks which ones to open.
 - **Files from other views:** files that are not on disk, such as files from the **Clinical Repository** or **SAS Content** views, are copied into the WORK folder first. This copy also works when SAS runs in lockdown mode.
 
 ![Positron with two editor tabs, class.sas7bdat and Data: _FVIEW.CLASS. The Data Explorer shows a summary panel with the columns Name, Sex, Age, Height, and Weight, and a grid with the rows of the dataset, starting with Alfred, Alice, and Barbara. The status line reads 19 rows, 5 columns. Below it is the SAS console for the viya profile.](/images/workbench/data-file-sas7bdat.png)
 
-*The file class.sas7bdat opened in the Data Explorer through a SAS (viya) console. The extension assigned the library _FVIEW to the file's folder.*
+*The file class.sas7bdat opened in the Data Explorer through a SAS (viya) console. The extension assigned a library to the file's folder. The screenshot is from an earlier version, which named it _FVIEW; it is now _FVIEW1 for the first folder.*
 
 ![Positron with the file multi.xpt open. A picker at the top reads: multi.xpt contains 2 datasets. Select the datasets to open in the Data Explorer. It lists the checkboxes CLASS and FISH, a counter 0 Selected, and an OK button.](/images/workbench/data-file-xpt-picker.png)
 

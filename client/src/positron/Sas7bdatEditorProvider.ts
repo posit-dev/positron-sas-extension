@@ -15,13 +15,8 @@ import {
   workspace,
 } from "vscode";
 import { reopenOutsidePositron } from "./dataFileEditorFallback";
+import { assignDataFileLibrary } from "./dataFiles";
 import { getActiveSession } from "./index";
-import {
-  TransportLibrefPool,
-  findSasErrors,
-  quoteLocalPath,
-  workPathLiteral,
-} from "./xptFormat";
 
 /** Minimal document representing a .sas7bdat file. */
 class Sas7bdatDocument implements CustomDocument {
@@ -41,10 +36,6 @@ export class Sas7bdatEditorProvider
   implements CustomReadonlyEditorProvider<Sas7bdatDocument>
 {
   static readonly viewType = "sas.sas7bdatViewer";
-
-  // Datasets from non-local views (Clinical Repository, SAS Content) are
-  // copied into WORK, one directory and libref per file.
-  private readonly uploadLibrefs = new TransportLibrefPool("_FVW");
 
   static register(context: ExtensionContext): void {
     const provider = new Sas7bdatEditorProvider();
@@ -77,9 +68,9 @@ export class Sas7bdatEditorProvider
     const local = uri.scheme === "file";
     const filePath = local ? uri.fsPath : uri.path;
     const dir = path.dirname(filePath);
-    const ext = path.extname(filePath);
-    const member = path.basename(filePath, ext).toUpperCase();
-    let libname = "_FVIEW";
+    const member = path
+      .basename(filePath, path.extname(filePath))
+      .toUpperCase();
 
     webviewPanel.webview.html = this.getLoadingHtml(member);
 
@@ -92,29 +83,14 @@ export class Sas7bdatEditorProvider
     }
 
     try {
-      if (!local) {
-        // Not on a disk SAS can read: copy it into WORK first. SAS on UNIX
-        // only finds datasets whose file names are lowercase.
-        libname = this.uploadLibrefs.librefFor(uri.toString());
-        await session.uploadToWork(
-          libname.toLowerCase(),
-          `${member.toLowerCase()}${ext.toLowerCase()}`,
-          await workspace.fs.readFile(uri),
-        );
-      }
-      const code = `libname ${libname} ${
-        local ? quoteLocalPath(dir) : workPathLiteral(libname.toLowerCase())
-      };`;
-      const errors = findSasErrors(await session.runSilent(code));
-      if (errors.length > 0) {
-        throw new Error(errors.join(" "));
-      }
-      session.openDataExplorer(libname, member);
-      webviewPanel.webview.html = this.getSuccessHtml(
-        member,
-        dir,
-        libname,
-      );
+      const { libref } = await assignDataFileLibrary(session, {
+        key: uri.toString(),
+        local,
+        filePath,
+        read: () => workspace.fs.readFile(uri),
+      });
+      session.openDataExplorer(libref, member);
+      webviewPanel.webview.html = this.getSuccessHtml(member, dir, libref);
     } catch (error) {
       const msg =
         error instanceof Error ? error.message : String(error);

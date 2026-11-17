@@ -599,19 +599,27 @@ export class SasDataExplorer {
     const names = (indices: number[]) => indices.map((i) => columns[i].name);
     const histogramColumns = [...new Set(histograms.map((h) => h.colIdx))];
 
-    const [nullCounts, numericStats, stringStats, freqTables, binningStats] =
-      await Promise.all([
-        this.client.getColumnNullCounts(this.lib, this.mem, names(nullCountIndices), where),
-        this.client.getColumnSummaryStats(this.lib, this.mem, names(numericStatsIndices), where),
-        this.client.getColumnStringStats(this.lib, this.mem, names(stringStatsIndices), where),
-        this.client.getColumnFrequencyTables(
-          this.lib,
-          this.mem,
-          frequencyTables.map((f) => ({ column: columns[f.colIdx].name, limit: f.limit })),
-          where,
-        ),
-        this.client.getColumnBinningStats(this.lib, this.mem, names(histogramColumns), where),
-      ]);
+    // One query at a time: SAS runs silent jobs one by one anyway, and
+    // queueing them all at once let two open explorers fill the session's
+    // silent queue (10 jobs) and fail.
+    const nullCounts = await this.client.getColumnNullCounts(
+      this.lib, this.mem, names(nullCountIndices), where,
+    );
+    const numericStats = await this.client.getColumnSummaryStats(
+      this.lib, this.mem, names(numericStatsIndices), where,
+    );
+    const stringStats = await this.client.getColumnStringStats(
+      this.lib, this.mem, names(stringStatsIndices), where,
+    );
+    const freqTables = await this.client.getColumnFrequencyTables(
+      this.lib,
+      this.mem,
+      frequencyTables.map((f) => ({ column: columns[f.colIdx].name, limit: f.limit })),
+      where,
+    );
+    const binningStats = await this.client.getColumnBinningStats(
+      this.lib, this.mem, names(histogramColumns), where,
+    );
 
     // Bin each requested histogram, then count all of them in one query.
     const binned = histograms.map((h) => {

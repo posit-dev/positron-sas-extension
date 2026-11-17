@@ -6,6 +6,11 @@
 
 - Positron: choose what the SAS console shows of the log. The filter icon in the title bar of the **Console** pane, shown while a SAS console is in front, or **SAS: Choose Console Log Output** in the Command Palette picks any of source, notes, warnings, and errors, for example only errors and warnings. The choice is saved in the new `SAS.console.logOutput` setting and applies from the next run (output already in the console doesn't change); the icon is filled while part of the log is hidden. Errors and warnings are still counted, so the error summary with its Posit Assistant actions and the warning count always appear. The indented lines of a multi-line ERROR or WARNING stay with it. The **SAS Log** output channel still has the full log. By default, the console shows everything, as before
 
+### Bug Fixes
+
+- Positron: `.sas7bdat` files from different folders can be open in the Data Explorer at the same time. Every file on disk used the library `_FVIEW`, so opening a file from a second folder pointed the library there, and the Data Explorer of the first file then read the wrong folder. Each folder now gets its own library, `_FVIEW1`, `_FVIEW2`, and so on ([#140](https://github.com/posit-dev/positron-sas-extension/issues/140))
+- Positron: several Data Explorers loading their column profiles at once could fail with "Silent execution queue full". Each Data Explorer now sends its profile queries one at a time
+
 ## 0.6.4 - 2026-11-15
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
