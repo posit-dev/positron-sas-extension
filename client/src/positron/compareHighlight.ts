@@ -3,7 +3,9 @@
 //
 // The highlighted differences of a compare: the observations of
 // WORK._COMPARE (BASE, COMPARE and DIF rows) as an HTML page for the Viewer,
-// base and compare values paired, the values that differ in color.
+// base and compare values paired, the values that differ in color: red for
+// the base, blue for the compare (not green, which red-green color vision
+// can't tell from red).
 import { type CompareOptions } from "./datasetCompare";
 
 // No VS Code imports: this module is unit-tested without VS Code.
@@ -283,12 +285,12 @@ const STYLE = `
 :root {
   color-scheme: light dark;
   --fg: #1f2328; --muted: #59636e; --bg: #ffffff; --line: #d1d9e0; --head: #f6f8fa;
-  --base-bg: #ffebe9; --base-fg: #82071e; --compare-bg: #dafbe1; --compare-fg: #116329;
+  --base-bg: #ffcecb; --base-fg: #82071e; --compare-bg: #b6e3ff; --compare-fg: #0a3069;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --fg: #e6edf3; --muted: #9198a1; --bg: #0d1117; --line: #3d444d; --head: #151b23;
-    --base-bg: #5a1e1e; --base-fg: #ffdcd7; --compare-bg: #1b4721; --compare-fg: #aff5b4;
+    --base-bg: #8e1519; --base-fg: #ffebe9; --compare-bg: #0c4a8f; --compare-fg: #ddf4ff;
   }
 }
 body { font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--fg); background: var(--bg); margin: 0; padding: 16px 24px 32px; }
