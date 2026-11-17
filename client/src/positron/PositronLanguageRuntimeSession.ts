@@ -1431,6 +1431,29 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     return this.getSasClient().getDatasetColumns(lib, mem);
   }
 
+  /**
+   * Return rows of a dataset as `|value|value` strings of formatted values,
+   * from the first row on.
+   */
+  getDatasetRows(
+    lib: string,
+    mem: string,
+    columns: string[],
+    numRows: number,
+  ): Promise<string[]> {
+    return this.getSasClient().getDatasetRows(lib, mem, columns, 0, numRows);
+  }
+
+  /** Show an HTML page in the Viewer, as a file Posit Assistant can read. */
+  showHtml(html: string, title: string, fileName: string): Promise<boolean> {
+    return showHtmlInViewer(html, this._outputFiles, {
+      viewType: "sas.output",
+      title,
+      preserveFocus: false,
+      fileName,
+    });
+  }
+
   /** Return (or lazily create) the SasClient bound to this session's silentExecute. */
   private getSasClient(): SasClient {
     if (!this._sasClient) {

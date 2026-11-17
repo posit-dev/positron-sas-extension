@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
   type Disposable,
+  ProgressLocation,
   type QuickPickItem,
   QuickPickItemKind,
   type Tab,
@@ -14,6 +15,7 @@ import {
 import * as path from "path";
 
 import type { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
+import { HIGHLIGHT_MAX_ROWS, buildHighlightHtml } from "./compareHighlight";
 import { assignDataFileLibrary, loadTransportFile } from "./dataFiles";
 import {
   COMPARE_OUT,
@@ -270,6 +272,41 @@ export async function openSideBySide(
   }
 }
 
+/**
+ * Show the differing observations of WORK._COMPARE in the Viewer, base and
+ * compare values paired and the values that differ in color.
+ */
+async function showHighlightedDifferences(
+  session: SASLanguageRuntimeSession,
+  options: CompareOptions,
+  totalRows: number,
+): Promise<void> {
+  const html = await window.withProgress(
+    {
+      location: ProgressLocation.Notification,
+      title: "Reading the differences...",
+    },
+    async () => {
+      const columns = await session.getDatasetColumns(
+        COMPARE_OUT.lib,
+        COMPARE_OUT.mem,
+      );
+      const rows = await session.getDatasetRows(
+        COMPARE_OUT.lib,
+        COMPARE_OUT.mem,
+        columns.map((c) => c.name),
+        HIGHLIGHT_MAX_ROWS,
+      );
+      return buildHighlightHtml({ options, columns, rows, totalRows });
+    },
+  );
+  await session.showHtml(
+    html,
+    `Differences: ${options.base.label} vs ${options.compare.label}`,
+    "sas-differences",
+  );
+}
+
 /** Run the compare in the console, then report what differs. */
 async function runCompare(
   session: SASLanguageRuntimeSession,
@@ -310,17 +347,22 @@ async function runCompare(
     return;
   }
 
+  const highlight = "Highlight Differences";
   const openDifferences = "Open Differences";
   const sideBySide = "Open Side by Side";
   const actions =
-    status.differenceRows > 0 ? [openDifferences, sideBySide] : [sideBySide];
+    status.differenceRows > 0
+      ? [highlight, openDifferences, sideBySide]
+      : [sideBySide];
   const message = result.identical
     ? `${names} are identical. The report is in the Viewer.`
     : `${names} differ: ${result.differences.join(", ")}. The report is in the Viewer.`;
   const choice = await (result.identical
     ? window.showInformationMessage(message, ...actions)
     : window.showWarningMessage(message, ...actions));
-  if (choice === openDifferences) {
+  if (choice === highlight) {
+    await showHighlightedDifferences(session, options, status.differenceRows);
+  } else if (choice === openDifferences) {
     session.openDataExplorer(
       COMPARE_OUT.lib,
       COMPARE_OUT.mem,
