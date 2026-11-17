@@ -12,6 +12,12 @@ import type {
   DiscoveredDataConnection,
   PositronApi,
 } from "./positron-types";
+import {
+  COLUMN_HEADINGS,
+  columnRows,
+  columnsAsText,
+  propertyList,
+} from "./datasetProperties";
 import type { ColumnInfo, SasClient } from "./sasClient";
 import {
   type ServerFilesBrowser,
@@ -54,7 +60,10 @@ export interface SasDataConnectionSource {
   host: string;
   client: Pick<
     SasClient,
-    "getLibraryList" | "getLibraryMembers" | "getDatasetColumns"
+    | "getLibraryList"
+    | "getLibraryMembers"
+    | "getDatasetColumns"
+    | "getDatasetProperties"
   >;
   openDataExplorer(lib: string, mem: string): void;
   /** Compute file system of the session (REST/Viya profiles only). */
@@ -122,6 +131,12 @@ export class SasDataConnectionsDriver
       ],
     },
   ];
+
+  /**
+   * @param tableSections whether the details editor shows table sections
+   * (Positron 2026.11+); the columns are a text table otherwise.
+   */
+  constructor(private readonly tableSections = false) {}
 
   private readonly sources = new Map<string, SasDataConnectionSource>();
   private readonly changeEmitter = new EventEmitter<void>();
@@ -309,6 +324,37 @@ export class SasDataConnectionsDriver
       preview: async () => {
         getSource().openDataExplorer(lib, mem);
       },
+      getDetails: () => this.memberDetails(getSource(), lib, mem),
+    };
+  }
+
+  /** The properties and columns of a dataset or view. */
+  private async memberDetails(
+    source: SasDataConnectionSource,
+    lib: string,
+    mem: string,
+  ): Promise<DataConnectionNodeDetails> {
+    const [props, columns] = await Promise.all([
+      source.client.getDatasetProperties(lib, mem),
+      source.client.getDatasetColumns(lib, mem),
+    ]);
+    const sections: DataConnectionNodeDetailsSection[] = [];
+    if (props) {
+      sections.push({ kind: "properties", properties: propertyList(props) });
+    }
+    sections.push(
+      this.tableSections
+        ? {
+            kind: "table",
+            title: "Columns",
+            columns: COLUMN_HEADINGS,
+            rows: columnRows(columns),
+          }
+        : { kind: "code", title: "Columns", code: columnsAsText(columns) },
+    );
+    return {
+      description: `${props?.memtype === "VIEW" ? "View" : "Dataset"} in ${lib}`,
+      sections,
     };
   }
 

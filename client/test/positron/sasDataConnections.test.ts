@@ -24,6 +24,15 @@ function makeSource(profileName = "Viya"): SasDataConnectionSource {
         { name: "Name", type: "char", length: 8 },
         { name: "Age", type: "num", length: 8 },
       ]),
+      getDatasetProperties: sinon.stub().resolves({
+        lib: "SASHELP",
+        mem: "CLASS",
+        memtype: "DATA",
+        label: "Student Data",
+        rows: 19,
+        columns: 2,
+        sortedBy: [],
+      }),
     },
     openDataExplorer: sinon.stub(),
   };
@@ -274,6 +283,46 @@ describe("SasDataConnectionsDriver", () => {
       expect(large.description).to.include("too large");
       expect((source.serverFiles!.readFile as sinon.SinonStub).called).to.be
         .false;
+    });
+  });
+});
+
+describe("SasDataConnectionsDriver dataset details", () => {
+  async function classNode(tableSections: boolean) {
+    const driver = new SasDataConnectionsDriver(tableSections);
+    driver.addSource(makeSource());
+    const connection = await driver.connect("session", { profile: "Viya" });
+    const [sashelp] = await connection.getChildren();
+    const [cls] = await sashelp.getChildren!();
+    return cls;
+  }
+
+  it("shows the properties and a table of columns", async () => {
+    const details = await (await classNode(true)).getDetails!();
+    expect(details.description).to.equal("Dataset in SASHELP");
+    expect(details.sections[0]).to.deep.include({ kind: "properties" });
+    const properties =
+      details.sections[0].kind === "properties"
+        ? details.sections[0].properties
+        : [];
+    expect(properties).to.deep.include({ name: "Label", value: "Student Data" });
+    expect(properties).to.deep.include({ name: "Rows", value: "19" });
+    expect(details.sections[1]).to.deep.equal({
+      kind: "table",
+      title: "Columns",
+      columns: ["#", "Name", "Type", "Length", "Format", "Informat", "Label"],
+      rows: [
+        ["1", "Name", "Character", "8", "", "", ""],
+        ["2", "Age", "Numeric", "8", "", "", ""],
+      ],
+    });
+  });
+
+  it("shows the columns as text before Positron 2026.11", async () => {
+    const details = await (await classNode(false)).getDetails!();
+    expect(details.sections[1]).to.deep.include({
+      kind: "code",
+      title: "Columns",
     });
   });
 });

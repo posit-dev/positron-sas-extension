@@ -40,7 +40,11 @@ import {
   stripSubmissionTag,
 } from "./consoleLog";
 import { getConsoleLogOutput } from "./consoleLogFilter";
-import { SasClient, type ColumnInfo as SasColumnInfo } from "./sasClient";
+import {
+  SasClient,
+  type ColumnInfo as SasColumnInfo,
+  type DatasetProperties,
+} from "./sasClient";
 import { OutputFiles } from "./outputFiles";
 import { showHtmlInViewer } from "./viewer";
 import { extractPngImages, htmlToText, pngSize } from "./sasOutput";
@@ -194,6 +198,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   // Active data explorer comms (one per open dataset)
   private readonly _dataExplorers = new Map<string, SasDataExplorer>();
+  /** The change stamp of each open explorer's dataset, by explorer id. */
+  private readonly _dataExplorerStamps = new Map<string, string>();
   // The title each open Data Explorer was opened with, by comm id.
   // HTML reports opened in the Viewer as files (#74).
   private readonly _outputFiles = new OutputFiles();
@@ -564,6 +570,17 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         target_name: "positron.dataExplorer",
         data: { title },
       });
+      // Remember the dataset's state, to refresh the explorer after a run
+      // that changes it.
+      this.getSasClient()
+        .getDatasetStamps([explorer])
+        .then((stamps) => {
+          const stamp = stamps.get(`${explorer.lib}.${explorer.mem}`.toUpperCase());
+          if (stamp && this._dataExplorers.has(explorer.id)) {
+            this._dataExplorerStamps.set(explorer.id, stamp.stamp);
+          }
+        })
+        .catch(() => {});
     }).catch(() => {
       // Open anyway even if warm-up fails — Positron will retry on demand.
       this.fireCommMessage("comm_open", {
@@ -584,6 +601,31 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this._dataExplorerListeners.delete(id);
     explorer.dispose();
     this._dataExplorers.delete(id);
+    this._dataExplorerStamps.delete(id);
+  }
+
+  /**
+   * Refresh the open Data Explorers whose datasets changed: their
+   * modification time, rows or columns differ from when they were last
+   * read. Views have no modification time, so their explorers always reload.
+   */
+  private async refreshDataExplorers(): Promise<void> {
+    const explorers = [...this._dataExplorers.values()];
+    if (explorers.length === 0) {
+      return;
+    }
+    const stamps = await this.getSasClient().getDatasetStamps(explorers);
+    for (const explorer of explorers) {
+      const stamp = stamps.get(`${explorer.lib}.${explorer.mem}`.toUpperCase());
+      if (!stamp || !this._dataExplorers.has(explorer.id)) {
+        continue;
+      }
+      const previous = this._dataExplorerStamps.get(explorer.id);
+      this._dataExplorerStamps.set(explorer.id, stamp.stamp);
+      if (stamp.memtype === "VIEW" || previous !== stamp.stamp) {
+        await explorer.refresh();
+      }
+    }
   }
 
   /** The datasets open in a Data Explorer of this session, with their titles. */
@@ -964,6 +1006,10 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
         this.setState(RuntimeState.Idle);
         console.log(`Execution complete, state set to Idle`);
+
+        // Refresh the Data Explorers whose datasets the run changed. After
+        // idle, so it runs after anything queued while the code ran.
+        this.refreshDataExplorers().catch(() => {});
       })
       .catch((error) => {
         console.error(`Execution error:`, error);
@@ -1424,6 +1470,11 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   /** Return the librefs assigned in this session. */
   listLibraries(): Promise<string[]> {
     return this.getSasClient().getLibraryList();
+  }
+
+  /** Return what dictionary.tables says about a dataset or view. */
+  getDatasetProperties(lib: string, mem: string): Promise<DatasetProperties | undefined> {
+    return this.getSasClient().getDatasetProperties(lib, mem);
   }
 
   /** Return the columns of a dataset, in variable-number order. */

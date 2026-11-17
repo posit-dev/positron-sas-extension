@@ -562,3 +562,78 @@ describe("computeHistogramBins", () => {
     expect(computeHistogramBins(stats({ n: 0, min: null, max: null }), 80).nbins).to.equal(0);
   });
 });
+
+// ─── labels and refresh ───────────────────────────────────────────────────────
+
+describe("SasDataExplorer labels and refresh", () => {
+  it("sends column labels", async () => {
+    const explorer = new SasDataExplorer(
+      makeClient({
+        getDatasetColumns: sinon.stub().resolves([
+          { name: "AGE", type: "num", length: 8, label: "Age in years" },
+          { name: "NAME", type: "char", length: 8 },
+        ]),
+      }),
+      "WORK",
+      "CLASS",
+    );
+    const { result } = (await sendRpc(explorer, "get_schema")) as {
+      result: { columns: Array<{ column_label?: string }> };
+    };
+    expect(result.columns.map((c) => c.column_label)).to.deep.equal([
+      "Age in years",
+      undefined,
+    ]);
+  });
+
+  it("sends data_update when only the rows changed", async () => {
+    const client = makeClient();
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await explorer.warmUp();
+    const events: unknown[] = [];
+    explorer.onDidEmitEvent((e) => events.push(e));
+    await explorer.refresh();
+    expect(events).to.deep.equal([{ method: "data_update", params: {} }]);
+    // The row count is read again.
+    await sendRpc(explorer, "get_state");
+    expect(client.getDatasetRowCount).to.have.property("callCount", 2);
+  });
+
+  it("sends schema_update and drops sorts when the columns changed", async () => {
+    const getDatasetColumns = sinon.stub().resolves(SAMPLE_COLUMNS);
+    const explorer = new SasDataExplorer(
+      makeClient({ getDatasetColumns }),
+      "WORK",
+      "CLASS",
+    );
+    await explorer.warmUp();
+    await sendRpc(explorer, "set_sort_columns", {
+      sort_keys: [{ column_index: 2, ascending: true }],
+    });
+    getDatasetColumns.resolves(SAMPLE_COLUMNS.slice(0, 2));
+    const events: unknown[] = [];
+    explorer.onDidEmitEvent((e) => events.push(e));
+    await explorer.refresh();
+    expect(events).to.deep.equal([{ method: "schema_update", params: {} }]);
+    const { result } = (await sendRpc(explorer, "get_state")) as {
+      result: { sort_keys: unknown[]; table_shape: { num_columns: number } };
+    };
+    expect(result.sort_keys).to.deep.equal([]);
+    expect(result.table_shape.num_columns).to.equal(2);
+  });
+
+  it("does nothing when the dataset is gone", async () => {
+    const getDatasetColumns = sinon.stub().resolves(SAMPLE_COLUMNS);
+    const explorer = new SasDataExplorer(
+      makeClient({ getDatasetColumns }),
+      "WORK",
+      "CLASS",
+    );
+    await explorer.warmUp();
+    getDatasetColumns.resolves([]);
+    const events: unknown[] = [];
+    explorer.onDidEmitEvent((e) => events.push(e));
+    await explorer.refresh();
+    expect(events).to.deep.equal([]);
+  });
+});

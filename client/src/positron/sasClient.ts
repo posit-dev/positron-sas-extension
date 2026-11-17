@@ -10,7 +10,48 @@ export interface ColumnInfo {
   type: string; // "num" or "char"
   length?: number;
   format?: string;
+  informat?: string;
+  label?: string;
 }
+
+/** What dictionary.tables says about a dataset or view. */
+export interface DatasetProperties {
+  lib: string;
+  mem: string;
+  /** "DATA" or "VIEW". */
+  memtype: string;
+  label?: string;
+  /** Creation and modification times, as SAS shows them (ISO 8601). */
+  created?: string;
+  modified?: string;
+  /** Rows, without deleted ones; unknown for views. */
+  rows?: number;
+  deletedRows?: number;
+  columns?: number;
+  /** Bytes per row. */
+  rowLength?: number;
+  fileSize?: number;
+  compression?: string;
+  encoding?: string;
+  dataRepresentation?: string;
+  /** The variables the data is sorted by, from dictionary.columns. */
+  sortedBy: string[];
+}
+
+/** When a dataset last changed, to tell whether an open Data Explorer is stale. */
+export interface DatasetStamp {
+  memtype: string;
+  /** Modification time, rows and columns; changes when the data does. */
+  stamp: string;
+}
+
+/**
+ * SAS code that sets line and page size for long %put lines and keeps the
+ * user's values in _SAS_OPT, which RESTORE_OPTIONS puts back.
+ */
+const SAVE_OPTIONS = `%let _sas_opt=%sysfunc(getoption(ls,keyword)) %sysfunc(getoption(ps,keyword)) %sysfunc(getoption(mprint)) %sysfunc(getoption(symbolgen)) %sysfunc(getoption(mlogic));
+options nosource nonotes nomprint nosymbolgen nomlogic ls=max ps=max;`;
+const RESTORE_OPTIONS = `options notes source &_sas_opt;`;
 
 export interface LibraryMember {
   name: string;
@@ -120,6 +161,65 @@ export function sasIdent(value: unknown): string {
   return value.toUpperCase();
 }
 
+// The properties read from dictionary.tables: output key, SQL expression.
+const PROPERTY_FIELDS: Array<[string, string]> = [
+  ["MEMTYPE", "memtype"],
+  ["LABEL", "memlabel"],
+  ["CREATED", "put(crdate, e8601dt19.)"],
+  ["MODIFIED", "put(modate, e8601dt19.)"],
+  ["ROWS", "put(nlobs, 20.)"],
+  ["DELETED", "put(delobs, 20.)"],
+  ["COLUMNS", "put(nvar, 20.)"],
+  ["ROWLENGTH", "put(obslen, 20.)"],
+  ["FILESIZE", "put(filesize, 20.)"],
+  ["COMPRESS", "compress"],
+  ["ENCODING", "encoding"],
+  ["DATAREP", "datarep"],
+];
+
+/** Parse the output of getDatasetProperties. */
+export function parseDatasetProperties(
+  output: string,
+  lib: string,
+  mem: string,
+): DatasetProperties | undefined {
+  const values = new Map<string, string>();
+  for (const line of parseSentinelOutput(output)) {
+    const match = /^PROP_([A-Z]+)=(.*)$/.exec(line);
+    if (match) {
+      values.set(match[1], match[2].trim());
+    }
+  }
+  if (!values.has("MEMTYPE")) {
+    return undefined;
+  }
+  const text = (key: string) => {
+    const value = values.get(key);
+    return value && value !== "." ? value : undefined;
+  };
+  const number = (key: string) => {
+    const value = Number(text(key));
+    return text(key) !== undefined && Number.isFinite(value) ? value : undefined;
+  };
+  return {
+    lib,
+    mem,
+    memtype: text("MEMTYPE") ?? "DATA",
+    label: text("LABEL"),
+    created: text("CREATED"),
+    modified: text("MODIFIED"),
+    rows: number("ROWS"),
+    deletedRows: number("DELETED"),
+    columns: number("COLUMNS"),
+    rowLength: number("ROWLENGTH"),
+    fileSize: number("FILESIZE"),
+    compression: text("COMPRESS"),
+    encoding: text("ENCODING"),
+    dataRepresentation: text("DATAREP"),
+    sortedBy: (text("SORTEDBY") ?? "").split(/\s+/).filter(Boolean),
+  };
+}
+
 /**
  * Encapsulates all SAS metadata queries used by the Positron integration.
  *
@@ -219,11 +319,11 @@ options notes source;
 
   private async _fetchDatasetColumns(libname: string, memname: string): Promise<ColumnInfo[]> {
     const output = await this.execute(`
-options nosource nonotes;
+${SAVE_OPTIONS}
 %let _sas_n=0;
 proc sql noprint;
-  select name, type, length, format
-  into :_sas_col1-, :_sas_typ1-, :_sas_len1-, :_sas_fmt1-
+  select name, type, length, format, informat, label
+  into :_sas_col1-, :_sas_typ1-, :_sas_len1-, :_sas_fmt1-, :_sas_inf1-, :_sas_lbl1-
   from dictionary.columns
   where upcase(libname)=upcase("${libname}")
     and upcase(memname)=upcase("${memname}")
@@ -233,21 +333,107 @@ quit;
 %put ${SENTINEL_START};
 %macro _sas_emit;
   %do _i = 1 %to &_sas_n;
-    %put COL=%superq(_sas_col&_i)|%superq(_sas_typ&_i)|%superq(_sas_len&_i)|%superq(_sas_fmt&_i);
+    %put COL=%superq(_sas_col&_i)|%superq(_sas_typ&_i)|%superq(_sas_len&_i)|%superq(_sas_fmt&_i)|%superq(_sas_inf&_i)|%superq(_sas_lbl&_i);
   %end;
 %mend;
 %_sas_emit;
 %put ${SENTINEL_END};
-options notes source;
+${RESTORE_OPTIONS}
 `);
     return parsePrefixedRecords(output, "COL")
       .filter(([name]) => name)
-      .map(([name, type, len, fmt]) => ({
+      .map(([name, type, len, fmt, inf, ...label]) => ({
         name,
         type: type || "char",
         length: len ? parseInt(len, 10) : undefined,
         format: fmt || undefined,
+        informat: inf || undefined,
+        label: label.join("|") || undefined,
       }));
+  }
+
+  /** Return what dictionary.tables says about a dataset or view. */
+  async getDatasetProperties(
+    lib: unknown,
+    mem: unknown,
+  ): Promise<DatasetProperties | undefined> {
+    const libname = sasIdent(lib);
+    const memname = sasIdent(mem);
+    const fields = PROPERTY_FIELDS.map(([, expr]) => expr).join(",\n         ");
+    const into = PROPERTY_FIELDS.map((_, i) => `:_sas_p${i + 1} trimmed`).join(", ");
+    const emit = PROPERTY_FIELDS.map(
+      ([key], i) => `    %put PROP_${key}=%superq(_sas_p${i + 1});`,
+    ).join("\n");
+    const output = await this.execute(`
+${SAVE_OPTIONS}
+%let _sas_pn=0;
+%let _sas_sort=;
+proc sql noprint;
+  select ${fields}
+    into ${into}
+    from dictionary.tables
+    where libname="${libname}" and memname="${memname}";
+  %let _sas_pn=&sqlobs;
+  select name into :_sas_sort separated by ' '
+    from dictionary.columns
+    where libname="${libname}" and memname="${memname}" and sortedby > 0
+    order by sortedby;
+quit;
+%put ${SENTINEL_START};
+%macro _sas_pemit;
+  %if &_sas_pn > 0 %then %do;
+${emit}
+    %put PROP_SORTEDBY=%superq(_sas_sort);
+  %end;
+%mend;
+%_sas_pemit;
+%put ${SENTINEL_END};
+${RESTORE_OPTIONS}
+`);
+    return parseDatasetProperties(output, libname, memname);
+  }
+
+  /**
+   * Return the change stamps of datasets, keyed by `LIB.MEM`. Datasets that
+   * don't exist are missing from the map.
+   */
+  async getDatasetStamps(
+    datasets: Array<{ lib: unknown; mem: unknown }>,
+  ): Promise<Map<string, DatasetStamp>> {
+    const stamps = new Map<string, DatasetStamp>();
+    if (datasets.length === 0) {
+      return stamps;
+    }
+    const where = datasets
+      .map(({ lib, mem }) => `(libname="${sasIdent(lib)}" and memname="${sasIdent(mem)}")`)
+      .join("\n      or ");
+    const output = await this.execute(`
+options nosource nonotes;
+%let _sas_n=0;
+proc sql noprint;
+  select catx('|', libname, memname, memtype, put(modate, 20.), put(nlobs, 20.), put(nvar, 20.))
+    into :_sas_st1-
+    from dictionary.tables
+    where ${where};
+  %let _sas_n=&sqlobs;
+quit;
+%put ${SENTINEL_START};
+%macro _sas_stemit;
+  %do _i = 1 %to &_sas_n;
+    %put STAMP=%superq(_sas_st&_i);
+  %end;
+%mend;
+%_sas_stemit;
+%put ${SENTINEL_END};
+options notes source;
+`);
+    for (const [libname, memname, memtype, ...stamp] of parsePrefixedRecords(
+      output,
+      "STAMP",
+    )) {
+      stamps.set(`${libname}.${memname}`, { memtype, stamp: stamp.join("|") });
+    }
+    return stamps;
   }
 
   /** Return row count, optionally with a pre-built WHERE clause. */
@@ -328,7 +514,7 @@ options notes source;
     // through the same channel that works for metadata queries.
     const output = needsTempTable
       ? await this.execute(`
-options nosource nonotes nomprint nosymbolgen nomlogic ls=max ps=max;
+${SAVE_OPTIONS}
 proc sql noprint;
   create table work.${tmpTable} as
   select ${colList} from ${libname}.${memname}
@@ -354,10 +540,10 @@ run;
 %_emit_dr;
 %put ${SENTINEL_END};
 proc datasets library=work nolist; delete ${tmpTable}; quit;
-options notes source nomprint nosymbolgen nomlogic;
+${RESTORE_OPTIONS}
 `)
       : await this.execute(`
-options nosource nonotes nomprint nosymbolgen nomlogic ls=max ps=max;
+${SAVE_OPTIONS}
 data _null_;
   set ${libname}.${memname}(firstobs=${firstObs} obs=${lastObs});
   length _row_ $32767;
@@ -376,7 +562,7 @@ run;
 %mend;
 %_emit_dr;
 %put ${SENTINEL_END};
-options notes source nomprint nosymbolgen nomlogic;
+${RESTORE_OPTIONS}
 `);
 
     // Each line between sentinels prefixed with DATAROW= is one data row.

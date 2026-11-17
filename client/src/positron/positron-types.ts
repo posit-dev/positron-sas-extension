@@ -293,6 +293,8 @@ export interface ConnectionsRpcResponse extends Record<string, unknown> {
  * Main Positron API interface
  */
 export interface PositronApi {
+  /** The Positron version, e.g. `2026.11.1`. */
+  readonly version?: string;
   readonly runtime: RuntimeManager;
   readonly connections: ConnectionsManager;
   readonly window: WindowManager;
@@ -361,7 +363,9 @@ export type DataConnectionNodeDetailsSection =
       title?: string;
       properties: { name: string; value: string }[];
     }
-  | { kind: "code"; title?: string; languageId?: string; code: string };
+  | { kind: "code"; title?: string; languageId?: string; code: string }
+  /** Positron 2026.11 and later. */
+  | { kind: "table"; title?: string; columns: string[]; rows: string[][] };
 
 export interface DataConnectionNodeDetails {
   description?: string;

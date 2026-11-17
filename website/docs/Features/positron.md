@@ -58,8 +58,10 @@ The following screenshot shows `SASHELP.CLASS`, opened from the **Data Connectio
 - **Sorting:** sort by one or more columns.
 - **Row filters:** compare (`=`, `!=`, `<`, `<=`, `>`, `>=`), between, not between, is missing, is not missing, is empty, is not empty, is true, is false, set membership, and text search. Text search supports contains, does not contain, starts with, ends with, and regular expression match, with or without case sensitivity.
 - **Column profiles:** missing-value counts, summary statistics, histograms for numeric columns, and frequency tables.
+- **Column labels:** hover over a column name, in the summary panel or the grid, to see the column's SAS label.
 - **Side by side:** each dataset opens in its own Data Explorer tab, so you can open several at once. To see two next to each other, drag one tab to the side of the editor, or right-click the tab and choose **Split Right** and close the original. Each Data Explorer scrolls, sorts, and filters on its own: Positron doesn't synchronize scrolling between them.
 - **Compare:** **Compare with Another Dataset...** in the editor title bar compares the dataset with another one with `PROC COMPARE`. See [Comparing Datasets](./compareDatasets.md).
+- **Dataset properties:** **Dataset Properties** (the info icon) in the editor title bar shows the properties of the dataset in the **Viewer**, like the table properties of SAS Studio. See [Dataset properties](#dataset-properties).
 - **Dates:** numeric columns with a SAS date format (for example `DATE9.` or `YYMMDD10.`) are date columns. Columns with `DATETIME` or `DATEAMPM` formats are datetime columns. Positron offers date-range filters for both.
 - **Convert to Code:** creates a `PROC SQL` query that selects the dataset with the current filters and sort order.
 
@@ -81,14 +83,30 @@ Sort and filter from the column menu or the filter bar. The next screenshot sort
 
 *The Convert to Code dialog with the code syntax sas, showing a PROC SQL query that selects from SASHELP.CLASS where Height is greater than 60, ordered by Height descending.*
 
-The Data Explorer refreshes its row counts after each console run.
+The Data Explorer refreshes after each console run that changes its dataset: when the dataset's modification time, number of rows, or number of columns changed. If the columns changed, the summary panel reloads, and the sort order and filters are cleared, because they can refer to columns that no longer exist. A Data Explorer of a view reloads after every console run, because SAS doesn't record when a view's data changes.
+
+### Dataset properties
+
+The properties of a dataset are what SAS records about it in `DICTIONARY.TABLES` and `DICTIONARY.COLUMNS`:
+
+- **Dataset:** the label, the number of rows and deleted rows, the number of columns, the row length, the file size, the creation and modification times, the variables it is sorted by, the compression, the encoding, and the data representation.
+- **Columns:** the number, name, type, length, format, informat, and label of each column.
+
+To see them:
+
+- **Data Explorer:** select **Dataset Properties** in the editor title bar.
+- **Command Palette:** run **SAS: Dataset Properties** and pick a dataset. When a SAS Data Explorer is in front, its dataset is used.
+- **Explorer:** right-click a `.sas7bdat` or `.xpt` file and select **Show Dataset Properties**.
+- **Data Connections pane:** select a table or view. The details editor shows the properties, and the columns as a table. Before Positron 2026.11, the columns are shown as text.
+
+The first three show the properties as a page in the **Viewer**, which Posit Assistant can read.
 
 ## Connections
 
 The extension lists the libraries of the running SAS session in Positron. Which pane it uses depends on the Positron version.
 
 - **Connections pane:** in Positron 2026.09 and earlier, or when the Positron setting `dataConnections.enabled` is off, a **SAS (*profile*)** connection appears in the **Connections** pane. It shows libraries, their tables and views, and the columns with their types. Select the preview icon of a table to open it in the Data Explorer. The tree refreshes after each console run.
-- **Data Connections pane:** in Positron 2026.10 and later with the Positron setting `dataConnections.enabled` turned on, the **Data Connections** pane lists a **SAS (*profile*)** connection for each running SAS console. It shows the same library tree, and preview opens a table in the Data Explorer. Positron reads `dataConnections.enabled` at startup, so restart Positron after you change it.
+- **Data Connections pane:** in Positron 2026.10 and later with the Positron setting `dataConnections.enabled` turned on, the **Data Connections** pane lists a **SAS (*profile*)** connection for each running SAS console. It shows the same library tree, and preview opens a table in the Data Explorer. Select a table or view to see its [properties](#dataset-properties) in the details editor. Positron reads `dataConnections.enabled` at startup, so restart Positron after you change it.
 - **SAS Server Files:** on SAS Viya, a read-only **SAS Server Files (*profile*)** connection browses the file system of the compute session. The `fileNavigationRoot` and `fileNavigationCustomRootPath` profile settings set its root folder. In the **Data Connections** pane, text files up to 512 KB show their content in the details view. In the **Connections** pane, previewing a file opens it in an editor.
 
 The Libraries view that [Accessing Libraries and Tables](./accessLibraries.md) describes is hidden in Positron, because the Connections and Data Connections panes replace it. On SAS Viya, the **SAS Content** and **SAS Server** views stay in the **SAS** sidebar, as described in [Accessing SAS Content](./accessContent.md) and [Accessing SAS Server](./accessServer.md).
