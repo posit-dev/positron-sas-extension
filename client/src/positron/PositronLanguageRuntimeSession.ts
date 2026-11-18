@@ -41,6 +41,11 @@ import {
 } from "./consoleLog";
 import { getConsoleLogOutput } from "./consoleLogFilter";
 import {
+  consoleBanner,
+  consoleSessionName,
+  effectiveContext,
+} from "./consoleContext";
+import {
   SasClient,
   type ColumnInfo as SasColumnInfo,
   type DatasetProperties,
@@ -164,6 +169,12 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
   private _runtimeMetadata: LanguageRuntimeMetadata;
   private _profileName: string;
+  /**
+   * The SAS Viya compute context, fixed for this console's life: Positron
+   * reads the console's name only when the session is created, so an
+   * in-place restart keeps it. Undefined for other connection types.
+   */
+  private readonly _computeContext: string | undefined;
   private _identity!: SessionIdentity;
   private _sasSession: Session | undefined;
   private _runtimeInfo: LanguageRuntimeInfo | undefined;
@@ -263,6 +274,9 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this.runtimeMetadata = runtimeMetadata;  // public read-only alias required by Positron API
     this.metadata = sessionMetadata;
     this._profileName = profileName;
+    this._computeContext = effectiveContext(
+      profileConfig.getProfileByName(profileName),
+    );
 
     // Listen for incoming runtime messages (from Positron to us)
     // This is needed to handle RPC requests for connections
@@ -299,7 +313,9 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
       // A SAS session of this runtime's profile, owned by this console
       // (#88, #89).
-      this._sasSession = createSessionForProfile(this._profileName);
+      this._sasSession = createSessionForProfile(this._profileName, {
+        context: this._computeContext,
+      });
       console.log("SAS session obtained:", !!this._sasSession);
 
       // Setup session with profile
@@ -328,7 +344,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       await new Promise((r) => setTimeout(r, 500));
 
       this._runtimeInfo = {
-        banner: `SAS Session (${this._profileName})`,
+        banner: consoleBanner(this._profileName, this._computeContext),
         implementation_version: "9.4+",
         language_version: "9.4+",
         startup_time: Date.now(),
@@ -1138,7 +1154,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
           ? RuntimeOnlineState.Online
           : RuntimeOnlineState.Offline,
       // Add additional fields that Positron expects
-      sessionName: this._profileName,
+      sessionName: consoleSessionName(this._profileName, this._computeContext),
       inputPrompt: "sas> ",
       continuationPrompt: "... ",
     };

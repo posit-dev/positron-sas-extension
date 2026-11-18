@@ -112,12 +112,24 @@ export function getSession(): Session {
  * A new session of the named profile, separate from the shared session
  * returned by {@link getSession}. The caller owns and closes it.
  */
-export function createSessionForProfile(name: string): Session {
+/**
+ * A new session for a profile. `overrides.context` replaces a SAS Viya
+ * profile's compute context, so a SAS console can keep the context it was
+ * created with when the profile changes; other connection types ignore it.
+ */
+export function createSessionForProfile(
+  name: string,
+  overrides?: { context?: string },
+): Session {
   const profile = validate(getProfileConfig().getProfileDetail(name));
 
   switch (profile?.connectionType) {
     case ConnectionType.Rest:
-      return createRestSession(toRestConfig(profile));
+      return createRestSession(
+        overrides?.context
+          ? { ...toRestConfig(profile), context: overrides.context }
+          : toRestConfig(profile),
+      );
     case ConnectionType.SSH:
       return createSSHSession(profile);
     case ConnectionType.Stdio:
