@@ -70,6 +70,57 @@ export const BackgroundJobMessages = {
   ),
   EnterContext: l10n.t("Name of the compute context for background jobs"),
 
+  // SAS jobs (saved job definitions).
+  SasJobsListError: l10n.t("Could not list your SAS jobs. {message}"),
+  NoSasJobs: l10n.t(
+    "No SAS jobs yet. Use Save as SAS Job in the Run menu of a SAS program.",
+  ),
+  FromSubmit: l10n.t("from Submit"),
+  Folder: l10n.t("Folder"),
+  Default: l10n.t("default"),
+  Required: l10n.t("required"),
+  NoDefinitionsService: l10n.t(
+    "This SAS Viya server does not offer the Job Definitions service, so programs can't be saved as SAS jobs.",
+  ),
+  SaveTitle: l10n.t("Save as SAS Job"),
+  SaveNamePrompt: l10n.t("Name of the SAS job"),
+  SaveNameEmpty: l10n.t("Enter a name."),
+  SaveNameInvalid: l10n.t("A name has at most 255 characters and no slashes."),
+  PickFolder: l10n.t("Where to save the SAS job in SAS Content"),
+  MyFolder: l10n.t("My Folder"),
+  OtherFolder: l10n.t("Another folder..."),
+  EnterFolderPath: l10n.t("Path of a folder in SAS Content"),
+  FolderPathAbsolute: l10n.t("Start the path with /, as in /Public/Reports."),
+  FolderNotFound: l10n.t(
+    "There is no folder {path} in SAS Content. Enter another path.",
+  ),
+  NameTaken: l10n.t("{folder} already has {name}."),
+  ReplaceExisting: l10n.t("Replace the SAS job {name}"),
+  SaveUnderName: l10n.t("Save it as {name}"),
+  ReplaceGone: l10n.t("The SAS job to replace is no longer on the server."),
+  PickParameters: l10n.t(
+    "Macro variables the program reads: choose which become job parameters",
+  ),
+  DefaultFor: l10n.t(
+    "Default value of &{name}, asked for when the job runs (leave empty for none)",
+  ),
+  Saved: l10n.t("Saved the SAS job {name} in {folder}."),
+  SaveError: l10n.t("Could not save the SAS job {name}. {message}"),
+  RunNow: l10n.t("Run Now"),
+  RunTitle: l10n.t("Run {name}"),
+  ParameterPrompt: l10n.t("{label}: value of &{name} ({type})"),
+  ValueRequired: l10n.t("This parameter is required."),
+  ValueNumber: l10n.t("Enter a number."),
+  DeleteSasJobConfirm: l10n.t(
+    "Delete the SAS job {name} from SAS Content? Background jobs already run from it are kept.",
+  ),
+  DeleteSasJobsConfirm: l10n.t(
+    "Delete {count} SAS jobs from SAS Content? Background jobs already run from them are kept.",
+  ),
+  DeleteFromSubmitDetail: l10n.t(
+    "A SAS job that Submit as Background Job made is made again the next time you submit its program.",
+  ),
+
   // Tooltip labels.
   State: l10n.t("State"),
   SubmittedAt: l10n.t("Submitted"),

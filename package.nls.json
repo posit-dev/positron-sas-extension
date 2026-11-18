@@ -206,5 +206,14 @@
   "views.SAS.backgroundJobs": "Background Jobs",
   "configuration.SAS.backgroundJobs.computeContext": "The SAS Viya compute context that background jobs run in. When empty, background jobs use the `context` of the active connection profile, or `SAS Job Execution compute context`, the same as interactive runs.",
   "configuration.SAS.backgroundJobs.keepResultsFor": "How long SAS Viya keeps a finished background job, as an ISO-8601 duration such as `P7D` (seven days) or `PT12H` (twelve hours). When it expires, the server deletes the job **together with its log and listing**.",
-  "configuration.SAS.backgroundJobs.keepResultsFor.pattern": "Enter an ISO-8601 duration, such as P7D or PT12H."
+  "configuration.SAS.backgroundJobs.keepResultsFor.pattern": "Enter an ISO-8601 duration, such as P7D or PT12H.",
+  "commands.SAS.sasJob.saveAs": "Save as SAS Job...",
+  "commands.SAS.sasJob.run": "Run...",
+  "commands.SAS.sasJob.runWithDefaults": "Run with Defaults",
+  "commands.SAS.sasJob.showCode": "Show Code",
+  "commands.SAS.sasJob.copyUri": "Copy URI",
+  "commands.SAS.sasJob.delete": "Delete SAS Job",
+  "commands.SAS.sasJobs.refresh": "Refresh",
+  "commands.SAS.sasJobs.loadMore": "Load More SAS Jobs",
+  "views.SAS.sasJobs": "SAS Jobs"
 }

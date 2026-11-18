@@ -1476,6 +1476,52 @@
         "category": "SAS"
       },
       {
+        "command": "SAS.sasJob.saveAs",
+        "title": "%commands.SAS.sasJob.saveAs%",
+        "category": "SAS",
+        "icon": "$(save)"
+      },
+      {
+        "command": "SAS.sasJob.run",
+        "title": "%commands.SAS.sasJob.run%",
+        "category": "SAS",
+        "icon": "$(play)"
+      },
+      {
+        "command": "SAS.sasJob.runWithDefaults",
+        "title": "%commands.SAS.sasJob.runWithDefaults%",
+        "category": "SAS",
+        "icon": "$(run-all)"
+      },
+      {
+        "command": "SAS.sasJob.showCode",
+        "title": "%commands.SAS.sasJob.showCode%",
+        "category": "SAS",
+        "icon": "$(code)"
+      },
+      {
+        "command": "SAS.sasJob.copyUri",
+        "title": "%commands.SAS.sasJob.copyUri%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.sasJob.delete",
+        "title": "%commands.SAS.sasJob.delete%",
+        "category": "SAS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "SAS.sasJobs.refresh",
+        "title": "%commands.SAS.sasJobs.refresh%",
+        "category": "SAS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.sasJobs.loadMore",
+        "title": "%commands.SAS.sasJobs.loadMore%",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.clinical.job.new",
         "title": "%clinical.commands.newJob%",
         "category": "SAS Clinical Acceleration"
@@ -1719,6 +1765,11 @@
       ],
       "view/title": [
         {
+          "command": "SAS.sasJobs.refresh",
+          "when": "view == sasjobsprovider",
+          "group": "navigation@0"
+        },
+        {
           "command": "SAS.backgroundJobs.refresh",
           "when": "view == sasbackgroundjobsprovider",
           "group": "navigation@0"
@@ -1922,6 +1973,36 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "SAS.sasJob.run",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "inline@0"
+        },
+        {
+          "command": "SAS.sasJob.run",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "1_run@0"
+        },
+        {
+          "command": "SAS.sasJob.runWithDefaults",
+          "when": "view == sasjobsprovider && viewItem =~ /;hasParameters;/",
+          "group": "1_run@1"
+        },
+        {
+          "command": "SAS.sasJob.showCode",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "2_open@0"
+        },
+        {
+          "command": "SAS.sasJob.copyUri",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.sasJob.delete",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "4_delete@0"
+        },
         {
           "command": "SAS.backgroundJob.cancel",
           "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;active;/",
@@ -2515,6 +2596,10 @@
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable",
           "command": "SAS.backgroundJob.submit"
+        },
+        {
+          "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable",
+          "command": "SAS.sasJob.saveAs"
         }
       ],
       "editor/context": [
@@ -2542,6 +2627,11 @@
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable",
           "command": "SAS.backgroundJob.submit",
           "group": "navigation@4"
+        },
+        {
+          "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable",
+          "command": "SAS.sasJob.saveAs",
+          "group": "navigation@5"
         }
       ],
       "notebook/toolbar": [
@@ -2584,6 +2674,38 @@
         }
       ],
       "commandPalette": [
+        {
+          "when": "SAS.connectionType == rest && SAS.jobDefinitionsAvailable && editorLangId =~ /^(sas|python|r|sql)$/",
+          "command": "SAS.sasJob.saveAs"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.run"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.runWithDefaults"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.showCode"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.copyUri"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.delete"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobs.refresh"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobs.loadMore"
+        },
         {
           "when": "SAS.connectionType == rest && SAS.backgroundJobsAvailable && editorLangId =~ /^(sas|python|r|sql)$/",
           "command": "SAS.backgroundJob.submit"
@@ -3277,6 +3399,11 @@
           "id": "sasbackgroundjobsprovider",
           "name": "%views.SAS.backgroundJobs%",
           "when": "SAS.authorized && SAS.connectionType == rest && SAS.backgroundJobsAvailable"
+        },
+        {
+          "id": "sasjobsprovider",
+          "name": "%views.SAS.sasJobs%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable"
         },
         {
           "id": "serverdataprovider",

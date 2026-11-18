@@ -10,8 +10,6 @@ import {
   ExtensionContext,
   LogOutputChannel,
   ProgressLocation,
-  Selection,
-  TextDocument,
   Uri,
   commands,
   env,
@@ -20,14 +18,14 @@ import {
   workspace,
 } from "vscode";
 
-import { SASCodeDocument } from "../components/utils/SASCodeDocument";
-import { getCodeDocumentConstructionParameters } from "../components/utils/SASCodeDocumentHelper";
 import { ViyaConnection } from "../viya/connection";
 import { getActiveViyaEndpoint } from "../viya/endpoint";
 import { ServiceAvailability, probeService } from "../viya/probe";
 import { DefinitionStore } from "./DefinitionStore";
 import { JobNode, JobsDataProvider } from "./JobsDataProvider";
 import { AlreadyFinishedError, JobNotFoundError, JobsModel } from "./JobsModel";
+import { SasJobs } from "./SasJobs";
+import { codeFor, documentFor, keepResultsFor, selectionsOf } from "./code";
 import { ComputeContextResolver } from "./computeContext";
 import {
   API_MEDIA_TYPE,
@@ -47,10 +45,8 @@ import {
 import { JobResults, jobTitle } from "./results";
 import { isTerminal, outcomeOf } from "./state";
 import type { ExecutionJob, JobDefinition } from "./types";
-import { isDuration, jobNameFor, languageTag } from "./utils";
+import { jobNameFor, languageTag } from "./utils";
 
-const LOG_START_INDICATOR = /^\/\*\* LOG_START_INDICATOR \*\*\/\r?\n/;
-const DEFAULT_KEEP_RESULTS_FOR = "P7D";
 /** How often jobs submitted in this window are checked while the view is hidden. */
 const WATCH_INTERVAL_MS = 10_000;
 
@@ -63,6 +59,7 @@ export class BackgroundJobs implements Disposable {
   private readonly documents: JobLogDocuments;
   private readonly results: JobResults;
   private readonly provider: JobsDataProvider;
+  private readonly sasJobs: SasJobs;
   private readonly jobsAvailability: ServiceAvailability;
   private readonly definitionsAvailability: ServiceAvailability;
   /** Jobs submitted in this window, to notify about when they end. */
@@ -100,6 +97,14 @@ export class BackgroundJobs implements Disposable {
     this.provider = new JobsDataProvider(this.model, log, (job) =>
       this.finished(job),
     );
+    this.sasJobs = new SasJobs({
+      model: this.model,
+      contexts: this.contexts,
+      documents: this.documents,
+      log,
+      definitionsAvailable: () => this.definitionsAvailability.isAvailable,
+      track: (job) => this.track(job),
+    });
 
     const reset = (available: boolean) => {
       this.viya.reset();
@@ -107,6 +112,7 @@ export class BackgroundJobs implements Disposable {
       this.contexts.reset();
       if (available) {
         this.provider.refresh();
+        this.sasJobs.refresh();
       }
     };
     this.jobsAvailability = new ServiceAvailability(reset, log, {
@@ -115,16 +121,20 @@ export class BackgroundJobs implements Disposable {
       probe: (endpoint, token) =>
         probeService(`${endpoint}${JOB_EXECUTION_ROOT}`, API_MEDIA_TYPE, token),
     });
-    this.definitionsAvailability = new ServiceAvailability(() => {}, log, {
-      label: "SAS Job Definitions",
-      contextKey: DEFINITIONS_AVAILABLE_CONTEXT_KEY,
-      probe: (endpoint, token) =>
-        probeService(
-          `${endpoint}${JOB_DEFINITIONS_ROOT}`,
-          API_MEDIA_TYPE,
-          token,
-        ),
-    });
+    this.definitionsAvailability = new ServiceAvailability(
+      (available) => available && this.sasJobs.refresh(),
+      log,
+      {
+        label: "SAS Job Definitions",
+        contextKey: DEFINITIONS_AVAILABLE_CONTEXT_KEY,
+        probe: (endpoint, token) =>
+          probeService(
+            `${endpoint}${JOB_DEFINITIONS_ROOT}`,
+            API_MEDIA_TYPE,
+            token,
+          ),
+      },
+    );
 
     const onNode =
       (action: (job: ExecutionJob) => unknown) => (node?: JobNode) =>
@@ -134,6 +144,7 @@ export class BackgroundJobs implements Disposable {
       output,
       this.documents,
       this.provider,
+      this.sasJobs,
       this.jobsAvailability,
       this.definitionsAvailability,
       commands.registerCommand("SAS.backgroundJob.submit", (uri?: Uri) =>
@@ -214,10 +225,7 @@ export class BackgroundJobs implements Disposable {
       return;
     }
 
-    const editor = window.visibleTextEditors.find(
-      (e) => e.document === document,
-    );
-    const selections = (editor?.selections ?? []).filter((s) => !s.isEmpty);
+    const selections = selectionsOf(document);
     const code = codeFor(document, selections);
     if (!code.trim()) {
       window.showInformationMessage(BackgroundJobMessages.NothingToSubmit);
@@ -278,16 +286,7 @@ export class BackgroundJobs implements Disposable {
           });
         },
       );
-      this.provider.upsert(job);
-      this.watch(job);
-      const choice = await window.showInformationMessage(
-        l10n.t(BackgroundJobMessages.Submitted, { name }),
-        BackgroundJobMessages.ShowJobs,
-      );
-      if (choice) {
-        await commands.executeCommand(`${JOBS_VIEW_ID}.focus`);
-        await this.provider.reveal(job.id);
-      }
+      await this.track(job);
     } catch (error) {
       window.showErrorMessage(
         l10n.t(BackgroundJobMessages.SubmitError, {
@@ -298,13 +297,40 @@ export class BackgroundJobs implements Disposable {
     }
   }
 
+  /**
+   * Show a run that just started in the Background Jobs view, follow it so
+   * its end is announced, and say that it started.
+   */
+  async track(job: ExecutionJob): Promise<void> {
+    const name = jobTitle(job);
+    this.provider.upsert(job);
+    this.watch(job);
+    const choice = await window.showInformationMessage(
+      l10n.t(BackgroundJobMessages.Submitted, { name }),
+      BackgroundJobMessages.ShowJobs,
+    );
+    if (choice) {
+      await commands.executeCommand(`${JOBS_VIEW_ID}.focus`);
+      await this.provider.reveal(job.id);
+    }
+  }
+
+  /**
+   * Submit the same job again, with the same arguments: the parameter values
+   * and the compute context of that run, which the server records on it.
+   */
   private async runAgain(job: ExecutionJob): Promise<void> {
-    const endpoint = getActiveViyaEndpoint();
-    const contextName = endpoint
-      ? await this.contexts.resolve(endpoint)
-      : undefined;
+    const previous = { ...(job.jobRequest?.arguments ?? {}) };
+    let contextName: string | undefined = previous._contextName;
+    delete previous._contextName;
     if (!contextName) {
-      return;
+      const endpoint = getActiveViyaEndpoint();
+      contextName = endpoint
+        ? await this.contexts.resolve(endpoint)
+        : undefined;
+      if (!contextName) {
+        return;
+      }
     }
     const name = jobTitle(job);
     try {
@@ -315,10 +341,10 @@ export class BackgroundJobs implements Disposable {
         definitionUri,
         definition: definitionUri ? undefined : job.jobRequest?.jobDefinition,
         contextName,
+        extraArguments: previous,
         expiresAfter: keepResultsFor(),
       });
-      this.provider.upsert(again);
-      this.watch(again);
+      await this.track(again);
     } catch (error) {
       window.showErrorMessage(
         l10n.t(BackgroundJobMessages.SubmitError, {
@@ -542,44 +568,4 @@ export class BackgroundJobs implements Disposable {
 function selected(node?: JobNode, nodes?: JobNode[]): ExecutionJob[] {
   const all = nodes?.length ? nodes : node ? [node] : [];
   return all.flatMap((n) => (n.kind === "job" ? [n.job] : []));
-}
-
-async function documentFor(uri?: Uri): Promise<TextDocument | undefined> {
-  if (uri instanceof Uri) {
-    return (
-      workspace.textDocuments.find(
-        (d) => d.uri.toString() === uri.toString(),
-      ) ?? workspace.openTextDocument(uri)
-    );
-  }
-  return window.activeTextEditor?.document;
-}
-
-/**
- * The code to submit: the program or the selection, with the same language
- * wrapping and _SASPROGRAMFILE as an interactive run, but without the ODS HTML
- * wrapper. Its `ods _all_ close;` leaves a job with no results at all, and the
- * Compute provider does not upload ODS HTML from a job anyway.
- */
-function codeFor(
-  document: TextDocument,
-  selections: readonly Selection[],
-): string {
-  const parameters = getCodeDocumentConstructionParameters(document, {
-    selections,
-  });
-  const wrapped = new SASCodeDocument({
-    ...parameters,
-    outputHtml: false,
-    uuid: undefined,
-  }).getWrappedCode();
-  return wrapped.replace(LOG_START_INDICATOR, "");
-}
-
-function keepResultsFor(): string {
-  const value = workspace
-    .getConfiguration("SAS.backgroundJobs")
-    .get<string>("keepResultsFor", DEFAULT_KEEP_RESULTS_FOR)
-    .trim();
-  return isDuration(value) ? value : DEFAULT_KEEP_RESULTS_FOR;
 }
