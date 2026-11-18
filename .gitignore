@@ -8,3 +8,4 @@ node_modules
 *.qps-ploc.json
 l10n/bundle.l10n.json
 .history
+/.quarto/
