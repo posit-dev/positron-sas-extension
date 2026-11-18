@@ -109,7 +109,7 @@ Each run is an ordinary background job: it shows in the **Background Jobs** view
 
 ## The SAS Job Schedules view
 
-The **SAS Job Schedules** view, below **SAS Jobs**, lists the schedules you created in Positron, most recently changed first, with when each runs, such as *Weekdays at 06:30*. A disabled schedule is marked **disabled**. Hover over a schedule to see its SAS job, the parameter values it passes, its time zone, its next runs, and when it last ran and whether that run started.
+The **SAS Job Schedules** view, below **SAS Jobs**, lists the schedules you created in Positron, most recently changed first, with when each runs, such as _Weekdays at 06:30_. A disabled schedule is marked **disabled**. Hover over a schedule to see its SAS job, the parameter values it passes, its time zone, its next runs, and when it last ran and whether that run started.
 
 Right-click a schedule for these actions:
 
@@ -134,7 +134,7 @@ The server deletes a finished background job, with its log and listing, after th
 
 ## Settings
 
-| Setting | Description |
-|---|---|
+| Setting                             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `SAS.backgroundJobs.computeContext` | The SAS Viya compute context that background jobs run in. When empty, background jobs use the `context` of the active connection profile, or `SAS Job Execution compute context`, the same as runs in the console. If the context is not found on the server, you are asked to choose one. You can also choose one with **SAS: Choose Compute Context for Background Jobs...** in the Command Palette or in the **...** menu of the **Background Jobs** view. |
-| `SAS.backgroundJobs.keepResultsFor` | How long the server keeps a finished background job, as an ISO-8601 duration, such as `P7D` (seven days, the default) or `PT12H` (twelve hours). When it expires, the server deletes the job together with its log and listing. |
+| `SAS.backgroundJobs.keepResultsFor` | How long the server keeps a finished background job, as an ISO-8601 duration, such as `P7D` (seven days, the default) or `PT12H` (twelve hours). When it expires, the server deletes the job together with its log and listing.                                                                                                                                                                                                                               |

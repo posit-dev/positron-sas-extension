@@ -77,12 +77,8 @@
     "uri": "/jobExecution/jobRequests/e5d28bef-21ab-4cc7-8c01-0583dfbdf066/jobs?submitter=positron-sas",
     "method": "POST",
     "headers": {
-      "Accept": [
-        "application/vnd.sas.job.execution.job+json"
-      ],
-      "Accept-Language": [
-        "en-US"
-      ]
+      "Accept": ["application/vnd.sas.job.execution.job+json"],
+      "Accept-Language": ["en-US"]
     }
   },
   "triggers": [
@@ -99,9 +95,7 @@
         "startDate": "2026-11-18",
         "skipCount": 1,
         "dayOfMonth": 0,
-        "dates": [
-          "2026-11-18"
-        ]
+        "dates": ["2026-11-18"]
       },
       "hours": "18",
       "minutes": "3",
