@@ -1,0 +1,121 @@
+{
+  "creationTimeStamp": "2026-11-11T12:21:34.045Z",
+  "modifiedTimeStamp": "2026-11-11T12:21:34.045Z",
+  "createdBy": "user1",
+  "modifiedBy": "user1",
+  "links": [
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0",
+      "uri": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0",
+      "type": "application/vnd.sas.schedule.job"
+    },
+    {
+      "method": "PUT",
+      "rel": "update",
+      "href": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0",
+      "uri": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0",
+      "type": "application/vnd.sas.schedule.job",
+      "responseType": "application/vnd.sas.schedule.job"
+    },
+    {
+      "method": "DELETE",
+      "rel": "delete",
+      "href": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0",
+      "uri": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0"
+    },
+    {
+      "method": "GET",
+      "rel": "history",
+      "href": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0/history",
+      "uri": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0/history",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.schedule.history"
+    },
+    {
+      "method": "GET",
+      "rel": "jobs",
+      "href": "/scheduler/jobs",
+      "uri": "/scheduler/jobs",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.schedule.job"
+    },
+    {
+      "method": "POST",
+      "rel": "createJob",
+      "href": "/scheduler/jobs",
+      "uri": "/scheduler/jobs",
+      "type": "application/vnd.sas.schedule.job",
+      "responseType": "application/vnd.sas.schedule.job"
+    },
+    {
+      "method": "GET",
+      "rel": "fireTimes",
+      "href": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0/fireTimes",
+      "uri": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0/fireTimes",
+      "type": "application/vnd.sas.collection"
+    },
+    {
+      "method": "PUT",
+      "rel": "pauseJob",
+      "href": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0/state?value=paused",
+      "uri": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0/state?value=paused"
+    },
+    {
+      "method": "PUT",
+      "rel": "resumeJob",
+      "href": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0/state?value=resumed",
+      "uri": "/scheduler/jobs/e8ef3e2b-0072-4f68-b2e8-f747f2e818d0/state?value=resumed"
+    }
+  ],
+  "version": 1,
+  "id": "e8ef3e2b-0072-4f68-b2e8-f747f2e818d0",
+  "name": "probe",
+  "group": "sas-clinical-jobs",
+  "runAs": "user1",
+  "request": {
+    "uri": "/clinicalJobs/internal/submissions/schedule",
+    "method": "POST",
+    "headers": {
+      "Content-Type": ["application/json"]
+    },
+    "body": {
+      "jobPath": "/probe-jobs/probe.cjob",
+      "jobId": null,
+      "scheduleId": "e8ef3e2b-0072-4f68-b2e8-f747f2e818d0",
+      "jobVersion": null,
+      "jobResourceLocation": "WORKSPACE",
+      "parameterValues": [
+        "probe_char::CHARACTER::hello::null",
+        "cutoff::NUMERIC::10::null"
+      ]
+    }
+  },
+  "triggers": [
+    {
+      "links": [],
+      "version": 1,
+      "id": "94917bbe-643a-4871-9f27-5c492423700c",
+      "name": "probe",
+      "repeat": 0,
+      "type": "TIMEEVENT",
+      "active": true,
+      "applicationId": "sas-clinical-jobs",
+      "recurrence": {
+        "type": "daily",
+        "startDate": "2026-11-11",
+        "skipCount": 1,
+        "daysOfWeek": [],
+        "dayOfMonth": 0,
+        "dates": []
+      },
+      "hours": "13",
+      "minutes": "25",
+      "duration": 1,
+      "timezone": "Europe/Zurich",
+      "maxOccurrence": 10
+    }
+  ],
+  "jobTimeOut": 30
+}
