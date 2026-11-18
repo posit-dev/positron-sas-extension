@@ -112,36 +112,13 @@ export async function collectPages<T>(
   return items;
 }
 
-export type ProbeResult = "available" | "present" | "absent" | "error";
-
-/**
- * Interpret the response of `GET /clinicalRepository/`.
- * - 200 with a JSON body: the service is there and the user can use it.
- * - 401/403: the service is routed; the caller decides whether that means
- *   "sign in first" (no token sent) or "no access" (token rejected).
- * - 5xx: the service is routed but not serving right now; worth retrying.
- * - anything else (404, redirects): no Clinical Repository.
- */
-export function classifyProbe(
-  status: number,
-  contentType: string | undefined,
-): ProbeResult {
-  if (status === 200 && /json/i.test(contentType ?? "")) {
-    return "available";
-  }
-  if (status === 401 || status === 403) {
-    return "present";
-  }
-  if (status >= 500) {
-    return "error";
-  }
-  return "absent";
-}
-
-/** Whether the view should be shown for a probe result. */
-export function isAvailable(result: ProbeResult, sentToken: boolean): boolean {
-  return result === "available" || (result === "present" && !sentToken);
-}
+// The probe helpers now live in ../viya/probeResult.ts, shared with other
+// features. Re-exported here so clinical code and its tests keep their imports.
+export {
+  type ProbeResult,
+  classifyProbe,
+  isAvailable,
+} from "../viya/probeResult";
 
 export function getCheckoutState(
   item: RepositoryItem,
