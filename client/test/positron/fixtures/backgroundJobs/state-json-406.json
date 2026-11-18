@@ -1,0 +1,13 @@
+{
+  "status": 406,
+  "body": {
+    "version": 2,
+    "httpStatusCode": 406,
+    "message": "Not Acceptable",
+    "details": [
+      "text/plain",
+      "path: /jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8/state",
+      "correlator: 14ad680a-aceb-4c49-bde8-e1a3afa5ad25"
+    ]
+  }
+}

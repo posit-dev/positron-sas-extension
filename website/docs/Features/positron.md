@@ -285,6 +285,7 @@ The profile's `autoExec` lines run once, right after SAS starts.
 | Posit Assistant tools, context, and skill | Yes | Yes | Yes |
 | Audit log, submission comment, and macro variables | Yes | Yes | Yes |
 | Compute session and job tags | Yes | No | No |
+| Background jobs and the **Background Jobs** view | With the SAS Job Execution service | No | No |
 | Sign-in through a Workbench OAuth integration | Yes | No | No |
 | **SAS Content** and **SAS Server** views | Yes | No | No |
 | Clinical Acceleration views | With SAS Clinical Acceleration | No | No |

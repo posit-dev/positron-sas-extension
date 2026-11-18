@@ -1,0 +1,328 @@
+{
+  "accept": "application/vnd.sas.compute.context.summary",
+  "count": 10,
+  "items": [
+    {
+      "createdBy": "sas.SASJobExecution",
+      "id": "a1888a50-13f8-4b91-bbd5-d8f1875b9c86",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/a1888a50-13f8-4b91-bbd5-d8f1875b9c86",
+          "uri": "/compute/contexts/a1888a50-13f8-4b91-bbd5-d8f1875b9c86",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/a1888a50-13f8-4b91-bbd5-d8f1875b9c86",
+          "uri": "/compute/contexts/a1888a50-13f8-4b91-bbd5-d8f1875b9c86",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/a1888a50-13f8-4b91-bbd5-d8f1875b9c86/sessions",
+          "uri": "/compute/contexts/a1888a50-13f8-4b91-bbd5-d8f1875b9c86/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "SAS Job Execution compute context",
+      "version": 2
+    },
+    {
+      "createdBy": "sas.casControl",
+      "id": "a6c9a7d6-c0b1-4fa1-8a64-ec89b568774e",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/a6c9a7d6-c0b1-4fa1-8a64-ec89b568774e",
+          "uri": "/compute/contexts/a6c9a7d6-c0b1-4fa1-8a64-ec89b568774e",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/a6c9a7d6-c0b1-4fa1-8a64-ec89b568774e",
+          "uri": "/compute/contexts/a6c9a7d6-c0b1-4fa1-8a64-ec89b568774e",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/a6c9a7d6-c0b1-4fa1-8a64-ec89b568774e/sessions",
+          "uri": "/compute/contexts/a6c9a7d6-c0b1-4fa1-8a64-ec89b568774e/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "CAS Formats service compute context",
+      "version": 2
+    },
+    {
+      "createdBy": "sas.casControl",
+      "id": "05595037-2bec-499d-b39a-4627369beb59",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/05595037-2bec-499d-b39a-4627369beb59",
+          "uri": "/compute/contexts/05595037-2bec-499d-b39a-4627369beb59",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/05595037-2bec-499d-b39a-4627369beb59",
+          "uri": "/compute/contexts/05595037-2bec-499d-b39a-4627369beb59",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/05595037-2bec-499d-b39a-4627369beb59/sessions",
+          "uri": "/compute/contexts/05595037-2bec-499d-b39a-4627369beb59/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "CAS Management service compute context",
+      "version": 2
+    },
+    {
+      "createdBy": "sas.modelManager",
+      "id": "0277baa2-53af-4b78-9871-8aeaaa3b56bb",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/0277baa2-53af-4b78-9871-8aeaaa3b56bb",
+          "uri": "/compute/contexts/0277baa2-53af-4b78-9871-8aeaaa3b56bb",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/0277baa2-53af-4b78-9871-8aeaaa3b56bb",
+          "uri": "/compute/contexts/0277baa2-53af-4b78-9871-8aeaaa3b56bb",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/0277baa2-53af-4b78-9871-8aeaaa3b56bb/sessions",
+          "uri": "/compute/contexts/0277baa2-53af-4b78-9871-8aeaaa3b56bb/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "SAS Model Manager compute context",
+      "version": 2
+    },
+    {
+      "createdBy": "sas.import9",
+      "id": "1b10d71f-9d40-42d1-b59c-161c0f187e9f",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/1b10d71f-9d40-42d1-b59c-161c0f187e9f",
+          "uri": "/compute/contexts/1b10d71f-9d40-42d1-b59c-161c0f187e9f",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/1b10d71f-9d40-42d1-b59c-161c0f187e9f",
+          "uri": "/compute/contexts/1b10d71f-9d40-42d1-b59c-161c0f187e9f",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/1b10d71f-9d40-42d1-b59c-161c0f187e9f/sessions",
+          "uri": "/compute/contexts/1b10d71f-9d40-42d1-b59c-161c0f187e9f/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "Import 9 service compute context",
+      "version": 2
+    },
+    {
+      "createdBy": "sas.studio",
+      "id": "365c30e7-559e-462c-9d99-3f4c498f3928",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/365c30e7-559e-462c-9d99-3f4c498f3928",
+          "uri": "/compute/contexts/365c30e7-559e-462c-9d99-3f4c498f3928",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/365c30e7-559e-462c-9d99-3f4c498f3928",
+          "uri": "/compute/contexts/365c30e7-559e-462c-9d99-3f4c498f3928",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/365c30e7-559e-462c-9d99-3f4c498f3928/sessions",
+          "uri": "/compute/contexts/365c30e7-559e-462c-9d99-3f4c498f3928/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "SAS Studio compute context",
+      "version": 2
+    },
+    {
+      "createdBy": "sas.dataMiningProjectResources",
+      "id": "f880bf34-2abb-4f96-9e13-50556326b398",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/f880bf34-2abb-4f96-9e13-50556326b398",
+          "uri": "/compute/contexts/f880bf34-2abb-4f96-9e13-50556326b398",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/f880bf34-2abb-4f96-9e13-50556326b398",
+          "uri": "/compute/contexts/f880bf34-2abb-4f96-9e13-50556326b398",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/f880bf34-2abb-4f96-9e13-50556326b398/sessions",
+          "uri": "/compute/contexts/f880bf34-2abb-4f96-9e13-50556326b398/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "Data Mining compute context",
+      "version": 2
+    },
+    {
+      "createdBy": "sas.clinicalJobs",
+      "id": "d473b06a-2b28-4a97-838e-c0d088ea7fba",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/d473b06a-2b28-4a97-838e-c0d088ea7fba",
+          "uri": "/compute/contexts/d473b06a-2b28-4a97-838e-c0d088ea7fba",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/d473b06a-2b28-4a97-838e-c0d088ea7fba",
+          "uri": "/compute/contexts/d473b06a-2b28-4a97-838e-c0d088ea7fba",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/d473b06a-2b28-4a97-838e-c0d088ea7fba/sessions",
+          "uri": "/compute/contexts/d473b06a-2b28-4a97-838e-c0d088ea7fba/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "SAS Clinical Workspace Jobs compute context",
+      "version": 2
+    },
+    {
+      "createdBy": "sas.clinicalJobs",
+      "id": "4c2cacd1-4b21-4412-b643-ff5f90840fec",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/4c2cacd1-4b21-4412-b643-ff5f90840fec",
+          "uri": "/compute/contexts/4c2cacd1-4b21-4412-b643-ff5f90840fec",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/4c2cacd1-4b21-4412-b643-ff5f90840fec",
+          "uri": "/compute/contexts/4c2cacd1-4b21-4412-b643-ff5f90840fec",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/4c2cacd1-4b21-4412-b643-ff5f90840fec/sessions",
+          "uri": "/compute/contexts/4c2cacd1-4b21-4412-b643-ff5f90840fec/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "SAS Clinical Repository Jobs compute context",
+      "version": 2
+    },
+    {
+      "createdBy": "sas.clinicalJobs",
+      "id": "73d30efc-a264-48c2-b7ef-c5af126e85c3",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/compute/contexts/73d30efc-a264-48c2-b7ef-c5af126e85c3",
+          "uri": "/compute/contexts/73d30efc-a264-48c2-b7ef-c5af126e85c3",
+          "type": "application/vnd.sas.compute.context"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/compute/contexts/73d30efc-a264-48c2-b7ef-c5af126e85c3",
+          "uri": "/compute/contexts/73d30efc-a264-48c2-b7ef-c5af126e85c3",
+          "type": "application/vnd.sas.compute.context.summary"
+        },
+        {
+          "method": "POST",
+          "rel": "createSession",
+          "href": "/compute/contexts/73d30efc-a264-48c2-b7ef-c5af126e85c3/sessions",
+          "uri": "/compute/contexts/73d30efc-a264-48c2-b7ef-c5af126e85c3/sessions",
+          "type": "application/vnd.sas.compute.session.request",
+          "responseType": "application/vnd.sas.compute.session"
+        }
+      ],
+      "name": "SAS Clinical Jobs Cleanup compute context",
+      "version": 2
+    }
+  ],
+  "limit": 100,
+  "links": [
+    {
+      "method": "GET",
+      "rel": "collection",
+      "href": "/compute/contexts",
+      "uri": "/compute/contexts",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.compute.context.summary"
+    },
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/compute/contexts?start=0&limit=100",
+      "uri": "/compute/contexts?start=0&limit=100",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.compute.context.summary"
+    }
+  ],
+  "name": "items",
+  "start": 0,
+  "version": 2
+}

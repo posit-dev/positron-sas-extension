@@ -1,0 +1,12 @@
+{
+  "status": 412,
+  "body": {
+    "version": 2,
+    "httpStatusCode": 412,
+    "message": "The header field \"If-Match\" has a value that is different from the entity tag for the resource. (The specified values are \"\"stale00\"\" and \"W/\"1795020739266000000\"\", respectively.)",
+    "details": [
+      "path: /jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "correlator: 8de3dc74-7dba-429d-9ceb-c2d5fb850f18"
+    ]
+  }
+}

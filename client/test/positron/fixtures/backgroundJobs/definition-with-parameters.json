@@ -1,0 +1,72 @@
+{
+  "creationTimeStamp": "2026-11-18T17:42:36.416Z",
+  "modifiedTimeStamp": "2026-11-18T17:42:36.416Z",
+  "createdBy": "user1",
+  "modifiedBy": "user1",
+  "version": 2,
+  "id": "c2b5c949-0b04-48a8-801b-0737edb1e854",
+  "name": "positron probe params 1795023756193",
+  "type": "Compute",
+  "code": "%put CHECK cutoff=[&cutoff];\n%put CHECK study=[&study];\n%put CHECK undeclared=[%sysfunc(ifc(%symexist(extra),&extra,<none>))];\n%put CHECK nodefault=[%sysfunc(ifc(%symexist(nodefault),&nodefault,<none>))];",
+  "links": [
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/jobDefinitions/definitions/c2b5c949-0b04-48a8-801b-0737edb1e854",
+      "uri": "/jobDefinitions/definitions/c2b5c949-0b04-48a8-801b-0737edb1e854",
+      "type": "application/vnd.sas.job.definition"
+    },
+    {
+      "method": "GET",
+      "rel": "alternate",
+      "href": "/jobDefinitions/definitions/c2b5c949-0b04-48a8-801b-0737edb1e854",
+      "uri": "/jobDefinitions/definitions/c2b5c949-0b04-48a8-801b-0737edb1e854",
+      "type": "application/vnd.sas.summary"
+    },
+    {
+      "method": "PUT",
+      "rel": "update",
+      "href": "/jobDefinitions/definitions/c2b5c949-0b04-48a8-801b-0737edb1e854",
+      "uri": "/jobDefinitions/definitions/c2b5c949-0b04-48a8-801b-0737edb1e854",
+      "type": "application/vnd.sas.job.definition",
+      "responseType": "application/vnd.sas.job.definition"
+    },
+    {
+      "method": "DELETE",
+      "rel": "delete",
+      "href": "/jobDefinitions/definitions/c2b5c949-0b04-48a8-801b-0737edb1e854",
+      "uri": "/jobDefinitions/definitions/c2b5c949-0b04-48a8-801b-0737edb1e854"
+    }
+  ],
+  "parameters": [
+    {
+      "version": 1,
+      "name": "cutoff",
+      "defaultValue": "12",
+      "type": "NUMERIC",
+      "label": "Age cutoff",
+      "required": false
+    },
+    {
+      "version": 1,
+      "name": "study",
+      "defaultValue": "ABC-001",
+      "type": "CHARACTER",
+      "label": "Study",
+      "required": true
+    },
+    {
+      "version": 1,
+      "name": "nodefault",
+      "type": "CHARACTER",
+      "label": "No default",
+      "required": false
+    }
+  ],
+  "properties": [
+    {
+      "name": "createdByPositron",
+      "value": "true"
+    }
+  ]
+}

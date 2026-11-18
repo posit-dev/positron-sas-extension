@@ -1,0 +1,702 @@
+{
+  "accept": "application/vnd.sas.job.execution.job",
+  "items": [
+    {
+      "createdBy": "user1",
+      "creationTimeStamp": "2026-11-18T16:56:13.979Z",
+      "elapsedTime": 7566,
+      "endTimeStamp": "2026-11-18T16:56:21.545Z",
+      "expirationTimeStamp": "2026-11-18T17:56:21.545Z",
+      "heartbeatInterval": 600,
+      "heartbeatTimeStamp": "2026-11-18T16:56:14.127Z",
+      "id": "08b14821-eb79-4fb6-be9b-915b19a8936d",
+      "jobRequest": {
+        "version": 3,
+        "name": "probe fileref",
+        "jobDefinitionUri": "/jobDefinitions/definitions/b94ea31f-9705-465c-8176-15534867a525",
+        "jobDefinition": {
+          "creationTimeStamp": "2026-11-18T16:56:13.719Z",
+          "modifiedTimeStamp": "2026-11-18T16:56:13.719Z",
+          "createdBy": "user1",
+          "modifiedBy": "user1",
+          "version": 2,
+          "id": "b94ea31f-9705-465c-8176-15534867a525",
+          "name": "positron probe fileref 1795020973582",
+          "type": "Compute",
+          "code": "filename _odsout temp;\nods html5(id=web) body=_odsout options(bitmap_mode='inline' svg_mode='inline') style=Illuminate;\nproc print data=sashelp.class(obs=3); run;\nods html5(id=web) close;",
+          "links": [
+            {
+              "method": "GET",
+              "rel": "self",
+              "href": "/jobDefinitions/definitions/b94ea31f-9705-465c-8176-15534867a525",
+              "uri": "/jobDefinitions/definitions/b94ea31f-9705-465c-8176-15534867a525",
+              "type": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "GET",
+              "rel": "alternate",
+              "href": "/jobDefinitions/definitions/b94ea31f-9705-465c-8176-15534867a525",
+              "uri": "/jobDefinitions/definitions/b94ea31f-9705-465c-8176-15534867a525",
+              "type": "application/vnd.sas.summary"
+            },
+            {
+              "method": "PUT",
+              "rel": "update",
+              "href": "/jobDefinitions/definitions/b94ea31f-9705-465c-8176-15534867a525",
+              "uri": "/jobDefinitions/definitions/b94ea31f-9705-465c-8176-15534867a525",
+              "type": "application/vnd.sas.job.definition",
+              "responseType": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "DELETE",
+              "rel": "delete",
+              "href": "/jobDefinitions/definitions/b94ea31f-9705-465c-8176-15534867a525",
+              "uri": "/jobDefinitions/definitions/b94ea31f-9705-465c-8176-15534867a525"
+            }
+          ],
+          "properties": [
+            {
+              "name": "createdByPositron",
+              "value": "true"
+            }
+          ]
+        },
+        "expiresAfter": "PT1H",
+        "arguments": {
+          "_contextName": "SAS Job Execution compute context",
+          "_useFilerefName": "true"
+        },
+        "properties": [],
+        "createdByApplication": "jobExecution"
+      },
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d",
+          "uri": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d",
+          "type": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "GET",
+          "rel": "state",
+          "href": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d/state",
+          "uri": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d",
+          "uri": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d",
+          "type": "application/vnd.sas.job.execution.job",
+          "responseType": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d",
+          "uri": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d"
+        },
+        {
+          "method": "PUT",
+          "rel": "updateState",
+          "href": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d/state",
+          "uri": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "POST",
+          "rel": "updateHeartbeatTimeStamp",
+          "href": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d/heartbeatTimeStamp",
+          "uri": "/jobExecution/jobs/08b14821-eb79-4fb6-be9b-915b19a8936d/heartbeatTimeStamp",
+          "type": "text/plain"
+        }
+      ],
+      "logLocation": "/files/files/866a9e7e-1b12-4b93-828c-7c03ce57cc11",
+      "modifiedBy": "user1",
+      "modifiedTimeStamp": "2026-11-18T16:56:21.546Z",
+      "results": {
+        "66F7529D-3816-B848-A16D-F1C114CCA181.listing": "/files/files/8d9f9c4e-d1c7-4179-beac-cb116d66acbf",
+        "66F7529D-3816-B848-A16D-F1C114CCA181.listing.txt": "/files/files/b967553b-2485-4df0-be77-85681ab7975a",
+        "66F7529D-3816-B848-A16D-F1C114CCA181.log": "/files/files/866a9e7e-1b12-4b93-828c-7c03ce57cc11",
+        "66F7529D-3816-B848-A16D-F1C114CCA181.log.txt": "/files/files/d266ef33-2338-4d75-98d8-4950767af2e1",
+        "COMPUTE_CONTEXT": "SAS Job Execution compute context",
+        "COMPUTE_JOB": "66F7529D-3816-B848-A16D-F1C114CCA181",
+        "COMPUTE_SESSION": "b97c04b6-a75f-4c08-b014-dc2bcce5b3c1-ses0000 ended."
+      },
+      "state": "completed",
+      "submittedByApplication": "positron-sas",
+      "version": 4
+    },
+    {
+      "createdBy": "user1",
+      "creationTimeStamp": "2026-11-18T16:54:38.86Z",
+      "elapsedTime": 11522,
+      "endTimeStamp": "2026-11-18T16:54:50.382Z",
+      "expirationTimeStamp": "2026-11-19T16:54:50.382Z",
+      "heartbeatInterval": 600,
+      "heartbeatTimeStamp": "2026-11-18T16:54:38.987Z",
+      "id": "b48d3758-80d3-48df-b960-e154eec07074",
+      "jobRequest": {
+        "version": 3,
+        "name": "positron probe ods2 html5-id-nobody",
+        "jobDefinitionUri": "/jobDefinitions/definitions/73605252-5ee9-4d86-87d8-0d99e3b31fb2",
+        "jobDefinition": {
+          "creationTimeStamp": "2026-11-18T16:54:38.815Z",
+          "modifiedTimeStamp": "2026-11-18T16:54:38.815Z",
+          "createdBy": "user1",
+          "modifiedBy": "user1",
+          "version": 2,
+          "id": "73605252-5ee9-4d86-87d8-0d99e3b31fb2",
+          "name": "positron probe ods2 html5-id-nobody",
+          "type": "Compute",
+          "code": "ods html5(id=vscode) options(bitmap_mode='inline' svg_mode='inline') style=Illuminate;\nproc print data=sashelp.class(obs=5); run;\nods html5(id=vscode) close;\n",
+          "links": [
+            {
+              "method": "GET",
+              "rel": "self",
+              "href": "/jobDefinitions/definitions/73605252-5ee9-4d86-87d8-0d99e3b31fb2",
+              "uri": "/jobDefinitions/definitions/73605252-5ee9-4d86-87d8-0d99e3b31fb2",
+              "type": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "GET",
+              "rel": "alternate",
+              "href": "/jobDefinitions/definitions/73605252-5ee9-4d86-87d8-0d99e3b31fb2",
+              "uri": "/jobDefinitions/definitions/73605252-5ee9-4d86-87d8-0d99e3b31fb2",
+              "type": "application/vnd.sas.summary"
+            },
+            {
+              "method": "PUT",
+              "rel": "update",
+              "href": "/jobDefinitions/definitions/73605252-5ee9-4d86-87d8-0d99e3b31fb2",
+              "uri": "/jobDefinitions/definitions/73605252-5ee9-4d86-87d8-0d99e3b31fb2",
+              "type": "application/vnd.sas.job.definition",
+              "responseType": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "DELETE",
+              "rel": "delete",
+              "href": "/jobDefinitions/definitions/73605252-5ee9-4d86-87d8-0d99e3b31fb2",
+              "uri": "/jobDefinitions/definitions/73605252-5ee9-4d86-87d8-0d99e3b31fb2"
+            }
+          ],
+          "properties": [
+            {
+              "name": "createdByPositron",
+              "value": "true"
+            }
+          ]
+        },
+        "expiresAfter": "P1D",
+        "arguments": {
+          "_contextName": "SAS Job Execution compute context"
+        },
+        "properties": [],
+        "createdByApplication": "jobExecution"
+      },
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074",
+          "uri": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074",
+          "type": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "GET",
+          "rel": "state",
+          "href": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074/state",
+          "uri": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074",
+          "uri": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074",
+          "type": "application/vnd.sas.job.execution.job",
+          "responseType": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074",
+          "uri": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074"
+        },
+        {
+          "method": "PUT",
+          "rel": "updateState",
+          "href": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074/state",
+          "uri": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "POST",
+          "rel": "updateHeartbeatTimeStamp",
+          "href": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074/heartbeatTimeStamp",
+          "uri": "/jobExecution/jobs/b48d3758-80d3-48df-b960-e154eec07074/heartbeatTimeStamp",
+          "type": "text/plain"
+        }
+      ],
+      "logLocation": "/files/files/546ccb4f-6a10-4a81-8797-2a5f3c0ab808",
+      "modifiedBy": "user1",
+      "modifiedTimeStamp": "2026-11-18T16:54:50.383Z",
+      "results": {
+        "092C7F0D-2EFE-D649-B308-CFE902486101.listing": "/files/files/06369b53-ecd8-4cdb-9699-6653f66ebf63",
+        "092C7F0D-2EFE-D649-B308-CFE902486101.listing.txt": "/files/files/d4bdd2e7-42b9-4aed-8236-031fd813cbe3",
+        "092C7F0D-2EFE-D649-B308-CFE902486101.log": "/files/files/546ccb4f-6a10-4a81-8797-2a5f3c0ab808",
+        "092C7F0D-2EFE-D649-B308-CFE902486101.log.txt": "/files/files/be314b63-b6b3-456d-9f7d-5dcc73dfd918",
+        "COMPUTE_CONTEXT": "SAS Job Execution compute context",
+        "COMPUTE_JOB": "092C7F0D-2EFE-D649-B308-CFE902486101",
+        "COMPUTE_SESSION": "7a3b9c3e-809e-456f-9f26-07804807f19a-ses0000 ended."
+      },
+      "state": "completed",
+      "submittedByApplication": "positron-sas",
+      "version": 4
+    },
+    {
+      "createdBy": "user1",
+      "creationTimeStamp": "2026-11-18T16:54:38.654Z",
+      "elapsedTime": 11582,
+      "endTimeStamp": "2026-11-18T16:54:50.236Z",
+      "expirationTimeStamp": "2026-11-19T16:54:50.236Z",
+      "heartbeatInterval": 600,
+      "heartbeatTimeStamp": "2026-11-18T16:54:38.78Z",
+      "id": "1f500e67-b3a0-4020-bbf2-97b09370f69e",
+      "jobRequest": {
+        "version": 3,
+        "name": "positron probe ods2 html5-id-body",
+        "jobDefinitionUri": "/jobDefinitions/definitions/deffa4e5-63b1-415d-9c42-9bad745e9114",
+        "jobDefinition": {
+          "creationTimeStamp": "2026-11-18T16:54:38.601Z",
+          "modifiedTimeStamp": "2026-11-18T16:54:38.601Z",
+          "createdBy": "user1",
+          "modifiedBy": "user1",
+          "version": 2,
+          "id": "deffa4e5-63b1-415d-9c42-9bad745e9114",
+          "name": "positron probe ods2 html5-id-body",
+          "type": "Compute",
+          "code": "ods html5(id=vscode) body=\"results.htm\";\nproc print data=sashelp.class(obs=5); run;\nods html5(id=vscode) close;\n",
+          "links": [
+            {
+              "method": "GET",
+              "rel": "self",
+              "href": "/jobDefinitions/definitions/deffa4e5-63b1-415d-9c42-9bad745e9114",
+              "uri": "/jobDefinitions/definitions/deffa4e5-63b1-415d-9c42-9bad745e9114",
+              "type": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "GET",
+              "rel": "alternate",
+              "href": "/jobDefinitions/definitions/deffa4e5-63b1-415d-9c42-9bad745e9114",
+              "uri": "/jobDefinitions/definitions/deffa4e5-63b1-415d-9c42-9bad745e9114",
+              "type": "application/vnd.sas.summary"
+            },
+            {
+              "method": "PUT",
+              "rel": "update",
+              "href": "/jobDefinitions/definitions/deffa4e5-63b1-415d-9c42-9bad745e9114",
+              "uri": "/jobDefinitions/definitions/deffa4e5-63b1-415d-9c42-9bad745e9114",
+              "type": "application/vnd.sas.job.definition",
+              "responseType": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "DELETE",
+              "rel": "delete",
+              "href": "/jobDefinitions/definitions/deffa4e5-63b1-415d-9c42-9bad745e9114",
+              "uri": "/jobDefinitions/definitions/deffa4e5-63b1-415d-9c42-9bad745e9114"
+            }
+          ],
+          "properties": [
+            {
+              "name": "createdByPositron",
+              "value": "true"
+            }
+          ]
+        },
+        "expiresAfter": "P1D",
+        "arguments": {
+          "_contextName": "SAS Job Execution compute context"
+        },
+        "properties": [],
+        "createdByApplication": "jobExecution"
+      },
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e",
+          "uri": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e",
+          "type": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "GET",
+          "rel": "state",
+          "href": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e/state",
+          "uri": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e",
+          "uri": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e",
+          "type": "application/vnd.sas.job.execution.job",
+          "responseType": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e",
+          "uri": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e"
+        },
+        {
+          "method": "PUT",
+          "rel": "updateState",
+          "href": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e/state",
+          "uri": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "POST",
+          "rel": "updateHeartbeatTimeStamp",
+          "href": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e/heartbeatTimeStamp",
+          "uri": "/jobExecution/jobs/1f500e67-b3a0-4020-bbf2-97b09370f69e/heartbeatTimeStamp",
+          "type": "text/plain"
+        }
+      ],
+      "logLocation": "/files/files/b04ae210-fd6f-4f54-9558-0bbd31f14457",
+      "modifiedBy": "user1",
+      "modifiedTimeStamp": "2026-11-18T16:54:50.236Z",
+      "results": {
+        "66AC4B81-03B0-CE46-8C3D-6933AED73909.listing": "/files/files/6541380b-058a-48be-8fdd-7988eb41d89d",
+        "66AC4B81-03B0-CE46-8C3D-6933AED73909.listing.txt": "/files/files/0dd27985-5efa-4cff-819a-79d73a180bc3",
+        "66AC4B81-03B0-CE46-8C3D-6933AED73909.log": "/files/files/b04ae210-fd6f-4f54-9558-0bbd31f14457",
+        "66AC4B81-03B0-CE46-8C3D-6933AED73909.log.txt": "/files/files/b26054c8-7523-4cfb-b929-03509b874f73",
+        "COMPUTE_CONTEXT": "SAS Job Execution compute context",
+        "COMPUTE_JOB": "66AC4B81-03B0-CE46-8C3D-6933AED73909",
+        "COMPUTE_SESSION": "51e14c9b-65ba-4276-a890-b203900ae003-ses0000 ended."
+      },
+      "state": "completed",
+      "submittedByApplication": "positron-sas",
+      "version": 4
+    },
+    {
+      "createdBy": "user1",
+      "creationTimeStamp": "2026-11-18T16:54:38.44Z",
+      "elapsedTime": 12006,
+      "endTimeStamp": "2026-11-18T16:54:50.446Z",
+      "expirationTimeStamp": "2026-11-19T16:54:50.446Z",
+      "heartbeatInterval": 600,
+      "heartbeatTimeStamp": "2026-11-18T16:54:38.562Z",
+      "id": "882689ab-98ff-46cc-b2c8-ba9a73f2884e",
+      "jobRequest": {
+        "version": 3,
+        "name": "positron probe ods2 html5-noid",
+        "jobDefinitionUri": "/jobDefinitions/definitions/d69d5b08-2787-4de8-9914-289ca0e014d5",
+        "jobDefinition": {
+          "creationTimeStamp": "2026-11-18T16:54:38.396Z",
+          "modifiedTimeStamp": "2026-11-18T16:54:38.396Z",
+          "createdBy": "user1",
+          "modifiedBy": "user1",
+          "version": 2,
+          "id": "d69d5b08-2787-4de8-9914-289ca0e014d5",
+          "name": "positron probe ods2 html5-noid",
+          "type": "Compute",
+          "code": "ods html5;\nproc print data=sashelp.class(obs=5); run;\nods html5 close;\n",
+          "links": [
+            {
+              "method": "GET",
+              "rel": "self",
+              "href": "/jobDefinitions/definitions/d69d5b08-2787-4de8-9914-289ca0e014d5",
+              "uri": "/jobDefinitions/definitions/d69d5b08-2787-4de8-9914-289ca0e014d5",
+              "type": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "GET",
+              "rel": "alternate",
+              "href": "/jobDefinitions/definitions/d69d5b08-2787-4de8-9914-289ca0e014d5",
+              "uri": "/jobDefinitions/definitions/d69d5b08-2787-4de8-9914-289ca0e014d5",
+              "type": "application/vnd.sas.summary"
+            },
+            {
+              "method": "PUT",
+              "rel": "update",
+              "href": "/jobDefinitions/definitions/d69d5b08-2787-4de8-9914-289ca0e014d5",
+              "uri": "/jobDefinitions/definitions/d69d5b08-2787-4de8-9914-289ca0e014d5",
+              "type": "application/vnd.sas.job.definition",
+              "responseType": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "DELETE",
+              "rel": "delete",
+              "href": "/jobDefinitions/definitions/d69d5b08-2787-4de8-9914-289ca0e014d5",
+              "uri": "/jobDefinitions/definitions/d69d5b08-2787-4de8-9914-289ca0e014d5"
+            }
+          ],
+          "properties": [
+            {
+              "name": "createdByPositron",
+              "value": "true"
+            }
+          ]
+        },
+        "expiresAfter": "P1D",
+        "arguments": {
+          "_contextName": "SAS Job Execution compute context"
+        },
+        "properties": [],
+        "createdByApplication": "jobExecution"
+      },
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e",
+          "uri": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e",
+          "type": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "GET",
+          "rel": "state",
+          "href": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e/state",
+          "uri": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e",
+          "uri": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e",
+          "type": "application/vnd.sas.job.execution.job",
+          "responseType": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e",
+          "uri": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e"
+        },
+        {
+          "method": "PUT",
+          "rel": "updateState",
+          "href": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e/state",
+          "uri": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "POST",
+          "rel": "updateHeartbeatTimeStamp",
+          "href": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e/heartbeatTimeStamp",
+          "uri": "/jobExecution/jobs/882689ab-98ff-46cc-b2c8-ba9a73f2884e/heartbeatTimeStamp",
+          "type": "text/plain"
+        }
+      ],
+      "logLocation": "/files/files/bc67692e-57c3-46dd-bcac-45390d655a3c",
+      "modifiedBy": "user1",
+      "modifiedTimeStamp": "2026-11-18T16:54:50.446Z",
+      "results": {
+        "919118D5-1D46-B049-997A-3DAD51E6021A.listing": "/files/files/710e5994-951f-49ff-b94a-04e79efbe7fc",
+        "919118D5-1D46-B049-997A-3DAD51E6021A.listing.txt": "/files/files/d6ef758f-0713-4f15-a0c3-0fa00f33210e",
+        "919118D5-1D46-B049-997A-3DAD51E6021A.log": "/files/files/bc67692e-57c3-46dd-bcac-45390d655a3c",
+        "919118D5-1D46-B049-997A-3DAD51E6021A.log.txt": "/files/files/a3374123-00bc-4321-8e3b-4aa0d92ed4ba",
+        "COMPUTE_CONTEXT": "SAS Job Execution compute context",
+        "COMPUTE_JOB": "919118D5-1D46-B049-997A-3DAD51E6021A",
+        "COMPUTE_SESSION": "7302c4aa-38c5-43f8-9005-d78b09cdaa15-ses0000 ended."
+      },
+      "state": "completed",
+      "submittedByApplication": "positron-sas",
+      "version": 4
+    },
+    {
+      "createdBy": "user1",
+      "creationTimeStamp": "2026-11-18T16:54:38.239Z",
+      "elapsedTime": 8854,
+      "endTimeStamp": "2026-11-18T16:54:47.093Z",
+      "expirationTimeStamp": "2026-11-19T16:54:47.093Z",
+      "heartbeatInterval": 600,
+      "heartbeatTimeStamp": "2026-11-18T16:54:38.359Z",
+      "id": "8d0a4081-bef3-447b-96d1-cef455aec69c",
+      "jobRequest": {
+        "version": 3,
+        "name": "positron probe ods2 html-plain",
+        "jobDefinitionUri": "/jobDefinitions/definitions/8dd5c41a-5b66-4592-8efa-ad227bc634d9",
+        "jobDefinition": {
+          "creationTimeStamp": "2026-11-18T16:54:38.118Z",
+          "modifiedTimeStamp": "2026-11-18T16:54:38.118Z",
+          "createdBy": "user1",
+          "modifiedBy": "user1",
+          "version": 2,
+          "id": "8dd5c41a-5b66-4592-8efa-ad227bc634d9",
+          "name": "positron probe ods2 html-plain",
+          "type": "Compute",
+          "code": "ods html style=HTMLBlue;\nproc print data=sashelp.class(obs=5); run;\nods html close;\n",
+          "links": [
+            {
+              "method": "GET",
+              "rel": "self",
+              "href": "/jobDefinitions/definitions/8dd5c41a-5b66-4592-8efa-ad227bc634d9",
+              "uri": "/jobDefinitions/definitions/8dd5c41a-5b66-4592-8efa-ad227bc634d9",
+              "type": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "GET",
+              "rel": "alternate",
+              "href": "/jobDefinitions/definitions/8dd5c41a-5b66-4592-8efa-ad227bc634d9",
+              "uri": "/jobDefinitions/definitions/8dd5c41a-5b66-4592-8efa-ad227bc634d9",
+              "type": "application/vnd.sas.summary"
+            },
+            {
+              "method": "PUT",
+              "rel": "update",
+              "href": "/jobDefinitions/definitions/8dd5c41a-5b66-4592-8efa-ad227bc634d9",
+              "uri": "/jobDefinitions/definitions/8dd5c41a-5b66-4592-8efa-ad227bc634d9",
+              "type": "application/vnd.sas.job.definition",
+              "responseType": "application/vnd.sas.job.definition"
+            },
+            {
+              "method": "DELETE",
+              "rel": "delete",
+              "href": "/jobDefinitions/definitions/8dd5c41a-5b66-4592-8efa-ad227bc634d9",
+              "uri": "/jobDefinitions/definitions/8dd5c41a-5b66-4592-8efa-ad227bc634d9"
+            }
+          ],
+          "properties": [
+            {
+              "name": "createdByPositron",
+              "value": "true"
+            }
+          ]
+        },
+        "expiresAfter": "P1D",
+        "arguments": {
+          "_contextName": "SAS Job Execution compute context"
+        },
+        "properties": [],
+        "createdByApplication": "jobExecution"
+      },
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c",
+          "uri": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c",
+          "type": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "GET",
+          "rel": "state",
+          "href": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c/state",
+          "uri": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c",
+          "uri": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c",
+          "type": "application/vnd.sas.job.execution.job",
+          "responseType": "application/vnd.sas.job.execution.job"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c",
+          "uri": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c"
+        },
+        {
+          "method": "PUT",
+          "rel": "updateState",
+          "href": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c/state",
+          "uri": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c/state",
+          "type": "text/plain"
+        },
+        {
+          "method": "POST",
+          "rel": "updateHeartbeatTimeStamp",
+          "href": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c/heartbeatTimeStamp",
+          "uri": "/jobExecution/jobs/8d0a4081-bef3-447b-96d1-cef455aec69c/heartbeatTimeStamp",
+          "type": "text/plain"
+        }
+      ],
+      "logLocation": "/files/files/2b565198-6c7c-469a-b649-5bb15486ee46",
+      "modifiedBy": "user1",
+      "modifiedTimeStamp": "2026-11-18T16:54:47.094Z",
+      "results": {
+        "923E1EE2-1BA5-EB44-80A1-AA94DF2528D8.listing": "/files/files/b752316e-0cc7-4192-9fc1-27e309a33af2",
+        "923E1EE2-1BA5-EB44-80A1-AA94DF2528D8.listing.txt": "/files/files/0937ca11-73fa-463d-a039-7dfa95d0f889",
+        "923E1EE2-1BA5-EB44-80A1-AA94DF2528D8.log": "/files/files/2b565198-6c7c-469a-b649-5bb15486ee46",
+        "923E1EE2-1BA5-EB44-80A1-AA94DF2528D8.log.txt": "/files/files/d0738df4-1c5f-4580-aecd-eea334c04165",
+        "COMPUTE_CONTEXT": "SAS Job Execution compute context",
+        "COMPUTE_JOB": "923E1EE2-1BA5-EB44-80A1-AA94DF2528D8",
+        "COMPUTE_SESSION": "2a1cd866-dbf1-4c2c-b4b5-e58a5654faa0-ses0000 ended."
+      },
+      "state": "completed",
+      "submittedByApplication": "positron-sas",
+      "version": 4
+    }
+  ],
+  "limit": 5,
+  "links": [
+    {
+      "method": "GET",
+      "rel": "collection",
+      "href": "/jobExecution/jobs",
+      "uri": "/jobExecution/jobs",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.job.execution.job"
+    },
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/jobExecution/jobs?start=0&limit=5&filter=eq%28submittedByApplication%2C%27positron-sas%27%29&sortBy=creationTimeStamp:descending",
+      "uri": "/jobExecution/jobs?start=0&limit=5&filter=eq%28submittedByApplication%2C%27positron-sas%27%29&sortBy=creationTimeStamp:descending",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.job.execution.job"
+    },
+    {
+      "method": "GET",
+      "rel": "next",
+      "href": "/jobExecution/jobs?start=5&limit=5&filter=eq%28submittedByApplication%2C%27positron-sas%27%29&sortBy=creationTimeStamp:descending",
+      "uri": "/jobExecution/jobs?start=5&limit=5&filter=eq%28submittedByApplication%2C%27positron-sas%27%29&sortBy=creationTimeStamp:descending",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.job.execution.job"
+    },
+    {
+      "method": "GET",
+      "rel": "up",
+      "href": "/jobExecution",
+      "uri": "/jobExecution",
+      "type": "application/vnd.sas.api"
+    },
+    {
+      "method": "POST",
+      "rel": "submitJob",
+      "href": "/jobExecution/jobs",
+      "uri": "/jobExecution/jobs",
+      "type": "application/vnd.sas.job.execution.job.request",
+      "responseType": "application/vnd.sas.job.execution.job"
+    },
+    {
+      "method": "POST",
+      "rel": "submitJobs",
+      "href": "/jobExecution/jobRequests/@selection/jobs",
+      "uri": "/jobExecution/jobRequests/@selection/jobs",
+      "type": "application/vnd.sas.selection",
+      "responseType": "application/vnd.sas.collection"
+    },
+    {
+      "method": "PUT",
+      "rel": "updateStates",
+      "href": "/jobExecution/jobs/@selection/state",
+      "uri": "/jobExecution/jobs/@selection/state",
+      "type": "application/vnd.sas.selection",
+      "responseType": "application/vnd.sas.collection"
+    }
+  ],
+  "name": "jobs",
+  "start": 0,
+  "version": 2
+}

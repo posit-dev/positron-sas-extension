@@ -1,0 +1,58 @@
+{
+  "creationTimeStamp": "2026-11-18T16:52:19.005Z",
+  "modifiedTimeStamp": "2026-11-18T16:52:19.005Z",
+  "createdBy": "user1",
+  "modifiedBy": "user1",
+  "version": 2,
+  "id": "06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+  "name": "positron probe",
+  "description": "Created by the Positron SAS extension probe",
+  "type": "Compute",
+  "code": "proc print data=sashelp.class; run;",
+  "links": [
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "uri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "type": "application/vnd.sas.job.definition"
+    },
+    {
+      "method": "GET",
+      "rel": "alternate",
+      "href": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "uri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "type": "application/vnd.sas.summary"
+    },
+    {
+      "method": "PUT",
+      "rel": "update",
+      "href": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "uri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "type": "application/vnd.sas.job.definition",
+      "responseType": "application/vnd.sas.job.definition"
+    },
+    {
+      "method": "DELETE",
+      "rel": "delete",
+      "href": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "uri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f"
+    }
+  ],
+  "parameters": [
+    {
+      "version": 1,
+      "name": "_contextName",
+      "defaultValue": "SAS Job Execution compute context",
+      "type": "CHARACTER",
+      "label": "Context Name",
+      "required": false
+    }
+  ],
+  "properties": [
+    {
+      "name": "createdByPositron",
+      "value": "true"
+    }
+  ]
+}

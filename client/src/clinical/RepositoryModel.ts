@@ -3,17 +3,10 @@
 // Adapted from sassoftware/vscode-sas-ca-extension
 // client/src/components/ContentNavigator/RepositoryModel.ts and
 // WorkspaceModel.ts (Apache-2.0).
-import axios, {
-  AxiosError,
-  AxiosInstance,
-  AxiosRequestConfig,
-  isAxiosError,
-} from "axios";
+import { AxiosInstance, isAxiosError } from "axios";
 import { randomUUID } from "crypto";
 
-import { profileConfig } from "../commands/profile";
-import { getViyaSession } from "../components/AuthProvider";
-import { ConnectionType } from "../components/profile";
+import { ViyaConnection } from "../viya/connection";
 import { getActionToken, pollActionStatus } from "./actionStatus";
 import { buildAuditEntriesUrl } from "./auditQuery";
 import {
@@ -66,26 +59,17 @@ import {
   parseWritePermission,
 } from "./utils";
 
-/** The Viya endpoint of the active profile, or undefined for non-REST ones. */
-export function getActiveViyaEndpoint(): string | undefined {
-  const detail = profileConfig.getActiveProfileDetail();
-  const profile = detail?.profile;
-  if (!profile || profile.connectionType !== ConnectionType.Rest) {
-    return undefined;
-  }
-  return profile.endpoint || undefined;
-}
+// Moved to ../viya/endpoint.ts and shared; re-exported so existing imports work.
+export { getActiveViyaEndpoint } from "../viya/endpoint";
 
 /**
  * REST access to the SAS Clinical Acceleration Repository, authenticated with
  * the extension's own SAS Viya sign-in (no separate profile or login).
  */
 export class RepositoryModel {
-  private connection: AxiosInstance | undefined;
-  private endpoint: string | undefined;
+  private readonly viya: ViyaConnection;
   private objectTypes: ObjectType[] | undefined;
   private rootId: string | undefined;
-  private currentUserId: string | undefined;
   private readonly etags = new Map<string, string>();
   // Identifies this client's batch actions to the action status service.
   private readonly clientId = randomUUID();
@@ -98,15 +82,15 @@ export class RepositoryModel {
     PERMISSION_CONCURRENCY,
   );
 
-  constructor(private readonly log: (message: string) => void = () => {}) {}
+  constructor(private readonly log: (message: string) => void = () => {}) {
+    this.viya = new ViyaConnection(log);
+  }
 
   /** Forget cached state, e.g. after the profile changed. */
   reset(): void {
-    this.connection = undefined;
-    this.endpoint = undefined;
+    this.viya.reset();
     this.objectTypes = undefined;
     this.rootId = undefined;
-    this.currentUserId = undefined;
     this.etags.clear();
     this.permissions.clear();
     this.knownPermissions.clear();
@@ -192,50 +176,12 @@ export class RepositoryModel {
   }
 
   async getConnection(): Promise<AxiosInstance> {
-    const endpoint = getActiveViyaEndpoint();
-    if (!endpoint) {
-      throw new Error("The active SAS profile is not a SAS Viya profile.");
-    }
-    if (this.connection && this.endpoint === endpoint) {
-      return this.connection;
-    }
-    this.reset();
-    const connection = axios.create({ baseURL: endpoint });
-    connection.interceptors.response.use(
-      (response) => response,
-      async (error: AxiosError) => {
-        const originalRequest: AxiosRequestConfig & { _retry?: boolean } =
-          error.config ?? {};
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true;
-          await this.updateAccessToken(connection);
-          // The failed request still carries the old Authorization header,
-          // which overrides the refreshed default, so replay it with the new one.
-          originalRequest.headers = {
-            ...originalRequest.headers,
-            Authorization: connection.defaults.headers.common.Authorization,
-          };
-          return connection(originalRequest);
-        }
-        return Promise.reject(error);
-      },
-    );
-    await this.updateAccessToken(connection);
-    this.connection = connection;
-    this.endpoint = endpoint;
-    return connection;
-  }
-
-  private async updateAccessToken(connection: AxiosInstance): Promise<void> {
-    const session = await getViyaSession();
-    connection.defaults.headers.common.Authorization = `Bearer ${session.accessToken}`;
-    this.currentUserId = session.account.id;
+    return this.viya.getConnection();
   }
 
   /** The signed-in Viya user id, used to tell "checked out by me" apart. */
   async getCurrentUserId(): Promise<string | undefined> {
-    await this.getConnection();
-    return this.currentUserId;
+    return this.viya.getCurrentUserId();
   }
 
   async getObjectType(typeId: string): Promise<ObjectType | undefined> {

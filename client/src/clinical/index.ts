@@ -58,7 +58,11 @@ import { closeEditors } from "./editors";
 import { registerClinicalJobs } from "./jobs";
 import { ItemPicker } from "./jobs/ItemPicker";
 import { Messages, errorMessage, toInputValidator } from "./messages";
-import { CLINICAL_JOBS_PROBE, ClinicalAvailability } from "./probe";
+import {
+  CLINICAL_JOBS_PROBE,
+  CLINICAL_REPOSITORY_PROBE,
+  ClinicalAvailability,
+} from "./probe";
 import type {
   CheckoutAction,
   RepositoryItem,
@@ -145,12 +149,16 @@ export class ClinicalRepository {
       output,
       () => repository.refreshAll(),
     );
-    const availability = new ClinicalAvailability((available) => {
-      model.reset();
-      if (available) {
-        repository.refreshAll();
-      }
-    }, log);
+    const availability = new ClinicalAvailability(
+      (available) => {
+        model.reset();
+        if (available) {
+          repository.refreshAll();
+        }
+      },
+      log,
+      CLINICAL_REPOSITORY_PROBE,
+    );
     // SAS Clinical Job Management, a separate service: the Jobs view and the
     // job commands show when SAS.clinical.jobsAvailable is set.
     const jobs = registerClinicalJobs(

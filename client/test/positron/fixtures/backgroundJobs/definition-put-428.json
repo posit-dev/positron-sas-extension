@@ -1,0 +1,13 @@
+{
+  "status": 428,
+  "body": {
+    "version": 2,
+    "httpStatusCode": 428,
+    "message": "The header requires a value for either the field \"If-Match\" or the field \"If-Unmodified-Since\", but a value was not specified for either field.",
+    "details": [
+      "path: /jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "correlator: 04762abd-fb93-4f6b-8ccf-edb80d7312f9"
+    ],
+    "remediation": "Specify either the resource's entity tag or the resource's last-modified timestamp."
+  }
+}

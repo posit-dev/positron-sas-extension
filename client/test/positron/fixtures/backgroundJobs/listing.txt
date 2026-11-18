@@ -1,0 +1,32 @@
+title:                                                            The SAS System               Wednesday, November 18, 2026 04:53:00 PM   1
+title: 
+hilighted:                                                                                                                 M
+hilighted:                                                                      D                         E       H        P
+hilighted:                                                                      r                         n   C   o        G         W
+hilighted:                                                                      i                         g   y   r    M   _         h
+hilighted:                                                                      v                  I      i   l   s    P   H         e
+hilighted:                                                              O       e                  n      n   i   e    G   i    W    e    L
+hilighted:                                 M                            r       T                  v      e   n   p    _   g    e    l    e
+hilighted:           M                     o                    T       i       r        M         o      S   d   o    C   h    i    b    n
+hilighted:    O      a                     d                    y       g       a        S         i      i   e   w    i   w    g    a    g
+hilighted:    b      k                     e                    p       i       i        R         c      z   r   e    t   a    h    s    t
+hilighted:    s      e                     l                    e       n       n        P         e      e   s   r    y   y    t    e    h
+normal: 
+normal:     1  Acura     MDX                               SUV     Asia    All     $36,945   $33,337  3.5  6  265  17  23  4451  106  189
+normal:     2  Acura     RSX Type S 2dr                    Sedan   Asia    Front   $23,820   $21,761  2.0  4  200  24  31  2778  101  172
+normal:     3  Acura     TSX 4dr                           Sedan   Asia    Front   $26,990   $24,647  2.4  4  200  22  29  3230  105  183
+normal:     4  Acura     TL 4dr                            Sedan   Asia    Front   $33,195   $30,299  3.2  6  270  20  28  3575  108  186
+normal:     5  Acura     3.5 RL 4dr                        Sedan   Asia    Front   $43,755   $39,014  3.5  6  225  18  24  3880  115  197
+normal:     6  Acura     3.5 RL w/Navigation 4dr           Sedan   Asia    Front   $46,100   $41,100  3.5  6  225  18  24  3893  115  197
+normal:     7  Acura     NSX coupe 2dr manual S            Sports  Asia    Rear    $89,765   $79,978  3.2  6  290  17  24  3153  100  174
+normal:     8  Audi      A4 1.8T 4dr                       Sedan   Europe  Front   $25,940   $23,508  1.8  4  170  22  31  3252  104  179
+normal:     9  Audi      A41.8T convertible 2dr            Sedan   Europe  Front   $35,940   $32,506  1.8  4  170  23  30  3638  105  180
+normal:    10  Audi      A4 3.0 4dr                        Sedan   Europe  Front   $31,840   $28,846  3.0  6  220  20  28  3462  104  179
+normal:    11  Audi      A4 3.0 Quattro 4dr manual         Sedan   Europe  All     $33,430   $30,366  3.0  6  220  17  26  3583  104  179
+normal:    12  Audi      A4 3.0 Quattro 4dr auto           Sedan   Europe  All     $34,480   $31,388  3.0  6  220  18  25  3627  104  179
+normal:    13  Audi      A6 3.0 4dr                        Sedan   Europe  Front   $36,640   $33,129  3.0  6  220  20  27  3561  109  192
+normal:    14  Audi      A6 3.0 Quattro 4dr                Sedan   Europe  All     $39,640   $35,992  3.0  6  220  18  25  3880  109  192
+normal:    15  Audi      A4 3.0 convertible 2dr            Sedan   Europe  Front   $42,490   $38,325  3.0  6  220  20  27  3814  105  180
+normal:    16  Audi      A4 3.0 Quattro convertible 2dr    Sedan   Europe  All     $44,240   $40,075  3.0  6  220  18  25  4013  105  180
+normal:    17  Audi      A6 2.7 Turbo Quattro 4dr          Sedan   Europe  All     $42,840   $38,840  2.7  6  250  18  25  3836  109  192
+no

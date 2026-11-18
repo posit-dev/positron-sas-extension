@@ -67,6 +67,7 @@ import {
   // getDataViewerProvider,
   // getRuntimeManager,
 } from "../positron";
+import { BackgroundJobs } from "../backgroundJobs";
 import { ClinicalRepository } from "../clinical";
 import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
 import {
@@ -236,6 +237,8 @@ export async function activate(context: ExtensionContext) {
   Sas7bdatEditorProvider.register(context);
   XptEditorProvider.register(context);
   ClinicalRepository.register(context);
+  // Submit programs as SAS Viya background jobs (#150).
+  BackgroundJobs.register(context);
 
   // Reset first to set "No Active Profiles"
   resetStatusBarItem();

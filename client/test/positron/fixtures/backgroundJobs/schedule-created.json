@@ -1,0 +1,108 @@
+{
+  "creationTimeStamp": "2026-11-18T18:01:30.068Z",
+  "modifiedTimeStamp": "2026-11-18T18:01:30.068Z",
+  "createdBy": "user1",
+  "modifiedBy": "user1",
+  "links": [
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479",
+      "type": "application/vnd.sas.schedule.job"
+    },
+    {
+      "method": "PUT",
+      "rel": "update",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479",
+      "type": "application/vnd.sas.schedule.job",
+      "responseType": "application/vnd.sas.schedule.job"
+    },
+    {
+      "method": "DELETE",
+      "rel": "delete",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479"
+    },
+    {
+      "method": "GET",
+      "rel": "history",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.schedule.history"
+    },
+    {
+      "method": "GET",
+      "rel": "jobs",
+      "href": "/scheduler/jobs",
+      "uri": "/scheduler/jobs",
+      "type": "application/vnd.sas.collection",
+      "itemType": "application/vnd.sas.schedule.job"
+    },
+    {
+      "method": "POST",
+      "rel": "createJob",
+      "href": "/scheduler/jobs",
+      "uri": "/scheduler/jobs",
+      "type": "application/vnd.sas.schedule.job",
+      "responseType": "application/vnd.sas.schedule.job"
+    },
+    {
+      "method": "GET",
+      "rel": "fireTimes",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/fireTimes",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/fireTimes",
+      "type": "application/vnd.sas.collection"
+    },
+    {
+      "method": "PUT",
+      "rel": "pauseJob",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/state?value=paused",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/state?value=paused"
+    },
+    {
+      "method": "PUT",
+      "rel": "resumeJob",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/state?value=resumed",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/state?value=resumed"
+    }
+  ],
+  "version": 1,
+  "id": "748e97cb-3c39-4fa7-a901-bcdb18b21479",
+  "name": "positron probe withLanguage",
+  "runAs": "user1",
+  "request": {
+    "uri": "/jobExecution/jobRequests/e5d28bef-21ab-4cc7-8c01-0583dfbdf066/jobs?submitter=positron-sas",
+    "method": "POST",
+    "headers": {
+      "Accept": ["application/vnd.sas.job.execution.job+json"],
+      "Accept-Language": ["en-US"]
+    }
+  },
+  "triggers": [
+    {
+      "links": [],
+      "version": 1,
+      "id": "36762a65-49aa-4dc7-8b83-adf2ef60b822",
+      "name": "positron probe withLanguage",
+      "repeat": 0,
+      "type": "TIMEEVENT",
+      "active": true,
+      "recurrence": {
+        "type": "datelist",
+        "startDate": "2026-11-18",
+        "skipCount": 1,
+        "dayOfMonth": 0,
+        "dates": ["2026-11-18"]
+      },
+      "hours": "18",
+      "minutes": "3",
+      "duration": 1,
+      "timezone": "Europe/London",
+      "maxOccurrence": 1
+    }
+  ],
+  "jobTimeOut": 30
+}

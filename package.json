@@ -762,6 +762,20 @@
             "default": 60,
             "minimum": 0,
             "markdownDescription": "%configuration.SAS.session.keepAliveSeconds%"
+          },
+          "SAS.backgroundJobs.computeContext": {
+            "order": 14,
+            "type": "string",
+            "default": "",
+            "markdownDescription": "%configuration.SAS.backgroundJobs.computeContext%"
+          },
+          "SAS.backgroundJobs.keepResultsFor": {
+            "order": 15,
+            "type": "string",
+            "default": "P7D",
+            "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+            "patternErrorMessage": "%configuration.SAS.backgroundJobs.keepResultsFor.pattern%",
+            "markdownDescription": "%configuration.SAS.backgroundJobs.keepResultsFor%"
           }
         }
       }
@@ -1389,6 +1403,177 @@
         "icon": "$(play-circle)"
       },
       {
+        "command": "SAS.backgroundJob.submit",
+        "title": "%commands.SAS.backgroundJob.submit%",
+        "category": "SAS",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "SAS.backgroundJob.cancel",
+        "title": "%commands.SAS.backgroundJob.cancel%",
+        "category": "SAS",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "SAS.backgroundJob.openLog",
+        "title": "%commands.SAS.backgroundJob.openLog%",
+        "category": "SAS",
+        "icon": "$(output)"
+      },
+      {
+        "command": "SAS.backgroundJob.openResults",
+        "title": "%commands.SAS.backgroundJob.openResults%",
+        "category": "SAS",
+        "icon": "$(file-text)"
+      },
+      {
+        "command": "SAS.backgroundJob.openAllResults",
+        "title": "%commands.SAS.backgroundJob.openAllResults%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.backgroundJob.openFile",
+        "title": "%commands.SAS.backgroundJob.openFile%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.backgroundJob.showCode",
+        "title": "%commands.SAS.backgroundJob.showCode%",
+        "category": "SAS",
+        "icon": "$(code)"
+      },
+      {
+        "command": "SAS.backgroundJob.runAgain",
+        "title": "%commands.SAS.backgroundJob.runAgain%",
+        "category": "SAS",
+        "icon": "$(debug-rerun)"
+      },
+      {
+        "command": "SAS.backgroundJob.copyId",
+        "title": "%commands.SAS.backgroundJob.copyId%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.backgroundJob.delete",
+        "title": "%commands.SAS.backgroundJob.delete%",
+        "category": "SAS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "SAS.backgroundJobs.refresh",
+        "title": "%commands.SAS.backgroundJobs.refresh%",
+        "category": "SAS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.backgroundJobs.loadMore",
+        "title": "%commands.SAS.backgroundJobs.loadMore%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.backgroundJobs.chooseComputeContext",
+        "title": "%commands.SAS.backgroundJobs.chooseComputeContext%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.sasJob.saveAs",
+        "title": "%commands.SAS.sasJob.saveAs%",
+        "category": "SAS",
+        "icon": "$(save)"
+      },
+      {
+        "command": "SAS.sasJob.run",
+        "title": "%commands.SAS.sasJob.run%",
+        "category": "SAS",
+        "icon": "$(play)"
+      },
+      {
+        "command": "SAS.sasJob.runWithDefaults",
+        "title": "%commands.SAS.sasJob.runWithDefaults%",
+        "category": "SAS",
+        "icon": "$(run-all)"
+      },
+      {
+        "command": "SAS.sasJob.showCode",
+        "title": "%commands.SAS.sasJob.showCode%",
+        "category": "SAS",
+        "icon": "$(code)"
+      },
+      {
+        "command": "SAS.sasJob.copyUri",
+        "title": "%commands.SAS.sasJob.copyUri%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.sasJob.delete",
+        "title": "%commands.SAS.sasJob.delete%",
+        "category": "SAS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "SAS.sasJobs.refresh",
+        "title": "%commands.SAS.sasJobs.refresh%",
+        "category": "SAS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.sasJobs.loadMore",
+        "title": "%commands.SAS.sasJobs.loadMore%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.sasJob.schedule",
+        "title": "%commands.SAS.sasJob.schedule%",
+        "category": "SAS",
+        "icon": "$(calendar)"
+      },
+      {
+        "command": "SAS.sasJobSchedules.new",
+        "title": "%commands.SAS.sasJobSchedules.new%",
+        "category": "SAS",
+        "icon": "$(add)"
+      },
+      {
+        "command": "SAS.sasJobSchedule.runNow",
+        "title": "%commands.SAS.sasJobSchedule.runNow%",
+        "category": "SAS",
+        "icon": "$(play)"
+      },
+      {
+        "command": "SAS.sasJobSchedule.enable",
+        "title": "%commands.SAS.sasJobSchedule.enable%",
+        "category": "SAS",
+        "icon": "$(check)"
+      },
+      {
+        "command": "SAS.sasJobSchedule.disable",
+        "title": "%commands.SAS.sasJobSchedule.disable%",
+        "category": "SAS",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "SAS.sasJobSchedule.copyId",
+        "title": "%commands.SAS.sasJobSchedule.copyId%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.sasJobSchedule.delete",
+        "title": "%commands.SAS.sasJobSchedule.delete%",
+        "category": "SAS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "SAS.sasJobSchedules.refresh",
+        "title": "%commands.SAS.sasJobSchedules.refresh%",
+        "category": "SAS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.sasJobSchedules.loadMore",
+        "title": "%commands.SAS.sasJobSchedules.loadMore%",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.clinical.job.new",
         "title": "%clinical.commands.newJob%",
         "category": "SAS Clinical Acceleration"
@@ -1632,6 +1817,31 @@
       ],
       "view/title": [
         {
+          "command": "SAS.sasJobSchedules.new",
+          "when": "view == sasjobschedulesprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.sasJobSchedules.refresh",
+          "when": "view == sasjobschedulesprovider",
+          "group": "navigation@1"
+        },
+        {
+          "command": "SAS.sasJobs.refresh",
+          "when": "view == sasjobsprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.backgroundJobs.refresh",
+          "when": "view == sasbackgroundjobsprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.backgroundJobs.chooseComputeContext",
+          "when": "view == sasbackgroundjobsprovider",
+          "group": "1_settings@0"
+        },
+        {
           "command": "SAS.console.chooseLogOutput",
           "when": "view == workbench.panel.positronConsole && SAS.consoleForeground && !SAS.consoleLogFiltered",
           "group": "navigation"
@@ -1825,6 +2035,126 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "SAS.sasJob.schedule",
+          "when": "view == sasjobsprovider && SAS.jobSchedulingAvailable && viewItem =~ /;sasjob;/",
+          "group": "inline@1"
+        },
+        {
+          "command": "SAS.sasJob.schedule",
+          "when": "view == sasjobsprovider && SAS.jobSchedulingAvailable && viewItem =~ /;sasjob;/",
+          "group": "1_run@2"
+        },
+        {
+          "command": "SAS.sasJobSchedule.runNow",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;sasschedule;/",
+          "group": "inline@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.runNow",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;sasschedule;/",
+          "group": "1_run@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.disable",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;enabled;/",
+          "group": "2_state@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.enable",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;disabled;/",
+          "group": "2_state@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.copyId",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;sasschedule;/",
+          "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.delete",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;sasschedule;/",
+          "group": "4_delete@0"
+        },
+        {
+          "command": "SAS.sasJob.run",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "inline@0"
+        },
+        {
+          "command": "SAS.sasJob.run",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "1_run@0"
+        },
+        {
+          "command": "SAS.sasJob.runWithDefaults",
+          "when": "view == sasjobsprovider && viewItem =~ /;hasParameters;/",
+          "group": "1_run@1"
+        },
+        {
+          "command": "SAS.sasJob.showCode",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "2_open@0"
+        },
+        {
+          "command": "SAS.sasJob.copyUri",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.sasJob.delete",
+          "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
+          "group": "4_delete@0"
+        },
+        {
+          "command": "SAS.backgroundJob.cancel",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;active;/",
+          "group": "inline@0"
+        },
+        {
+          "command": "SAS.backgroundJob.openLog",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;hasLog;/",
+          "group": "inline@1"
+        },
+        {
+          "command": "SAS.backgroundJob.openLog",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;hasLog;/",
+          "group": "1_open@0"
+        },
+        {
+          "command": "SAS.backgroundJob.openResults",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;hasResults;/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "SAS.backgroundJob.openAllResults",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;done;/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "SAS.backgroundJob.showCode",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;hasCode;/",
+          "group": "1_open@3"
+        },
+        {
+          "command": "SAS.backgroundJob.runAgain",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;done;/",
+          "group": "2_run@0"
+        },
+        {
+          "command": "SAS.backgroundJob.cancel",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;active;/",
+          "group": "2_run@1"
+        },
+        {
+          "command": "SAS.backgroundJob.copyId",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;/",
+          "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.backgroundJob.delete",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;done;/",
+          "group": "4_delete@0"
+        },
         {
           "command": "SAS.deleteTable",
           "when": "viewItem =~ /table-actionable/ && view == librarydataprovider",
@@ -2364,6 +2694,14 @@
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
           "command": "SAS.runSelected"
+        },
+        {
+          "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable",
+          "command": "SAS.backgroundJob.submit"
+        },
+        {
+          "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable",
+          "command": "SAS.sasJob.saveAs"
         }
       ],
       "editor/context": [
@@ -2386,6 +2724,16 @@
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
           "command": "SAS.runRegion",
           "group": "navigation@3"
+        },
+        {
+          "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable",
+          "command": "SAS.backgroundJob.submit",
+          "group": "navigation@4"
+        },
+        {
+          "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable",
+          "command": "SAS.sasJob.saveAs",
+          "group": "navigation@5"
         }
       ],
       "notebook/toolbar": [
@@ -2428,6 +2776,126 @@
         }
       ],
       "commandPalette": [
+        {
+          "when": "SAS.connectionType == rest && SAS.jobSchedulingAvailable && SAS.jobDefinitionsAvailable",
+          "command": "SAS.sasJobSchedules.new"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.schedule"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.runNow"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.enable"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.disable"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.copyId"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.delete"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedules.refresh"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedules.loadMore"
+        },
+        {
+          "when": "SAS.connectionType == rest && SAS.jobDefinitionsAvailable && editorLangId =~ /^(sas|python|r|sql)$/",
+          "command": "SAS.sasJob.saveAs"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.run"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.runWithDefaults"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.showCode"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.copyUri"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.delete"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobs.refresh"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobs.loadMore"
+        },
+        {
+          "when": "SAS.connectionType == rest && SAS.backgroundJobsAvailable && editorLangId =~ /^(sas|python|r|sql)$/",
+          "command": "SAS.backgroundJob.submit"
+        },
+        {
+          "when": "SAS.connectionType == rest && SAS.backgroundJobsAvailable",
+          "command": "SAS.backgroundJobs.chooseComputeContext"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.cancel"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.openLog"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.openResults"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.openAllResults"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.openFile"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.showCode"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.runAgain"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.copyId"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.delete"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJobs.refresh"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJobs.loadMore"
+        },
         {
           "when": "isPositron",
           "command": "SAS.console.chooseLogOutput"
@@ -2991,6 +3459,9 @@
         "id": "sas-log"
       },
       {
+        "id": "sas-joblog"
+      },
+      {
         "id": "json",
         "extensions": [
           ".cjob",
@@ -3061,6 +3532,21 @@
           "id": "contentdataprovider",
           "name": "%views.SAS.explorer%",
           "when": "SAS.authorized && SAS.connectionType == rest"
+        },
+        {
+          "id": "sasbackgroundjobsprovider",
+          "name": "%views.SAS.backgroundJobs%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.backgroundJobsAvailable"
+        },
+        {
+          "id": "sasjobsprovider",
+          "name": "%views.SAS.sasJobs%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable"
+        },
+        {
+          "id": "sasjobschedulesprovider",
+          "name": "%views.SAS.sasJobSchedules%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable && SAS.jobSchedulingAvailable"
         },
         {
           "id": "serverdataprovider",

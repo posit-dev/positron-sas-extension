@@ -1,0 +1,135 @@
+{
+  "creationTimeStamp": "2026-11-18T16:53:00.188Z",
+  "createdBy": "user1",
+  "modifiedTimeStamp": "2026-11-18T16:53:00.188Z",
+  "modifiedBy": "user1",
+  "version": 4,
+  "id": "a3765d9e-3159-40f7-bfeb-d53e43b508b8",
+  "state": "running",
+  "results": {},
+  "jobRequest": {
+    "version": 3,
+    "name": "positron probe",
+    "description": "Submitted from Positron (probe)",
+    "jobDefinitionUri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+    "jobDefinition": {
+      "creationTimeStamp": "2026-11-18T16:52:19.005Z",
+      "modifiedTimeStamp": "2026-11-18T16:52:19.266Z",
+      "createdBy": "user1",
+      "modifiedBy": "user1",
+      "version": 2,
+      "id": "06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "name": "positron probe",
+      "description": "Created by the Positron SAS extension probe",
+      "type": "Compute",
+      "code": "proc print data=sashelp.cars; run;",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+          "uri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+          "type": "application/vnd.sas.job.definition"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+          "uri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+          "type": "application/vnd.sas.summary"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+          "uri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+          "type": "application/vnd.sas.job.definition",
+          "responseType": "application/vnd.sas.job.definition"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+          "uri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f"
+        }
+      ],
+      "parameters": [
+        {
+          "version": 1,
+          "name": "_contextName",
+          "defaultValue": "SAS Job Execution compute context",
+          "type": "CHARACTER",
+          "label": "Context Name",
+          "required": false
+        }
+      ],
+      "properties": [
+        {
+          "name": "createdByPositron",
+          "value": "true"
+        }
+      ]
+    },
+    "expiresAfter": "P1D",
+    "arguments": {
+      "_contextName": "SAS Job Execution compute context"
+    },
+    "properties": [],
+    "createdByApplication": "jobExecution"
+  },
+  "heartbeatInterval": 600,
+  "heartbeatTimeStamp": "2026-11-18T16:53:00.188Z",
+  "elapsedTime": 2,
+  "submittedByApplication": "positron-sas",
+  "links": [
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8",
+      "uri": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8",
+      "type": "application/vnd.sas.job.execution.job"
+    },
+    {
+      "method": "GET",
+      "rel": "state",
+      "href": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8/state",
+      "uri": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8/state",
+      "type": "text/plain"
+    },
+    {
+      "method": "PUT",
+      "rel": "update",
+      "href": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8",
+      "uri": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8",
+      "type": "application/vnd.sas.job.execution.job",
+      "responseType": "application/vnd.sas.job.execution.job"
+    },
+    {
+      "method": "DELETE",
+      "rel": "delete",
+      "href": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8",
+      "uri": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8"
+    },
+    {
+      "method": "PUT",
+      "rel": "updateState",
+      "href": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8/state",
+      "uri": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8/state",
+      "type": "text/plain"
+    },
+    {
+      "method": "POST",
+      "rel": "updateHeartbeatTimeStamp",
+      "href": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8/heartbeatTimeStamp",
+      "uri": "/jobExecution/jobs/a3765d9e-3159-40f7-bfeb-d53e43b508b8/heartbeatTimeStamp",
+      "type": "text/plain"
+    },
+    {
+      "method": "GET",
+      "rel": "jobDefinition",
+      "href": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "uri": "/jobDefinitions/definitions/06659d83-2c1f-4e9e-ad19-1bbf76151b5f",
+      "type": "application/vnd.sas.job.definition"
+    }
+  ]
+}
