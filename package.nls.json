@@ -225,5 +225,6 @@
   "commands.SAS.sasJobSchedule.delete": "Delete Schedule",
   "commands.SAS.sasJobSchedules.refresh": "Refresh",
   "commands.SAS.sasJobSchedules.loadMore": "Load More Schedules",
-  "views.SAS.sasJobSchedules": "SAS Job Schedules"
+  "views.SAS.sasJobSchedules": "SAS Job Schedules",
+  "commands.SAS.console.chooseComputeContext": "Choose Compute Context..."
 }

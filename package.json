@@ -875,6 +875,12 @@
         "icon": "$(filter-filled)"
       },
       {
+        "command": "SAS.console.chooseComputeContext",
+        "title": "%commands.SAS.console.chooseComputeContext%",
+        "category": "SAS",
+        "icon": "$(server-environment)"
+      },
+      {
         "command": "SAS.compareDatasets",
         "title": "%commands.SAS.compareDatasets%",
         "category": "SAS"
@@ -1849,6 +1855,11 @@
         {
           "command": "SAS.console.chooseLogOutputFiltered",
           "when": "view == workbench.panel.positronConsole && SAS.consoleForeground && SAS.consoleLogFiltered",
+          "group": "navigation"
+        },
+        {
+          "command": "SAS.console.chooseComputeContext",
+          "when": "view == workbench.panel.positronConsole && SAS.consoleForeground && SAS.consoleComputeContext",
           "group": "navigation"
         },
         {
@@ -2903,6 +2914,10 @@
         {
           "when": "false",
           "command": "SAS.console.chooseLogOutputFiltered"
+        },
+        {
+          "when": "isPositron && SAS.consoleComputeContext",
+          "command": "SAS.console.chooseComputeContext"
         },
         {
           "when": "isPositron",

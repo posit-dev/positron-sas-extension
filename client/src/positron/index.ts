@@ -40,6 +40,11 @@ import {
 
 // Import types only (not runtime code)
 import type { PositronApi } from "./positron-types";
+import {
+  CHOOSE_COMPUTE_CONTEXT,
+  chooseConsoleComputeContext,
+  updateComputeContextKey,
+} from "./consoleComputeContext";
 
 /**
  * Set to true to test the supervisor approach (requires positron-supervisor extension)
@@ -152,6 +157,12 @@ export async function initializePositronIntegration(
     commands.registerCommand(CHOOSE_LOG_OUTPUT, chooseConsoleLogOutput),
     commands.registerCommand(CHOOSE_LOG_OUTPUT_FILTERED, chooseConsoleLogOutput),
     trackConsoleLogFilter(),
+    // Compute context button, shown for SAS consoles on SAS Viya.
+    commands.registerCommand(CHOOSE_COMPUTE_CONTEXT, () =>
+      chooseConsoleComputeContext(getPositronApi(), (id) =>
+        consoleSessions.get(id),
+      ),
+    ),
   );
 
   // Compare Datasets (PROC COMPARE), from the Command Palette, the Data
@@ -204,6 +215,9 @@ export async function initializePositronIntegration(
       "SAS.consoleForeground",
       session?.runtimeMetadata.languageId === "sas",
     );
+    // `SAS.consoleComputeContext`: it is a SAS Viya console, so the title bar
+    // also shows the compute context button.
+    await updateComputeContextKey(api);
   };
 
   context.subscriptions.push(

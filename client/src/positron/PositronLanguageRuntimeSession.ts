@@ -293,6 +293,19 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     return this._runtimeInfo;
   }
 
+  /** The connection profile this console runs. */
+  get profileName(): string {
+    return this._profileName;
+  }
+
+  /**
+   * The SAS Viya compute context this console runs in, fixed for its life;
+   * undefined for other connection types and direct connections.
+   */
+  get computeContext(): string | undefined {
+    return this._computeContext;
+  }
+
   /**
    * Start the SAS session
    */
