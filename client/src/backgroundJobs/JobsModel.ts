@@ -267,8 +267,10 @@ export class JobsModel {
   async cancel(id: string): Promise<void> {
     const connection = await this.backend.getConnection();
     try {
-      await connection.put(`${JOBS}/${id}/state?value=canceled`, undefined, {
-        headers: this.headers(),
+      // Send the state as a text/plain body too. A PUT without a body gets
+      // axios' default Content-Type, which the service refuses with 415.
+      await connection.put(`${JOBS}/${id}/state?value=canceled`, "canceled", {
+        headers: this.headers({ "Content-Type": "text/plain" }),
       });
     } catch (error) {
       const status = statusOf(error);

@@ -5,6 +5,7 @@
 // DefinitionStore's reuse / update / collision logic. The fixtures are
 // responses recorded from a live SAS Viya server on 2026-11-18 (host and user
 // names replaced).
+import type { AxiosRequestConfig } from "axios";
 import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
@@ -269,6 +270,20 @@ interface Reply {
 
 type Route = [method: string, prefix: string, reply: Reply | (() => Reply)];
 
+/** The request headers as plain strings, for assertions. */
+function stringHeaders(headers: unknown): Record<string, string> | undefined {
+  if (!headers || typeof headers !== "object") {
+    return undefined;
+  }
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    if (typeof value === "string") {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 /** A recorder standing in for an axios instance, with headers and errors. */
 function fakeConnection() {
   const calls: Call[] = [];
@@ -277,14 +292,17 @@ function fakeConnection() {
     method: string,
     url: string,
     data?: unknown,
-    config?: { headers?: Record<string, string>; responseType?: string },
+    config?: AxiosRequestConfig,
   ) => {
     calls.push({
       method,
       url,
       data,
-      headers: config?.headers,
-      responseType: config?.responseType,
+      headers: stringHeaders(config?.headers),
+      responseType:
+        typeof config?.responseType === "string"
+          ? config.responseType
+          : undefined,
     });
     const index = routes.findIndex(
       ([m, prefix]) => m === method && url.startsWith(prefix),
@@ -417,6 +435,10 @@ describe("background JobsModel", () => {
     expect(fake.calls[0].url).to.equal(
       "/jobExecution/jobs/j1/state?value=canceled",
     );
+    // A body-less PUT gets axios' default Content-Type, which the live
+    // server refuses with 415.
+    expect(fake.calls[0].data).to.equal("canceled");
+    expect(fake.calls[0].headers?.["Content-Type"]).to.equal("text/plain");
 
     fake.reset();
     const recorded = json("cancel-again-405.json");
