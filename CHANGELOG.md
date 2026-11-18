@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0 - 2026-11-18
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+Positron SAS is generally available (GA). This is the first GA release. It has the same features and fixes as 0.7.0.
+
 ## 0.7.0 - 2026-11-18
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
