@@ -23,6 +23,7 @@ import {
   type ServerFilesBrowser,
   guessLanguage,
 } from "./sasServerFilesConnection";
+import { serverDataFileKind } from "./dataFileReaders";
 
 export const SAS_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <circle cx="50" cy="50" r="45" fill="#0066CC"/>
@@ -71,6 +72,8 @@ export interface SasDataConnectionSource {
     ServerFilesBrowser,
     "listDirectory" | "readFile" | "getProperties"
   >;
+  /** Open a dataset, view or transport file of `serverFiles`. */
+  openServerDataFile?(segments: string[]): Promise<void>;
 }
 
 /**
@@ -214,7 +217,7 @@ export class SasDataConnectionsDriver
         isReadOnly: async () => true,
         isConnected: async () => !!this.sources.get(profileName)?.serverFiles,
         disconnect: async () => {},
-        getChildren: () => this.directoryChildren(getFiles, []),
+        getChildren: () => this.directoryChildren(getSource, getFiles, []),
       };
     }
 
@@ -230,29 +233,40 @@ export class SasDataConnectionsDriver
   }
 
   private async directoryChildren(
+    getSource: () => SasDataConnectionSource,
     getFiles: () => NonNullable<SasDataConnectionSource["serverFiles"]>,
     segments: string[],
   ): Promise<DataConnectionNode[]> {
     const entries = await getFiles().listDirectory(segments);
     return entries.map(({ name, isDirectory }) => {
       const path = [...segments, name];
-      return isDirectory
+      if (isDirectory) {
+        return {
+          name,
+          kind: "directory" as const,
+          path: `/${path.join("/")}`,
+          getChildren: () => this.directoryChildren(getSource, getFiles, path),
+        };
+      }
+      const getDetails = () => this.fileDetails(getSource, getFiles, path);
+      // Datasets, views and transport files open in the Data Explorer.
+      const dataKind = serverDataFileKind(name);
+      return dataKind && getSource().openServerDataFile
         ? {
             name,
-            kind: "directory" as const,
+            kind: dataKind,
             path: `/${path.join("/")}`,
-            getChildren: () => this.directoryChildren(getFiles, path),
+            // The source at the time of the preview: a restarted session
+            // replaces it.
+            preview: () => getSource().openServerDataFile?.(path),
+            getDetails,
           }
-        : {
-            name,
-            kind: "file" as const,
-            path: `/${path.join("/")}`,
-            getDetails: () => this.fileDetails(getFiles, path),
-          };
+        : { name, kind: "file" as const, path: `/${path.join("/")}`, getDetails };
     });
   }
 
   private async fileDetails(
+    getSource: () => SasDataConnectionSource,
     getFiles: () => NonNullable<SasDataConnectionSource["serverFiles"]>,
     segments: string[],
   ): Promise<DataConnectionNodeDetails> {
@@ -271,6 +285,12 @@ export class SasDataConnectionsDriver
     ];
 
     const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+    if (serverDataFileKind(fileName) && getSource().openServerDataFile) {
+      return {
+        description: "SAS data file: open it in the Data Explorer to see its rows",
+        sections,
+      };
+    }
     if (BINARY_EXTENSIONS.has(ext)) {
       return { description: "Binary file; content not shown", sections };
     }

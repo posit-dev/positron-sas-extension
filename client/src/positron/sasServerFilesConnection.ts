@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { FileSystemApi } from "../connection/rest/api/compute";
 import { getApiConfig } from "../connection/rest/common";
+import { serverDataFileKind } from "./dataFileReaders";
 
 const SAS_FILE_SEPARATOR = "~fs~";
 
@@ -97,6 +98,33 @@ export class ServerFilesBrowser {
     return SAS_FILE_SEPARATOR + segments.join(SAS_FILE_SEPARATOR);
   }
 
+  /** The path of a file on the SAS server, as SAS code names it. */
+  sasPath(segments: string[]): string {
+    const root =
+      this.fileNavigationRoot === "CUSTOM" && this.fileNavigationCustomRootPath
+        ? this.fileNavigationCustomRootPath.split("/").filter(Boolean)
+        : [];
+    return `/${[...root, ...segments].join("/")}`;
+  }
+
+  /** The content of a file, as bytes (binary files such as datasets). */
+  async readBytes(segments: string[]): Promise<Uint8Array> {
+    const response = await this.fileSystemApi.getFileContentFromSystem(
+      { sessionId: this.sessionId, filePath: this.toServerPath(segments) },
+      { responseType: "arraybuffer" },
+    );
+    // Typed as void, but holds the bytes with responseType arraybuffer: a
+    // Buffer in Node, an ArrayBuffer in a browser.
+    const data: unknown = response.data;
+    if (data instanceof Uint8Array) {
+      return data;
+    }
+    if (data instanceof ArrayBuffer) {
+      return new Uint8Array(data);
+    }
+    throw new Error("The SAS server returned no file content.");
+  }
+
   async listDirectory(segments: string[]): Promise<ServerFileEntry[]> {
     const response = await this.fileSystemApi.getDirectoryMembers({
       sessionId: this.sessionId,
@@ -158,6 +186,8 @@ export class SasServerFilesConnection {
     readonly name: string,
     private readonly profileName: string,
     private readonly profileHost: string,
+    /** Opens a dataset, view or transport file in the Data Explorer. */
+    private readonly openDataFile?: (segments: string[]) => Promise<void>,
   ) {}
 
   sendMessage(messageId: string, message: Record<string, unknown>): void {
@@ -263,6 +293,10 @@ export class SasServerFilesConnection {
     }
     const lastItem = path[path.length - 1];
     if (lastItem.kind !== "table") {
+      return;
+    }
+    if (this.openDataFile && serverDataFileKind(lastItem.name)) {
+      await this.openDataFile(path.map((p) => p.name));
       return;
     }
 

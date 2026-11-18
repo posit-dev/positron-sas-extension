@@ -25,6 +25,7 @@ import {
 
 import { isAxiosError } from "axios";
 
+import { openCommand } from "../positron/dataFileEditorFallback";
 import { RepositoryDecorator } from "./RepositoryDecorator";
 import { RepositoryModel } from "./RepositoryModel";
 import { WorkspaceModel } from "./WorkspaceModel";
@@ -138,9 +139,7 @@ export class WorkspaceDataProvider
       collapsibleState: folder
         ? TreeItemCollapsibleState.Collapsed
         : TreeItemCollapsibleState.None,
-      command: folder
-        ? undefined
-        : { command: "vscode.open", title: "Open", arguments: [uri] },
+      command: folder ? undefined : openCommand(uri),
     };
   }
 

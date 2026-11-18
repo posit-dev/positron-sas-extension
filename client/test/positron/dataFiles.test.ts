@@ -9,13 +9,13 @@ import {
   loadTransportFile,
 } from "../../src/positron/dataFiles";
 
-function fakeSession(log = "") {
+function fakeSession(log: string | ((code: string) => string) = "") {
   const code: string[] = [];
   const uploads: string[] = [];
   const session: DataFileSession = {
     runSilent: async (c) => {
       code.push(c);
-      return log;
+      return typeof log === "function" ? log(c) : log;
     },
     uploadToWork: async (subdir, name) => {
       uploads.push(`${subdir}/${name}`);
@@ -54,8 +54,28 @@ describe("assignDataFileLibrary", () => {
     expect(b.libref).to.match(/^_FVIEW\d+$/);
     expect(b.libref).to.not.equal(a.libref);
     expect(c.libref).to.equal(a.libref);
-    expect(code[0]).to.equal(`libname ${a.libref} '/data/one';`);
-    expect(code[1]).to.equal(`libname ${b.libref} '/data/two';`);
+    expect(code[0]).to.match(new RegExp(`^libname ${a.libref} '/data/one';\n`));
+    expect(code[0]).to.contain(`exist(${a.libref}.CLASS)`);
+    expect(code[1]).to.match(new RegExp(`^libname ${b.libref} '/data/two';\n`));
+  });
+
+  it("copies a file on this machine into WORK when SAS doesn't see it", async () => {
+    // SAS on a server: the folder doesn't exist there.
+    const { session, code, uploads } = fakeSession((c) =>
+      c.includes("exist(")
+        ? "NOTE: Library _FVIEW1 does not exist.\n_SASFEXIST=0"
+        : "",
+    );
+    const lib = await assignDataFileLibrary(
+      session,
+      local("/Users/me/data/Class.sas7bdat"),
+    );
+    expect(lib.member).to.equal("CLASS");
+    expect(lib.libref).to.match(/^_FVW\d+$/);
+    expect(uploads).to.deep.equal([
+      `${lib.libref.toLowerCase()}/class.sas7bdat`,
+    ]);
+    expect(code[1]).to.match(new RegExp(`^libname ${lib.libref} `));
   });
 
   it("copies a file SAS can't read into WORK, with a lowercase name", async () => {
@@ -103,6 +123,40 @@ describe("loadTransportFile", () => {
     expect(lib.members).to.deep.equal(["CLASS", "FISH"]);
     expect(uploads).to.deep.equal([`_fxptsrc/${lib.libref.toLowerCase()}.xpt`]);
     expect(code[0]).to.contain(lib.libref);
+  });
+
+  it("reads the header of a file on the SAS server, which SAS reads in place", async () => {
+    const { session, code, uploads } = fakeSession();
+    const header = new TextEncoder().encode(
+      "HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!000000000000000000000000000000  ",
+    );
+    const lib = await loadTransportFile(session, {
+      key: "sasServer:/tmp/x/one.xpt",
+      local: true,
+      filePath: "/tmp/x/one.xpt",
+      read: async () => header,
+      readHeader: async () => header,
+    });
+    expect(uploads).to.deep.equal([]);
+    expect(code[1]).to.contain("'/tmp/x/one.xpt'");
+    expect(lib.members).to.deep.equal(["CLASS", "FISH"]);
+  });
+
+  it("copies a file on this machine into WORK when SAS doesn't see it", async () => {
+    const { session, code, uploads } = fakeSession((c) =>
+      c.includes("fileexist(") ? "_SASFEXIST=0" : "",
+    );
+    const header = new TextEncoder().encode(
+      "HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!000000000000000000000000000000  ",
+    );
+    const lib = await loadTransportFile(session, {
+      key: "file:///Users/me/one.xpt",
+      local: true,
+      filePath: "/Users/me/one.xpt",
+      read: async () => header,
+    });
+    expect(code[0]).to.contain("fileexist('/Users/me/one.xpt')");
+    expect(uploads).to.deep.equal([`_fxptsrc/${lib.libref.toLowerCase()}.xpt`]);
   });
 
   it("refuses a file that is not a transport file", async () => {

@@ -23,6 +23,7 @@ import {
   window,
 } from "vscode";
 
+import { openCommand } from "../positron/dataFileEditorFallback";
 import { RepositoryDecorator } from "./RepositoryDecorator";
 import { RepositoryModel } from "./RepositoryModel";
 import { CLINICAL_SCHEME, VIEW_ID } from "./const";
@@ -171,13 +172,7 @@ export class RepositoryDataProvider
       collapsibleState: container
         ? TreeItemCollapsibleState.Collapsed
         : TreeItemCollapsibleState.None,
-      command: container
-        ? undefined
-        : {
-            command: "vscode.open",
-            title: "Open",
-            arguments: [uri],
-          },
+      command: container ? undefined : openCommand(uri),
     };
   }
 

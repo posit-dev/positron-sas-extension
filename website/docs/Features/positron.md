@@ -107,7 +107,7 @@ The extension lists the libraries of the running SAS session in Positron. Which 
 
 - **Connections pane:** in Positron 2026.09 and earlier, or when the Positron setting `dataConnections.enabled` is off, a **SAS (*profile*)** connection appears in the **Connections** pane. It shows libraries, their tables and views, and the columns with their types. Select the preview icon of a table to open it in the Data Explorer. The tree refreshes after each console run.
 - **Data Connections pane:** in Positron 2026.10 and later with the Positron setting `dataConnections.enabled` turned on, the **Data Connections** pane lists a **SAS (*profile*)** connection for each running SAS console. It shows the same library tree, and preview opens a table in the Data Explorer. Select a table or view to see its [properties](#dataset-properties) in the details editor. Positron reads `dataConnections.enabled` at startup, so restart Positron after you change it.
-- **SAS Server Files:** on SAS Viya, a read-only **SAS Server Files (*profile*)** connection browses the file system of the compute session. The `fileNavigationRoot` and `fileNavigationCustomRootPath` profile settings set its root folder. In the **Data Connections** pane, text files up to 512 KB show their content in the details view. In the **Connections** pane, previewing a file opens it in an editor.
+- **SAS Server Files:** on SAS Viya, a read-only **SAS Server Files (*profile*)** connection browses the file system of the compute session. The `fileNavigationRoot` and `fileNavigationCustomRootPath` profile settings set its root folder. In the **Data Connections** pane, text files up to 512 KB show their content in the details view. In the **Connections** pane, previewing a file opens it in an editor. In both panes, `.sas7bdat`, `.sas7bvew`, and `.xpt` files open in the **Data Explorer** with the preview button: the session reads datasets and views where they are, through a library on their folder, and unpacks transport files into WORK.
 
 The Libraries view that [Accessing Libraries and Tables](./accessLibraries.md) describes is hidden in Positron, because the Connections and Data Connections panes replace it. On SAS Viya, the **SAS Content** and **SAS Server** views stay in the **SAS** sidebar, as described in [Accessing SAS Content](./accessContent.md) and [Accessing SAS Server](./accessServer.md).
 
@@ -121,10 +121,29 @@ The Libraries view that [Accessing Libraries and Tables](./accessLibraries.md) d
 
 ## SAS Data Files
 
-The extension opens `.sas7bdat` and `.xpt` files in the Data Explorer. Open the file from the **Explorer**, or from a view such as the **Clinical Repository**.
+The extension opens `.sas7bdat` and `.xpt` files in the Data Explorer through the SAS session. In the **Explorer**, right-click the file and select **Open with SAS**. Files opened from a view such as the **Clinical Repository** or **SAS Content** open this way too.
 
-- **Datasets:** for a `.sas7bdat` file on disk, the extension assigns a library to the file's folder with a `LIBNAME` statement. Each folder gets its own library, `_FVIEW1`, `_FVIEW2`, and so on, so files from different folders can be open at the same time.
-- **Transport files:** for an `.xpt` file, the extension detects the format from the file header: XPORT version 5, XPORT version 8 or 9, or `PROC CPORT`. It unpacks the file into a library in the WORK folder of the session.
+Double-clicking a file in the **Explorer** depends on the Positron version:
+
+- **Positron 2026.12 and later, with a SAS session running:** the file opens through the SAS session. Positron opens it in its own Data Explorer first, and the extension then reopens it through SAS, so Positron's tab shows briefly and a large file takes longer to open.
+- **Positron 2026.12 and later, without a SAS session:** the file opens in Positron's own Data Explorer, which reads it without SAS. Positron downloads its reader the first time; the `dataExplorer.fileReaders` setting turns it off. Its reader shows no SAS formats, can't read `PROC CPORT` files, and reads only the first dataset of a transport file with several: open those with **Open with SAS**.
+- **Earlier versions,** or when an administrator turned Positron's reader off for the file type: the file opens through the SAS session.
+
+To always use Positron's own Data Explorer on a double-click, even with a SAS session running, set `SAS.dataFiles.openWith` to `positron`.
+
+To always open the files through the SAS session, without Positron reading them first, make the extension's viewers the default in the `settings.json` file:
+
+```json
+"workbench.editorAssociations": {
+  "*.sas7bdat": "sas.sas7bdatViewer",
+  "*.xpt": "sas.xptViewer"
+}
+```
+
+When no SAS session is running, a file opened through the SAS session goes to Positron's own Data Explorer if Positron can read it. Otherwise, a message offers **Start SAS Session**, and the file opens once the session is up.
+
+- **Datasets:** for a `.sas7bdat` file on disk, the extension assigns a library to the file's folder with a `LIBNAME` statement. Each folder gets its own library, `_FVIEW1`, `_FVIEW2`, and so on, so files from different folders can be open at the same time. When SAS runs on a server that can't see the folder, such as SAS Viya without shared storage, the extension copies the file into the WORK folder instead.
+- **Transport files:** for an `.xpt` file, the extension detects the format from the file header: XPORT version 5, XPORT version 8 or 9, or `PROC CPORT`. It unpacks the file into a library in the WORK folder of the session. When SAS can't see the file, it copies the file into the WORK folder first.
 - **Several datasets:** when a transport file holds more than one dataset, a picker asks which ones to open.
 - **Files from other views:** files that are not on disk, such as files from the **Clinical Repository** or **SAS Content** views, are copied into the WORK folder first. This copy also works when SAS runs in lockdown mode.
 
@@ -261,7 +280,7 @@ The profile's `autoExec` lines run once, right after SAS starts.
 | Libraries in the **Connections** or **Data Connections** pane | Yes | Yes | Yes |
 | **SAS Server Files** connection | Yes | No | No |
 | **Data Explorer** | Yes | Yes | Yes |
-| `.sas7bdat` and `.xpt` files on disk | If the server sees the path | If the server sees the path | Yes |
+| `.sas7bdat` and `.xpt` files on disk | Yes (copied into WORK if the server can't see the path) | Yes (copied into WORK if the server can't see the path) | Yes |
 | `.sas7bdat` and `.xpt` files from other views | Yes | No | No |
 | Posit Assistant tools, context, and skill | Yes | Yes | Yes |
 | Audit log, submission comment, and macro variables | Yes | Yes | Yes |

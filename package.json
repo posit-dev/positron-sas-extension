@@ -732,6 +732,20 @@
             ],
             "markdownDescription": "%configuration.SAS.console.logOutput%"
           },
+          "SAS.dataFiles.openWith": {
+            "order": 11,
+            "type": "string",
+            "enum": [
+              "sasWhenSessionRuns",
+              "positron"
+            ],
+            "enumDescriptions": [
+              "%configuration.SAS.dataFiles.openWith.sasWhenSessionRuns%",
+              "%configuration.SAS.dataFiles.openWith.positron%"
+            ],
+            "default": "sasWhenSessionRuns",
+            "markdownDescription": "%configuration.SAS.dataFiles.openWith%"
+          },
           "SAS.localSasPaths": {
             "order": 12,
             "type": "array",
@@ -881,6 +895,11 @@
       {
         "command": "SAS.datasetProperties.file",
         "title": "%commands.SAS.datasetProperties.file%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.openDataFileWithSas",
+        "title": "%commands.SAS.openDataFileWithSas%",
         "category": "SAS"
       },
       {
@@ -1775,6 +1794,11 @@
       ],
       "explorer/context": [
         {
+          "command": "SAS.openDataFileWithSas",
+          "when": "isPositron && resourceExtname =~ /^\\.(sas7bdat|xpt)$/i && !listMultiSelection",
+          "group": "navigation@20"
+        },
+        {
           "command": "SAS.compareDatasets.selectFile",
           "when": "isPositron && resourceExtname =~ /^\\.(sas7bdat|xpt)$/i && !listMultiSelection",
           "group": "3_compare@10"
@@ -2439,6 +2463,10 @@
         {
           "when": "false",
           "command": "SAS.datasetProperties.file"
+        },
+        {
+          "when": "false",
+          "command": "SAS.openDataFileWithSas"
         },
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
@@ -3134,7 +3162,7 @@
             "filenamePattern": "*.SAS7BDAT"
           }
         ],
-        "priority": "default"
+        "priority": "option"
       },
       {
         "viewType": "sas.xptViewer",
@@ -3147,7 +3175,7 @@
             "filenamePattern": "*.XPT"
           }
         ],
-        "priority": "default"
+        "priority": "option"
       },
       {
         "viewType": "SAS.clinical.jobEditor",

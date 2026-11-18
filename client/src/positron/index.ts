@@ -1,7 +1,7 @@
 // Copyright © 2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ExtensionContext, commands, workspace, window } from "vscode";
+import { EventEmitter, ExtensionContext, commands, workspace, window } from "vscode";
 import { SASLanguageRuntimeManager } from "./PositronLanguageRuntimeManager";
 import { SASLanguageRuntimeManager_Supervisor } from "./PositronLanguageRuntimeManager_Supervisor";
 import { SASLanguageRuntimeSession } from "./PositronLanguageRuntimeSession";
@@ -27,6 +27,10 @@ import {
   showDatasetFileProperties,
   showDatasetProperties,
 } from "./datasetDetails";
+import {
+  openDataFileWithSas,
+  registerDataFileRedirect,
+} from "./dataFileEditorFallback";
 import { supportsTableSections } from "./datasetProperties";
 import type { SasClient } from "./sasClient";
 import {
@@ -61,6 +65,9 @@ let activeAssistantClient: SasClient | undefined;
 
 // Holds the active SASLanguageRuntimeSession for direct operations.
 let activeSession: SASLanguageRuntimeSession | undefined;
+const activeSessionChanged = new EventEmitter<
+  SASLanguageRuntimeSession | undefined
+>();
 
 // Running SAS console sessions by session ID, so the active session can
 // follow the foreground console.
@@ -169,6 +176,13 @@ export async function initializePositronIntegration(
     ),
   );
 
+  // Positron 2026.12 opens .sas7bdat and .xpt files itself; where it can't,
+  // they open in the extension's viewers (#141).
+  registerDataFileRedirect(context);
+  context.subscriptions.push(
+    commands.registerCommand("SAS.openDataFileWithSas", openDataFileWithSas),
+  );
+
   // Auto-start a Console session when a .sas file becomes the active editor
   // and no SAS Console session is already running.
   const ensureSasConsoleSession = async () => {
@@ -176,25 +190,7 @@ export async function initializePositronIntegration(
     if (!editor || editor.document.languageId !== "sas") {
       return;
     }
-    const sessions = await api.runtime.getActiveSessions();
-    const hasConsole = sessions.some(
-      (s) =>
-        s.runtimeMetadata.languageId === "sas" &&
-        s.metadata.sessionMode === "console",
-    );
-    if (hasConsole) {
-      return;
-    }
-    const preferred = await api.runtime.getPreferredRuntime("sas");
-    if (!preferred) {
-      return;
-    }
-    Promise.resolve(
-      api.runtime.startLanguageRuntime(
-        preferred.runtimeId,
-        preferred.runtimeShortName,
-      ),
-    ).catch((err: unknown) => {
+    startSasConsole().catch((err: unknown) => {
       console.error("Failed to auto-start SAS Console session:", err);
     });
   };
@@ -314,6 +310,61 @@ export function setActiveAssistantClient(
  */
 export function setActiveSession(session: SASLanguageRuntimeSession | undefined): void {
   activeSession = session;
+  activeSessionChanged.fire(session);
+}
+
+/**
+ * Start a SAS console with the preferred SAS runtime, unless one is running.
+ * False when there is no SAS runtime to start (no connection profile).
+ */
+export async function startSasConsole(): Promise<boolean> {
+  const api = getPositronApi();
+  if (!api) {
+    return false;
+  }
+  const sessions = await api.runtime.getActiveSessions();
+  const hasConsole = sessions.some(
+    (s) =>
+      s.runtimeMetadata.languageId === "sas" &&
+      s.metadata.sessionMode === "console",
+  );
+  if (hasConsole) {
+    return true;
+  }
+  const preferred = await api.runtime.getPreferredRuntime("sas");
+  if (!preferred) {
+    return false;
+  }
+  await api.runtime.startLanguageRuntime(
+    preferred.runtimeId,
+    preferred.runtimeShortName,
+  );
+  return true;
+}
+
+/**
+ * The active SAS session, once there is one; undefined after `timeoutMs`
+ * without one (sign-in can take a while).
+ */
+export function waitForActiveSession(
+  timeoutMs = 300_000,
+): Promise<SASLanguageRuntimeSession | undefined> {
+  if (activeSession) {
+    return Promise.resolve(activeSession);
+  }
+  return new Promise((resolve) => {
+    const done = (session: SASLanguageRuntimeSession | undefined) => {
+      clearTimeout(timer);
+      listener.dispose();
+      resolve(session);
+    };
+    const timer = setTimeout(() => done(undefined), timeoutMs);
+    const listener = activeSessionChanged.event((session) => {
+      if (session) {
+        done(session);
+      }
+    });
+  });
 }
 
 /** Called when a SAS console session starts. */
