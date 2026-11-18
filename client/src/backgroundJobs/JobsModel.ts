@@ -30,6 +30,9 @@ import type {
 } from "./types";
 import { getLink, jobsFilter } from "./utils";
 
+const FOLDERS_ROOT = "/folders";
+const ANCESTOR_MEDIA_TYPE = "application/vnd.sas.content.folder.ancestor+json";
+
 /** The job has ended, so its state can no longer be changed (405 / err 31501). */
 export class AlreadyFinishedError extends Error {}
 /** The job is gone from the server, e.g. it expired or was deleted. */
@@ -79,7 +82,11 @@ export interface SubmitOptions {
   definitionUri?: string;
   /** Used when no definition could be stored; the code travels in the request. */
   definition?: JobDefinition;
-  contextName: string;
+  /**
+   * The compute context. Leave it out for a job that declares its own
+   * _contextName default; the service requires one or the other.
+   */
+  contextName?: string;
   expiresAfter?: string;
   /** Extra Compute provider arguments, such as _queue. */
   extraArguments?: Record<string, string>;
@@ -87,6 +94,11 @@ export interface SubmitOptions {
 
 export interface JobsPage {
   items: ExecutionJob[];
+  hasMore: boolean;
+}
+
+export interface DefinitionsPage {
+  items: JobDefinition[];
   hasMore: boolean;
 }
 
@@ -197,6 +209,36 @@ export class JobsModel {
     }
   }
 
+  /**
+   * The user's job definitions, most recently changed first: the ones saved
+   * from Positron, the ones made in SAS Studio, and the copies that Submit as
+   * Background Job keeps.
+   */
+  async listDefinitions(
+    start: number,
+    limit: number,
+  ): Promise<DefinitionsPage> {
+    const connection = await this.backend.getConnection();
+    let userId: string | undefined;
+    try {
+      userId = await this.backend.getCurrentUserId();
+    } catch {
+      userId = undefined;
+    }
+    const filter = userId
+      ? `&filter=${encodeURIComponent(`eq(createdBy,'${userId}')`)}`
+      : "";
+    const response = await connection.get<ResourceCollection<JobDefinition>>(
+      `${DEFINITIONS}?start=${start}&limit=${limit}` +
+        `&sortBy=modifiedTimeStamp:descending${filter}`,
+      { headers: this.headers({ Accept: COLLECTION_MEDIA_TYPE }) },
+    );
+    return {
+      items: response.data.items ?? [],
+      hasMore: !!getLink(response.data.links, "next"),
+    };
+  }
+
   // ---------------------------------------------------------------- jobs
 
   /** Submit a job. `?submitter=` is persisted as submittedByApplication. */
@@ -210,7 +252,7 @@ export class JobsModel {
         ? { jobDefinitionUri: options.definitionUri }
         : { jobDefinition: options.definition }),
       arguments: {
-        _contextName: options.contextName,
+        ...(options.contextName ? { _contextName: options.contextName } : {}),
         ...(options.extraArguments ?? {}),
       },
       ...(options.expiresAfter ? { expiresAfter: options.expiresAfter } : {}),
@@ -361,6 +403,39 @@ export class JobsModel {
       headers: this.headers({ Accept: COLLECTION_MEDIA_TYPE }),
     });
     return response.data.items ?? [];
+  }
+
+  /**
+   * The folders a resource is in, nearest first, or [] when it is in none.
+   * Answers 204 for a resource outside any folder.
+   */
+  async getAncestors(
+    childUri: string,
+  ): Promise<{ name: string; type?: string; id?: string }[]> {
+    const connection = await this.backend.getConnection();
+    const response = await connection.get<{
+      ancestors?: { name: string; type?: string; id?: string }[];
+    }>(`${FOLDERS_ROOT}/ancestors?childUri=${encodeURIComponent(childUri)}`, {
+      headers: this.headers({ Accept: ANCESTOR_MEDIA_TYPE }),
+    });
+    return response.data?.ancestors ?? [];
+  }
+
+  /** The id of the folder at a SAS Content path, or undefined if there is none. */
+  async getFolderIdByPath(path: string): Promise<string | undefined> {
+    const connection = await this.backend.getConnection();
+    try {
+      const response = await connection.get<{ id?: string }>(
+        `${FOLDERS}/@item?path=${encodeURIComponent(path)}`,
+        { headers: this.headers({ Accept: FOLDER_MEDIA_TYPE }) },
+      );
+      return response.data?.id;
+    } catch (error) {
+      if (statusOf(error) === 404) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   /** The user's My Folder, which holds the generated definitions folder. */

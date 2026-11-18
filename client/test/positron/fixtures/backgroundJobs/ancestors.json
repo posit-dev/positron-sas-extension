@@ -1,0 +1,253 @@
+{
+  "childUri": "/jobDefinitions/definitions/66a2a01c-6a32-4401-904b-45484c9c752c",
+  "ancestors": [
+    {
+      "creationTimeStamp": "2026-08-20T13:54:58.107971Z",
+      "createdBy": "user1",
+      "modifiedTimeStamp": "2026-08-20T13:54:58.107971Z",
+      "modifiedBy": "user1",
+      "version": 1,
+      "id": "7e60f65d-be63-4db2-9dcc-42f2b2941103",
+      "name": "My Folder",
+      "parentFolderUri": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+      "description": "My Folder for user1",
+      "type": "myFolder",
+      "memberCount": 5,
+      "properties": {
+        "allowMove": "false"
+      },
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "uri": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "type": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "uri": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103"
+        },
+        {
+          "method": "DELETE",
+          "rel": "deleteRecursively",
+          "href": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103?recursive=true",
+          "uri": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103?recursive=true"
+        },
+        {
+          "method": "GET",
+          "rel": "members",
+          "href": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103/members",
+          "uri": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103/members",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "POST",
+          "rel": "addMember",
+          "href": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103/members",
+          "uri": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103/members",
+          "type": "application/vnd.sas.content.folder.member",
+          "responseType": "application/vnd.sas.content.folder.member"
+        },
+        {
+          "method": "GET",
+          "rel": "up",
+          "href": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "uri": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "type": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "GET",
+          "rel": "ancestors",
+          "href": "/folders/ancestors?childUri=/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "uri": "/folders/ancestors?childUri=/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "type": "application/vnd.sas.content.folder.ancestor"
+        },
+        {
+          "method": "POST",
+          "rel": "createChild",
+          "href": "/folders/folders?parentFolderUri=/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "uri": "/folders/folders?parentFolderUri=/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "type": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "PUT",
+          "rel": "validateNewMemberName",
+          "href": "/folders/commons/validations/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103/members/@new/name?value={newname}&type={newtype}",
+          "uri": "/folders/commons/validations/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103/members/@new/name?value={newname}&type={newtype}",
+          "type": "application/vnd.sas.validation"
+        },
+        {
+          "method": "GET",
+          "rel": "transferExport",
+          "href": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "uri": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "responseType": "application/vnd.sas.transfer.object"
+        },
+        {
+          "method": "PUT",
+          "rel": "transferImportUpdate",
+          "href": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "uri": "/folders/folders/7e60f65d-be63-4db2-9dcc-42f2b2941103",
+          "type": "application/vnd.sas.transfer.object",
+          "responseType": "application/vnd.sas.summary"
+        }
+      ]
+    },
+    {
+      "creationTimeStamp": "2026-08-20T13:54:58.071512Z",
+      "createdBy": "user1",
+      "modifiedTimeStamp": "2026-08-20T13:54:58.071513Z",
+      "modifiedBy": "user1",
+      "version": 1,
+      "id": "43314bd1-4980-4b20-914c-70a9b475376f",
+      "name": "user1",
+      "parentFolderUri": "/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057",
+      "description": "The user folder for user1",
+      "type": "userFolder",
+      "memberCount": 5,
+      "properties": {
+        "allowMove": "false",
+        "hidden": "true"
+      },
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "uri": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "type": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "uri": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f"
+        },
+        {
+          "method": "DELETE",
+          "rel": "deleteRecursively",
+          "href": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f?recursive=true",
+          "uri": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f?recursive=true"
+        },
+        {
+          "method": "GET",
+          "rel": "members",
+          "href": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f/members",
+          "uri": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f/members",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "POST",
+          "rel": "addMember",
+          "href": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f/members",
+          "uri": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f/members",
+          "type": "application/vnd.sas.content.folder.member",
+          "responseType": "application/vnd.sas.content.folder.member"
+        },
+        {
+          "method": "GET",
+          "rel": "up",
+          "href": "/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057",
+          "uri": "/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057",
+          "type": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "GET",
+          "rel": "ancestors",
+          "href": "/folders/ancestors?childUri=/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "uri": "/folders/ancestors?childUri=/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "type": "application/vnd.sas.content.folder.ancestor"
+        },
+        {
+          "method": "POST",
+          "rel": "createChild",
+          "href": "/folders/folders?parentFolderUri=/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "uri": "/folders/folders?parentFolderUri=/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "type": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "PUT",
+          "rel": "validateNewMemberName",
+          "href": "/folders/commons/validations/folders/43314bd1-4980-4b20-914c-70a9b475376f/members/@new/name?value={newname}&type={newtype}",
+          "uri": "/folders/commons/validations/folders/43314bd1-4980-4b20-914c-70a9b475376f/members/@new/name?value={newname}&type={newtype}",
+          "type": "application/vnd.sas.validation"
+        },
+        {
+          "method": "GET",
+          "rel": "transferExport",
+          "href": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "uri": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "responseType": "application/vnd.sas.transfer.object"
+        },
+        {
+          "method": "PUT",
+          "rel": "transferImportUpdate",
+          "href": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "uri": "/folders/folders/43314bd1-4980-4b20-914c-70a9b475376f",
+          "type": "application/vnd.sas.transfer.object",
+          "responseType": "application/vnd.sas.summary"
+        }
+      ]
+    },
+    {
+      "creationTimeStamp": "2026-08-20T13:08:18.74241Z",
+      "createdBy": "anonymous",
+      "modifiedTimeStamp": "2026-08-20T13:08:18.742411Z",
+      "modifiedBy": "anonymous",
+      "version": 1,
+      "id": "7b80e159-9dc0-48e5-bc5b-e4705af04057",
+      "name": "Users",
+      "description": "Base Folder for all user folders.",
+      "type": "userRoot",
+      "memberCount": 8,
+      "properties": {
+        "allowMove": "false",
+        "uuid": "e911697e-fe53-497c-a27c-909c757ba04a"
+      },
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057",
+          "uri": "/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057",
+          "type": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "GET",
+          "rel": "members",
+          "href": "/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057/members",
+          "uri": "/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057/members",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.content.folder"
+        },
+        {
+          "method": "GET",
+          "rel": "ancestors",
+          "href": "/folders/ancestors?childUri=/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057",
+          "uri": "/folders/ancestors?childUri=/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057",
+          "type": "application/vnd.sas.content.folder.ancestor"
+        },
+        {
+          "method": "PUT",
+          "rel": "validateNewMemberName",
+          "href": "/folders/commons/validations/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057/members/@new/name?value={newname}&type={newtype}",
+          "uri": "/folders/commons/validations/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057/members/@new/name?value={newname}&type={newtype}",
+          "type": "application/vnd.sas.validation"
+        },
+        {
+          "method": "GET",
+          "rel": "transferExport",
+          "href": "/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057",
+          "uri": "/folders/folders/7b80e159-9dc0-48e5-bc5b-e4705af04057",
+          "responseType": "application/vnd.sas.transfer.object"
+        }
+      ]
+    }
+  ],
+  "version": 1
+}
