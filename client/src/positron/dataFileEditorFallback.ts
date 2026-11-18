@@ -17,9 +17,11 @@ import {
   POSITRON_DATA_EXPLORER_EDITOR,
   positronHasReader,
   sasViewerFor,
+  viewerToReopenWith,
 } from "./dataFileReaders";
 import {
   getActiveSession,
+  getPositronApi,
   isPositron,
   startSasConsole,
   waitForActiveSession,
@@ -122,10 +124,59 @@ export function registerDataFileRedirect(context: ExtensionContext): void {
     }
   };
   context.subscriptions.push(
-    window.tabGroups.onDidChangeTabs(({ opened }) => redirect(opened)),
+    window.tabGroups.onDidChangeTabs(({ opened }) => {
+      redirect(opened);
+      // A Data Explorer tab has no input type the extension API knows.
+      if (opened.some((tab) => tab.input === undefined)) {
+        void reopenThroughSas();
+      }
+    }),
   );
   // Tabs that opened before the extension started.
   redirect(window.tabGroups.all.flatMap((group) => group.tabs));
+}
+
+/**
+ * While a SAS session runs, a .sas7bdat or .xpt file that Positron opened
+ * in its own Data Explorer (Positron 2026.12) is reopened through the SAS
+ * session, unless `SAS.dataFiles.openWith` is `positron` (#141). Positron
+ * has read the file by then: there is no way to choose the editor before.
+ * Data Explorers of R, Python or SAS sessions have no file and stay.
+ */
+async function reopenThroughSas(): Promise<void> {
+  const getContext = getPositronApi()?.dataExplorer?.getContext;
+  const openWith = () =>
+    workspace.getConfiguration("SAS").get<string>("dataFiles.openWith");
+  if (!getContext || openWith() === "positron" || !getActiveSession()) {
+    return;
+  }
+  // getContext describes the active editor, which the new tab becomes.
+  let context: Awaited<ReturnType<typeof getContext>>;
+  for (let attempt = 0; attempt < 20 && !context; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    context = await Promise.resolve(getContext()).catch(() => undefined);
+  }
+  const viewer = viewerToReopenWith(
+    openWith(),
+    !!getActiveSession(),
+    context?.source,
+  );
+  const fileUri = context?.source?.fileUri;
+  // The tab getContext described: the active one, a Data Explorer.
+  const tab = window.tabGroups.activeTabGroup.activeTab;
+  if (!viewer || !fileUri || !tab || tab.input !== undefined) {
+    return;
+  }
+  const options = { viewColumn: tab.group.viewColumn, preview: tab.isPreview };
+  await window.tabGroups.close(tab);
+  await commands.executeCommand(
+    "vscode.openWith",
+    Uri.parse(fileUri),
+    viewer,
+    options,
+  );
 }
 
 /**

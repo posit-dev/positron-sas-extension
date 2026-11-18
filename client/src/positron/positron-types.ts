@@ -308,7 +308,14 @@ export interface PositronApi {
   /** Data Explorer; only the parts the SAS extension uses. */
   readonly dataExplorer?: {
     /** Positron 2026.11 and later: the Data Explorer in front, if any. */
-    getContext?(): Thenable<{ displayName: string } | undefined>;
+    getContext?(): Thenable<
+      | {
+          displayName: string;
+          /** Where the data came from; `fileUri` from Positron 2026.12. */
+          source?: { sessionId?: string; fileUri?: string };
+        }
+      | undefined
+    >;
   };
 }
 

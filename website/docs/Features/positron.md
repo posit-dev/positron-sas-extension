@@ -125,10 +125,13 @@ The extension opens `.sas7bdat` and `.xpt` files in the Data Explorer through th
 
 Double-clicking a file in the **Explorer** depends on the Positron version:
 
-- **Positron 2026.12 and later:** the file opens in Positron's own Data Explorer, which reads it without a SAS session. Positron downloads its reader the first time; the `dataExplorer.fileReaders` setting turns it off. Its reader shows no SAS formats, can't read `PROC CPORT` files, and reads only the first dataset of a transport file with several: open those with **Open with SAS**.
+- **Positron 2026.12 and later, with a SAS session running:** the file opens through the SAS session. Positron opens it in its own Data Explorer first, and the extension then reopens it through SAS, so Positron's tab shows briefly and a large file takes longer to open.
+- **Positron 2026.12 and later, without a SAS session:** the file opens in Positron's own Data Explorer, which reads it without SAS. Positron downloads its reader the first time; the `dataExplorer.fileReaders` setting turns it off. Its reader shows no SAS formats, can't read `PROC CPORT` files, and reads only the first dataset of a transport file with several: open those with **Open with SAS**.
 - **Earlier versions,** or when an administrator turned Positron's reader off for the file type: the file opens through the SAS session.
 
-To always open the files through the SAS session, make the extension's viewers the default in the `settings.json` file:
+To always use Positron's own Data Explorer on a double-click, even with a SAS session running, set `SAS.dataFiles.openWith` to `positron`.
+
+To always open the files through the SAS session, without Positron reading them first, make the extension's viewers the default in the `settings.json` file:
 
 ```json
 "workbench.editorAssociations": {

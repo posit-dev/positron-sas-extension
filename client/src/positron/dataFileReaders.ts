@@ -73,3 +73,25 @@ export function serverDataFileKind(name: string): "table" | "view" | undefined {
       return undefined;
   }
 }
+
+/** The `SAS.dataFiles.openWith` setting. */
+export type DataFilesOpenWith = "sasWhenSessionRuns" | "positron";
+
+/**
+ * The SAS viewer to reopen a Data Explorer with, when Positron opened a SAS
+ * data file itself (`fileUri`, no session behind it) while a SAS session
+ * runs and the setting asks for SAS; undefined to leave it.
+ */
+export function viewerToReopenWith(
+  openWith: string | undefined,
+  sasSessionRunning: boolean,
+  source: { sessionId?: string; fileUri?: string } | undefined,
+): string | undefined {
+  if (openWith === "positron" || !sasSessionRunning || !source?.fileUri) {
+    return undefined;
+  }
+  if (source.sessionId) {
+    return undefined;
+  }
+  return sasViewerFor(source.fileUri.replace(/[?#].*$/, ""));
+}

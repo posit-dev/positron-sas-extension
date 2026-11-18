@@ -8,6 +8,7 @@ import {
   sasDataFileKind,
   sasViewerFor,
   serverDataFileKind,
+  viewerToReopenWith,
 } from "../../src/positron/dataFileReaders";
 
 // The defaults of Positron 2026.12.
@@ -64,5 +65,45 @@ describe("positronHasReader", () => {
 
   it("ignores inherited properties", () => {
     expect(positronHasReader({}, "/a/b.constructor")).to.equal(false);
+  });
+});
+
+describe("viewerToReopenWith", () => {
+  const file = { fileUri: "file:///Users/me/ADSL.XPT" };
+
+  it("reopens a file Positron read itself while a SAS session runs", () => {
+    expect(viewerToReopenWith("sasWhenSessionRuns", true, file)).to.equal(
+      "sas.xptViewer",
+    );
+    expect(viewerToReopenWith(undefined, true, file)).to.equal("sas.xptViewer");
+    expect(
+      viewerToReopenWith("sasWhenSessionRuns", true, {
+        fileUri: "file:///d/class.sas7bdat",
+      }),
+    ).to.equal("sas.sas7bdatViewer");
+  });
+
+  it("leaves it without a SAS session or with the positron setting", () => {
+    expect(viewerToReopenWith("sasWhenSessionRuns", false, file)).to.equal(
+      undefined,
+    );
+    expect(viewerToReopenWith("positron", true, file)).to.equal(undefined);
+  });
+
+  it("leaves other data: other files and session data", () => {
+    expect(
+      viewerToReopenWith("sasWhenSessionRuns", true, {
+        fileUri: "file:///d/x.csv",
+      }),
+    ).to.equal(undefined);
+    expect(
+      viewerToReopenWith("sasWhenSessionRuns", true, {
+        sessionId: "r-1",
+        fileUri: "file:///d/x.sas7bdat",
+      }),
+    ).to.equal(undefined);
+    expect(viewerToReopenWith("sasWhenSessionRuns", true, undefined)).to.equal(
+      undefined,
+    );
   });
 });
