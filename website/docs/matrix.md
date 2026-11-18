@@ -22,6 +22,7 @@ sidebar_position: 2
 | [Pop-up syntax help](./Features/sasCodeEditing.md#pop-up-syntax-help)                         | :heavy_check_mark: |              :heavy_check_mark:              |   :heavy_check_mark:    |   :heavy_check_mark:   |
 | [Snippets](./Features/sasCodeEditing.md#snippets)                                             | :heavy_check_mark: |              :heavy_check_mark:              |   :heavy_check_mark:    |   :heavy_check_mark:   |
 | Able to cancel a running program                                                              | :heavy_check_mark: |              :heavy_check_mark:              |           :x:           |          :x:           | Interrupting a SAS 9.4 (local - stdio) or (remote - SSH) session in Positron offers to restart it.                    |
+| [Background jobs](./Features/backgroundJobs.md)                                               | :heavy_check_mark: |                     :x:                      |           :x:           |          :x:           | Requires the SAS Job Execution service on the SAS Viya server.                                                        |
 
 For the features that Positron adds for each connection type, such as the Data Explorer and Posit Assistant, see [Features by Connection Type](./Features/positron.md#features-by-connection-type) in the Positron features. For how to run SAS in Posit Workbench, see [SAS with Posit Workbench](./Workbench/index.md).
 

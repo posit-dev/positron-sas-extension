@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- SAS Viya: submit a SAS program as a background job, as with **Background Submit** in SAS Studio ([#150](https://github.com/posit-dev/positron-sas-extension/issues/150)). **Submit as Background Job** is in the Run menu next to the running man, in the editor context menu, and in the Command Palette. The job runs on the SAS Viya server in a compute server of its own, through the SAS Job Execution service, so the SAS console stays free, and it keeps running when you close Positron. The new **Background Jobs** view in the SAS view container lists your background jobs on the server, newest first, so jobs from before a restart show up too; running jobs update while the view is visible. Open a finished job's **Log**, colored like the SAS log, and its **Listing**; a background job gives the SAS listing, not the HTML report of a console run. You can also show the submitted code, run a job again, cancel a running job, and delete jobs. A message tells you when a job you submitted ends. A whole program is stored as a SAS job in a **Positron Jobs** folder in your **My Folder** in SAS Content, and later submits update it instead of adding copies; a selection runs once without one. A background job does not share WORK, librefs, or macro variables with the console. The new `SAS.backgroundJobs.computeContext` setting picks the compute context (by default the profile's, as for console runs), and `SAS.backgroundJobs.keepResultsFor` sets how long the server keeps a finished job (seven days by default), after which it deletes the job with its log and listing. Background jobs need a SAS Viya server with the SAS Job Execution service; the command and the view don't appear for SAS 9.4 or local SAS, or when the server lacks the service
+
 ## 1.0.0 - 2026-11-18
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
