@@ -762,6 +762,20 @@
             "default": 60,
             "minimum": 0,
             "markdownDescription": "%configuration.SAS.session.keepAliveSeconds%"
+          },
+          "SAS.backgroundJobs.computeContext": {
+            "order": 14,
+            "type": "string",
+            "default": "",
+            "markdownDescription": "%configuration.SAS.backgroundJobs.computeContext%"
+          },
+          "SAS.backgroundJobs.keepResultsFor": {
+            "order": 15,
+            "type": "string",
+            "default": "P7D",
+            "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+            "patternErrorMessage": "%configuration.SAS.backgroundJobs.keepResultsFor.pattern%",
+            "markdownDescription": "%configuration.SAS.backgroundJobs.keepResultsFor%"
           }
         }
       }
@@ -1389,6 +1403,79 @@
         "icon": "$(play-circle)"
       },
       {
+        "command": "SAS.backgroundJob.submit",
+        "title": "%commands.SAS.backgroundJob.submit%",
+        "category": "SAS",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "SAS.backgroundJob.cancel",
+        "title": "%commands.SAS.backgroundJob.cancel%",
+        "category": "SAS",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "SAS.backgroundJob.openLog",
+        "title": "%commands.SAS.backgroundJob.openLog%",
+        "category": "SAS",
+        "icon": "$(output)"
+      },
+      {
+        "command": "SAS.backgroundJob.openResults",
+        "title": "%commands.SAS.backgroundJob.openResults%",
+        "category": "SAS",
+        "icon": "$(file-text)"
+      },
+      {
+        "command": "SAS.backgroundJob.openAllResults",
+        "title": "%commands.SAS.backgroundJob.openAllResults%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.backgroundJob.openFile",
+        "title": "%commands.SAS.backgroundJob.openFile%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.backgroundJob.showCode",
+        "title": "%commands.SAS.backgroundJob.showCode%",
+        "category": "SAS",
+        "icon": "$(code)"
+      },
+      {
+        "command": "SAS.backgroundJob.runAgain",
+        "title": "%commands.SAS.backgroundJob.runAgain%",
+        "category": "SAS",
+        "icon": "$(debug-rerun)"
+      },
+      {
+        "command": "SAS.backgroundJob.copyId",
+        "title": "%commands.SAS.backgroundJob.copyId%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.backgroundJob.delete",
+        "title": "%commands.SAS.backgroundJob.delete%",
+        "category": "SAS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "SAS.backgroundJobs.refresh",
+        "title": "%commands.SAS.backgroundJobs.refresh%",
+        "category": "SAS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.backgroundJobs.loadMore",
+        "title": "%commands.SAS.backgroundJobs.loadMore%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.backgroundJobs.chooseComputeContext",
+        "title": "%commands.SAS.backgroundJobs.chooseComputeContext%",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.clinical.job.new",
         "title": "%clinical.commands.newJob%",
         "category": "SAS Clinical Acceleration"
@@ -1632,6 +1719,16 @@
       ],
       "view/title": [
         {
+          "command": "SAS.backgroundJobs.refresh",
+          "when": "view == sasbackgroundjobsprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.backgroundJobs.chooseComputeContext",
+          "when": "view == sasbackgroundjobsprovider",
+          "group": "1_settings@0"
+        },
+        {
           "command": "SAS.console.chooseLogOutput",
           "when": "view == workbench.panel.positronConsole && SAS.consoleForeground && !SAS.consoleLogFiltered",
           "group": "navigation"
@@ -1825,6 +1922,56 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "SAS.backgroundJob.cancel",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;active;/",
+          "group": "inline@0"
+        },
+        {
+          "command": "SAS.backgroundJob.openLog",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;hasLog;/",
+          "group": "inline@1"
+        },
+        {
+          "command": "SAS.backgroundJob.openLog",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;hasLog;/",
+          "group": "1_open@0"
+        },
+        {
+          "command": "SAS.backgroundJob.openResults",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;hasResults;/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "SAS.backgroundJob.openAllResults",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;done;/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "SAS.backgroundJob.showCode",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;hasCode;/",
+          "group": "1_open@3"
+        },
+        {
+          "command": "SAS.backgroundJob.runAgain",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;done;/",
+          "group": "2_run@0"
+        },
+        {
+          "command": "SAS.backgroundJob.cancel",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;active;/",
+          "group": "2_run@1"
+        },
+        {
+          "command": "SAS.backgroundJob.copyId",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;/",
+          "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.backgroundJob.delete",
+          "when": "view == sasbackgroundjobsprovider && viewItem =~ /;bgjob;.*;done;/",
+          "group": "4_delete@0"
+        },
         {
           "command": "SAS.deleteTable",
           "when": "viewItem =~ /table-actionable/ && view == librarydataprovider",
@@ -2364,6 +2511,10 @@
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
           "command": "SAS.runSelected"
+        },
+        {
+          "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable",
+          "command": "SAS.backgroundJob.submit"
         }
       ],
       "editor/context": [
@@ -2386,6 +2537,11 @@
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem",
           "command": "SAS.runRegion",
           "group": "navigation@3"
+        },
+        {
+          "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable",
+          "command": "SAS.backgroundJob.submit",
+          "group": "navigation@4"
         }
       ],
       "notebook/toolbar": [
@@ -2428,6 +2584,58 @@
         }
       ],
       "commandPalette": [
+        {
+          "when": "SAS.connectionType == rest && SAS.backgroundJobsAvailable && editorLangId =~ /^(sas|python|r|sql)$/",
+          "command": "SAS.backgroundJob.submit"
+        },
+        {
+          "when": "SAS.connectionType == rest && SAS.backgroundJobsAvailable",
+          "command": "SAS.backgroundJobs.chooseComputeContext"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.cancel"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.openLog"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.openResults"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.openAllResults"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.openFile"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.showCode"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.runAgain"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.copyId"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJob.delete"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJobs.refresh"
+        },
+        {
+          "when": "false",
+          "command": "SAS.backgroundJobs.loadMore"
+        },
         {
           "when": "isPositron",
           "command": "SAS.console.chooseLogOutput"
@@ -2991,6 +3199,9 @@
         "id": "sas-log"
       },
       {
+        "id": "sas-joblog"
+      },
+      {
         "id": "json",
         "extensions": [
           ".cjob",
@@ -3061,6 +3272,11 @@
           "id": "contentdataprovider",
           "name": "%views.SAS.explorer%",
           "when": "SAS.authorized && SAS.connectionType == rest"
+        },
+        {
+          "id": "sasbackgroundjobsprovider",
+          "name": "%views.SAS.backgroundJobs%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.backgroundJobsAvailable"
         },
         {
           "id": "serverdataprovider",
