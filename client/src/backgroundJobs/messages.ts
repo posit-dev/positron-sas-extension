@@ -23,6 +23,9 @@ export const BackgroundJobMessages = {
   ),
 
   Completed: l10n.t("Background job {name} completed."),
+  CompletedWithWarnings: l10n.t(
+    "Background job {name} completed with warnings. {message}",
+  ),
   Failed: l10n.t("Background job {name} failed. {message}"),
   Canceled: l10n.t("Background job {name} was canceled."),
   TimedOut: l10n.t("Background job {name} timed out."),

@@ -91,7 +91,7 @@ describe("background job state", () => {
   });
 
   it("maps each state to an outcome", () => {
-    expect(all.map(outcomeOf)).to.deep.equal([
+    expect(all.map((s) => outcomeOf(s))).to.deep.equal([
       "running",
       "running",
       "success",
@@ -99,6 +99,18 @@ describe("background job state", () => {
       "warning",
       "warning",
     ]);
+  });
+
+  it("treats a completed job that carries an error as completed with warnings", () => {
+    // SAS warnings, such as an unresolved macro reference, leave the job
+    // completed with its error set; SAS errors make it failed.
+    expect(outcomeOf("completed", true)).to.equal("warning");
+    expect(stateIcon("completed", true)).to.equal("warning");
+    expect(humanizeState("completed", true)).to.equal(
+      "Completed with warnings",
+    );
+    expect(outcomeOf("failed", true)).to.equal("error");
+    expect(outcomeOf("completed", false)).to.equal("success");
   });
 
   it("has an icon and wording for every state", () => {

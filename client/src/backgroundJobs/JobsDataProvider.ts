@@ -240,14 +240,15 @@ export class JobsDataProvider implements TreeDataProvider<JobNode>, Disposable {
     );
     // A stable id keeps expansion and selection across refreshes.
     item.id = job.id;
-    const outcome = outcomeOf(job.state);
+    const warned = !!job.error;
+    const outcome = outcomeOf(job.state, warned);
     const color = OUTCOME_COLOR[outcome];
     item.iconPath = new ThemeIcon(
-      stateIcon(job.state),
+      stateIcon(job.state, warned),
       color ? new ThemeColor(color) : undefined,
     );
     const elapsed = done ? formatElapsed(job.elapsedTime) : "";
-    item.description = [humanizeState(job.state), elapsed, when(job)]
+    item.description = [humanizeState(job.state, warned), elapsed, when(job)]
       .filter(Boolean)
       .join(" · ");
     item.tooltip = tooltip(job);
@@ -354,7 +355,7 @@ function when(job: ExecutionJob): string {
 
 function tooltip(job: ExecutionJob): MarkdownString {
   const rows: [string, string][] = [
-    [BackgroundJobMessages.State, humanizeState(job.state)],
+    [BackgroundJobMessages.State, humanizeState(job.state, !!job.error)],
     [BackgroundJobMessages.SubmittedAt, when(job)],
   ];
   if (isTerminal(job.state)) {

@@ -476,11 +476,34 @@ export class BackgroundJobs implements Disposable {
       BackgroundJobMessages.OpenResults,
     ];
     let shown: Thenable<string | undefined>;
-    switch (outcomeOf(job.state)) {
+    switch (outcomeOf(job.state, !!job.error)) {
       case "success":
         shown = window.showInformationMessage(
           l10n.t(BackgroundJobMessages.Completed, { name }),
           ...actions,
+        );
+        break;
+      case "warning":
+        if (job.state === "completed") {
+          // Completed, but SAS reported warnings, e.g. an unresolved macro
+          // reference; the server records them as the job's error.
+          shown = window.showWarningMessage(
+            l10n.t(BackgroundJobMessages.CompletedWithWarnings, {
+              name,
+              message: jobErrorText(job.error),
+            }),
+            ...actions,
+          );
+          break;
+        }
+        shown = window.showWarningMessage(
+          l10n.t(
+            job.state === "timedOut"
+              ? BackgroundJobMessages.TimedOut
+              : BackgroundJobMessages.Canceled,
+            { name },
+          ),
+          BackgroundJobMessages.OpenLog,
         );
         break;
       case "error":
@@ -493,15 +516,8 @@ export class BackgroundJobs implements Disposable {
         );
         break;
       default:
-        shown = window.showWarningMessage(
-          l10n.t(
-            job.state === "timedOut"
-              ? BackgroundJobMessages.TimedOut
-              : BackgroundJobMessages.Canceled,
-            { name },
-          ),
-          BackgroundJobMessages.OpenLog,
-        );
+        // A job that has not ended has nothing to announce.
+        return;
     }
     void shown.then((choice) => {
       if (choice === BackgroundJobMessages.OpenLog) {

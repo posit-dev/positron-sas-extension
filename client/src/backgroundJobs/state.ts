@@ -11,11 +11,18 @@ export function isTerminal(state: string | undefined): boolean {
   return !!state && !ACTIVE.has(state);
 }
 
-/** How a job turned out, for the icon and the message severity. */
-export function outcomeOf(state: string | undefined): JobOutcome {
+/**
+ * How a job turned out, for the icon and the message severity. A job can end
+ * `completed` and still carry an error: SAS warnings, such as an unresolved
+ * macro reference, are reported that way (SAS errors make it `failed`).
+ */
+export function outcomeOf(
+  state: string | undefined,
+  withError = false,
+): JobOutcome {
   switch (state) {
     case "completed":
-      return "success";
+      return withError ? "warning" : "success";
     case "canceled":
     case "timedOut":
       return "warning";
@@ -27,10 +34,13 @@ export function outcomeOf(state: string | undefined): JobOutcome {
 }
 
 /** The codicon id for a state. */
-export function stateIcon(state: string | undefined): string {
+export function stateIcon(
+  state: string | undefined,
+  withError = false,
+): string {
   switch (state) {
     case "completed":
-      return "pass";
+      return withError ? "warning" : "pass";
     case "failed":
       return "error";
     case "canceled":
@@ -45,14 +55,17 @@ export function stateIcon(state: string | undefined): string {
 }
 
 /** Wording for a state, used in the view and in messages. */
-export function humanizeState(state: string | undefined): string {
+export function humanizeState(
+  state: string | undefined,
+  withError = false,
+): string {
   switch (state) {
     case "pending":
       return "Pending";
     case "running":
       return "Running";
     case "completed":
-      return "Completed";
+      return withError ? "Completed with warnings" : "Completed";
     case "failed":
       return "Failed";
     case "canceled":
