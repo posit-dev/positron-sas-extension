@@ -79,13 +79,50 @@ Hover over a SAS job to see its folder, its description, and its parameters with
 
 - **Run...**: run the SAS job as a background job. For each parameter you are asked for a value, starting from its default. A required parameter can't be left empty, and a numeric one takes a number. The button is also shown next to the SAS job.
 - **Run with Defaults**: run it with the default values, without asking. If a required parameter has no default, you are asked anyway.
+- **Schedule...**: run the SAS job at set times. See [Schedule a SAS job](#schedule-a-sas-job). The button is also shown next to the SAS job.
 - **Show Code**: open the code of the SAS job, read-only.
 - **Copy URI**: copy the URI of the SAS job, such as `/jobDefinitions/definitions/…`.
-- **Delete SAS Job**: delete the SAS job from SAS Content. Background jobs already run from it, with their logs and listings, are kept. You can select several SAS jobs and delete them together.
+- **Delete SAS Job**: delete the SAS job from SAS Content. Background jobs already run from it, with their logs and listings, are kept. Schedules that run it stop working, so delete them too. You can select several SAS jobs and delete them together.
 
 A run is an ordinary background job: it shows in the **Background Jobs** view, and a message tells you when it ends.
 
 Each parameter reaches the program as a macro variable. A parameter left empty is passed as an empty value, so `&name` still resolves. A SAS job that names its own compute context, as SAS jobs made in SAS Studio usually do, runs in that context; other SAS jobs run in the context set by `SAS.backgroundJobs.computeContext`.
+
+## Schedule a SAS job
+
+A schedule runs a SAS job at set times, with set parameter values, on the SAS Viya server. Positron does not need to be running.
+
+1. In the **SAS Jobs** view, right-click a SAS job and select **Schedule...**. You can also click **New Schedule...** (the plus sign) in the title bar of the **SAS Job Schedules** view and choose the SAS job.
+2. Enter a value for each parameter, starting from its default. Every run uses these values.
+3. Enter a name for the schedule.
+4. Choose when it runs, and answer the questions for that choice:
+   - **Every day**, **Every weekday (Monday to Friday)**: at a time of day.
+   - **Every week, on chosen days**: on the days you select, at a time of day.
+   - **Every month, on a chosen day**: on a day of the month, or on the last day, at a time of day.
+   - **Every few hours**: every 1, 2, 3, 4, 6, 8, or 12 hours, at a minute past the hour.
+   - **Every few minutes**: every 5, 6, 10, 12, 15, 20, or 30 minutes.
+   - **Once**, **On several dates**: on the dates you enter, at a time of day.
+
+Times are in the time zone of your computer, which the schedule keeps. A message confirms the schedule and says when it runs next. A time that has already passed can't be scheduled.
+
+Each run is an ordinary background job: it shows in the **Background Jobs** view, with its log and listing. A SAS job that names its own compute context runs in it; others run in the context set by `SAS.backgroundJobs.computeContext` when you create the schedule.
+
+## The SAS Job Schedules view
+
+The **SAS Job Schedules** view, below **SAS Jobs**, lists the schedules you created in Positron, most recently changed first, with when each runs, such as *Weekdays at 06:30*. A disabled schedule is marked **disabled**. Hover over a schedule to see its SAS job, the parameter values it passes, its time zone, its next runs, and when it last ran and whether that run started.
+
+Right-click a schedule for these actions:
+
+- **Run Now**: run the SAS job now, with the schedule's values. The button is also shown next to the schedule.
+- **Disable Schedule** and **Enable Schedule**: stop the schedule from running, and start it again. A schedule with no runs left, such as a one-time schedule whose time has passed, can't be enabled again; create a new one.
+- **Copy Schedule ID**: copy the ID of the schedule, for example for an administrator.
+- **Delete Schedule**: delete the schedule. The SAS job and the background jobs it ran are kept. You can select several schedules and delete them together.
+
+:::info note
+
+The schedules are in the SAS Viya Scheduler, which also runs schedules made in SAS Environment Manager. The **SAS Job Schedules** view lists only the schedules created in Positron.
+
+:::
 
 ## Where background jobs are stored
 
