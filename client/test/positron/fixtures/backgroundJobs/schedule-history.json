@@ -1,0 +1,68 @@
+{
+  "links": [
+    {
+      "method": "GET",
+      "rel": "collection",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history",
+      "type": "application/vnd.sas.collection"
+    },
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history?start=0&limit=5",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history?start=0&limit=5",
+      "type": "application/vnd.sas.collection"
+    }
+  ],
+  "name": "history",
+  "accept": "application/vnd.sas.schedule.history",
+  "start": 0,
+  "count": 1,
+  "items": [
+    {
+      "creationTimeStamp": "2026-11-18T18:03:00.247Z",
+      "modifiedTimeStamp": "2026-11-18T18:03:00.247Z",
+      "createdBy": "anonymousUser",
+      "modifiedBy": "anonymousUser",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history/a148e5e8-5f91-4737-a2e0-69f57b9767a4",
+          "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history/a148e5e8-5f91-4737-a2e0-69f57b9767a4",
+          "type": "application/vnd.sas.schedule.history"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history/a148e5e8-5f91-4737-a2e0-69f57b9767a4",
+          "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/history/a148e5e8-5f91-4737-a2e0-69f57b9767a4"
+        },
+        {
+          "method": "GET",
+          "rel": "job",
+          "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479",
+          "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479",
+          "type": "application/vnd.sas.schedule.job"
+        }
+      ],
+      "version": 1,
+      "id": "a148e5e8-5f91-4737-a2e0-69f57b9767a4",
+      "jobId": "748e97cb-3c39-4fa7-a901-bcdb18b21479",
+      "jobGroup": "/jobExecution/jobRequests/e5d28bef-21ab-4cc7-8c01-0583dfbdf066/jobs?submitter=positron-sas",
+      "jobName": "positron probe withLanguage",
+      "jobFireTimeStamp": "2026-11-18T18:03:00.002Z",
+      "jobRunTime": 0.242,
+      "body": {
+        "id": "f8f4202f-38e7-436b-9e4d-5f44f801a2db",
+        "state": "running",
+        "submittedByApplication": "positron-sas"
+      },
+      "jobStatus": "SUCCESS",
+      "httpStatusCode": 201
+    }
+  ],
+  "limit": 5,
+  "version": 2
+}

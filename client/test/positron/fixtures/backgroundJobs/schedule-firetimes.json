@@ -1,0 +1,25 @@
+{
+  "links": [
+    {
+      "method": "GET",
+      "rel": "collection",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/fireTimes",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/fireTimes",
+      "type": "application/vnd.sas.collection"
+    },
+    {
+      "method": "GET",
+      "rel": "self",
+      "href": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/fireTimes",
+      "uri": "/scheduler/jobs/748e97cb-3c39-4fa7-a901-bcdb18b21479/fireTimes",
+      "type": "application/vnd.sas.collection"
+    }
+  ],
+  "name": "firetimes",
+  "accept": "application/json",
+  "count": 1,
+  "items": [
+    "2026-11-18T18:03:00.000Z"
+  ],
+  "version": 2
+}
