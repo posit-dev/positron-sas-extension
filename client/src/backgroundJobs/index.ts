@@ -25,6 +25,8 @@ import { DefinitionStore } from "./DefinitionStore";
 import { JobNode, JobsDataProvider } from "./JobsDataProvider";
 import { AlreadyFinishedError, JobNotFoundError, JobsModel } from "./JobsModel";
 import { SasJobs } from "./SasJobs";
+import { ScheduleCommands } from "./ScheduleCommands";
+import { SchedulesModel } from "./SchedulesModel";
 import { codeFor, documentFor, keepResultsFor, selectionsOf } from "./code";
 import { ComputeContextResolver } from "./computeContext";
 import {
@@ -35,6 +37,8 @@ import {
   JOB_DEFINITIONS_ROOT,
   JOB_EXECUTION_ROOT,
   REFRESH_INTERVAL_MS,
+  SCHEDULER_ROOT,
+  SCHEDULING_AVAILABLE_CONTEXT_KEY,
 } from "./const";
 import { JobLogDocuments } from "./jobLog";
 import {
@@ -60,6 +64,8 @@ export class BackgroundJobs implements Disposable {
   private readonly results: JobResults;
   private readonly provider: JobsDataProvider;
   private readonly sasJobs: SasJobs;
+  private readonly scheduleCommands: ScheduleCommands;
+  private readonly schedulingAvailability: ServiceAvailability;
   private readonly jobsAvailability: ServiceAvailability;
   private readonly definitionsAvailability: ServiceAvailability;
   /** Jobs submitted in this window, to notify about when they end. */
@@ -79,13 +85,13 @@ export class BackgroundJobs implements Disposable {
     );
     const log = (message: string) => output.info(message);
     this.viya = new ViyaConnection(log);
-    this.model = new JobsModel(
-      {
-        getConnection: () => this.viya.getConnection(),
-        getCurrentUserId: () => this.viya.getCurrentUserId(),
-      },
-      languageTag(env.language),
-    );
+    const backend = {
+      getConnection: () => this.viya.getConnection(),
+      getCurrentUserId: () => this.viya.getCurrentUserId(),
+    };
+    const language = languageTag(env.language);
+    this.model = new JobsModel(backend, language);
+    const schedulesModel = new SchedulesModel(backend, language);
     this.definitions = new DefinitionStore(
       this.model,
       context.globalState,
@@ -105,6 +111,14 @@ export class BackgroundJobs implements Disposable {
       definitionsAvailable: () => this.definitionsAvailability.isAvailable,
       track: (job) => this.track(job),
     });
+    this.scheduleCommands = new ScheduleCommands({
+      jobs: this.model,
+      schedules: schedulesModel,
+      contexts: this.contexts,
+      language,
+      log,
+      track: (job) => this.track(job),
+    });
 
     const reset = (available: boolean) => {
       this.viya.reset();
@@ -113,6 +127,7 @@ export class BackgroundJobs implements Disposable {
       if (available) {
         this.provider.refresh();
         this.sasJobs.refresh();
+        this.scheduleCommands.refresh();
       }
     };
     this.jobsAvailability = new ServiceAvailability(reset, log, {
@@ -135,6 +150,16 @@ export class BackgroundJobs implements Disposable {
           ),
       },
     );
+    this.schedulingAvailability = new ServiceAvailability(
+      (available) => available && this.scheduleCommands.refresh(),
+      log,
+      {
+        label: "SAS Scheduler",
+        contextKey: SCHEDULING_AVAILABLE_CONTEXT_KEY,
+        probe: (endpoint, token) =>
+          probeService(`${endpoint}${SCHEDULER_ROOT}`, API_MEDIA_TYPE, token),
+      },
+    );
 
     const onNode =
       (action: (job: ExecutionJob) => unknown) => (node?: JobNode) =>
@@ -145,8 +170,10 @@ export class BackgroundJobs implements Disposable {
       this.documents,
       this.provider,
       this.sasJobs,
+      this.scheduleCommands,
       this.jobsAvailability,
       this.definitionsAvailability,
+      this.schedulingAvailability,
       commands.registerCommand("SAS.backgroundJob.submit", (uri?: Uri) =>
         this.submit(uri),
       ),

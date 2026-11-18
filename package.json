@@ -1522,6 +1522,58 @@
         "category": "SAS"
       },
       {
+        "command": "SAS.sasJob.schedule",
+        "title": "%commands.SAS.sasJob.schedule%",
+        "category": "SAS",
+        "icon": "$(calendar)"
+      },
+      {
+        "command": "SAS.sasJobSchedules.new",
+        "title": "%commands.SAS.sasJobSchedules.new%",
+        "category": "SAS",
+        "icon": "$(add)"
+      },
+      {
+        "command": "SAS.sasJobSchedule.runNow",
+        "title": "%commands.SAS.sasJobSchedule.runNow%",
+        "category": "SAS",
+        "icon": "$(play)"
+      },
+      {
+        "command": "SAS.sasJobSchedule.enable",
+        "title": "%commands.SAS.sasJobSchedule.enable%",
+        "category": "SAS",
+        "icon": "$(check)"
+      },
+      {
+        "command": "SAS.sasJobSchedule.disable",
+        "title": "%commands.SAS.sasJobSchedule.disable%",
+        "category": "SAS",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "SAS.sasJobSchedule.copyId",
+        "title": "%commands.SAS.sasJobSchedule.copyId%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.sasJobSchedule.delete",
+        "title": "%commands.SAS.sasJobSchedule.delete%",
+        "category": "SAS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "SAS.sasJobSchedules.refresh",
+        "title": "%commands.SAS.sasJobSchedules.refresh%",
+        "category": "SAS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.sasJobSchedules.loadMore",
+        "title": "%commands.SAS.sasJobSchedules.loadMore%",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.clinical.job.new",
         "title": "%clinical.commands.newJob%",
         "category": "SAS Clinical Acceleration"
@@ -1765,6 +1817,16 @@
       ],
       "view/title": [
         {
+          "command": "SAS.sasJobSchedules.new",
+          "when": "view == sasjobschedulesprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.sasJobSchedules.refresh",
+          "when": "view == sasjobschedulesprovider",
+          "group": "navigation@1"
+        },
+        {
           "command": "SAS.sasJobs.refresh",
           "when": "view == sasjobsprovider",
           "group": "navigation@0"
@@ -1973,6 +2035,46 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "SAS.sasJob.schedule",
+          "when": "view == sasjobsprovider && SAS.jobSchedulingAvailable && viewItem =~ /;sasjob;/",
+          "group": "inline@1"
+        },
+        {
+          "command": "SAS.sasJob.schedule",
+          "when": "view == sasjobsprovider && SAS.jobSchedulingAvailable && viewItem =~ /;sasjob;/",
+          "group": "1_run@2"
+        },
+        {
+          "command": "SAS.sasJobSchedule.runNow",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;sasschedule;/",
+          "group": "inline@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.runNow",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;sasschedule;/",
+          "group": "1_run@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.disable",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;enabled;/",
+          "group": "2_state@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.enable",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;disabled;/",
+          "group": "2_state@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.copyId",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;sasschedule;/",
+          "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.sasJobSchedule.delete",
+          "when": "view == sasjobschedulesprovider && viewItem =~ /;sasschedule;/",
+          "group": "4_delete@0"
+        },
         {
           "command": "SAS.sasJob.run",
           "when": "view == sasjobsprovider && viewItem =~ /;sasjob;/",
@@ -2674,6 +2776,42 @@
         }
       ],
       "commandPalette": [
+        {
+          "when": "SAS.connectionType == rest && SAS.jobSchedulingAvailable && SAS.jobDefinitionsAvailable",
+          "command": "SAS.sasJobSchedules.new"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJob.schedule"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.runNow"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.enable"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.disable"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.copyId"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedule.delete"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedules.refresh"
+        },
+        {
+          "when": "false",
+          "command": "SAS.sasJobSchedules.loadMore"
+        },
         {
           "when": "SAS.connectionType == rest && SAS.jobDefinitionsAvailable && editorLangId =~ /^(sas|python|r|sql)$/",
           "command": "SAS.sasJob.saveAs"
@@ -3404,6 +3542,11 @@
           "id": "sasjobsprovider",
           "name": "%views.SAS.sasJobs%",
           "when": "SAS.authorized && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable"
+        },
+        {
+          "id": "sasjobschedulesprovider",
+          "name": "%views.SAS.sasJobSchedules%",
+          "when": "SAS.authorized && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable && SAS.jobSchedulingAvailable"
         },
         {
           "id": "serverdataprovider",

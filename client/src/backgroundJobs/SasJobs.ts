@@ -376,42 +376,12 @@ export class SasJobs implements Disposable {
       return;
     }
     const parameters = promptableParameters(definition);
-    // Defaults can't stand in for a required parameter that has none.
-    const ask =
-      !useDefaults ||
-      parameters.some((p) => p.required && !p.defaultValue?.trim());
-    const answers: Record<string, string> = {};
-    for (const parameter of parameters) {
-      if (!ask) {
-        answers[parameter.name] = parameter.defaultValue ?? "";
-        continue;
-      }
-      const value = await window.showInputBox({
-        title: l10n.t(BackgroundJobMessages.RunTitle, {
-          name: definition.name,
-        }),
-        prompt: l10n.t(BackgroundJobMessages.ParameterPrompt, {
-          label: parameter.label || parameter.name,
-          name: parameter.name,
-          type: parameter.type,
-        }),
-        value: parameter.defaultValue ?? "",
-        ignoreFocusOut: true,
-        validateInput: (v) => {
-          switch (parameterValueProblem(parameter, v)) {
-            case "required":
-              return BackgroundJobMessages.ValueRequired;
-            case "number":
-              return BackgroundJobMessages.ValueNumber;
-            default:
-              return undefined;
-          }
-        },
-      });
-      if (value === undefined) {
-        return;
-      }
-      answers[parameter.name] = value;
+    const answers = await promptParameterValues(definition, {
+      useDefaults,
+      title: l10n.t(BackgroundJobMessages.RunTitle, { name: definition.name }),
+    });
+    if (!answers) {
+      return;
     }
 
     // A job with its own _contextName (as SAS Studio's jobs have) keeps it.
@@ -480,9 +450,14 @@ export class SasJobs implements Disposable {
         : l10n.t(BackgroundJobMessages.DeleteSasJobsConfirm, {
             count: targets.length,
           });
-    const detail = targets.some(fromSubmit)
-      ? BackgroundJobMessages.DeleteFromSubmitDetail
-      : undefined;
+    const detail = [
+      targets.some(fromSubmit)
+        ? BackgroundJobMessages.DeleteFromSubmitDetail
+        : "",
+      BackgroundJobMessages.DeleteSasJobSchedulesDetail,
+    ]
+      .filter(Boolean)
+      .join(" ");
     const ok = await window.showWarningMessage(
       prompt,
       { modal: true, detail },
@@ -514,4 +489,51 @@ export class SasJobs implements Disposable {
 function selected(node?: SasJobNode, nodes?: SasJobNode[]): JobDefinition[] {
   const all = nodes?.length ? nodes : node ? [node] : [];
   return all.flatMap((n) => (n.kind === "definition" ? [n.definition] : []));
+}
+
+/**
+ * Ask for the value of each parameter of a SAS job, starting from its default,
+ * or take the defaults. Defaults can't stand in for a required parameter that
+ * has none, so then the user is asked anyway. Undefined when cancelled.
+ */
+export async function promptParameterValues(
+  definition: JobDefinition,
+  options: { useDefaults: boolean; title: string },
+): Promise<Record<string, string> | undefined> {
+  const parameters = promptableParameters(definition);
+  const ask =
+    !options.useDefaults ||
+    parameters.some((p) => p.required && !p.defaultValue?.trim());
+  const answers: Record<string, string> = {};
+  for (const parameter of parameters) {
+    if (!ask) {
+      answers[parameter.name] = parameter.defaultValue ?? "";
+      continue;
+    }
+    const value = await window.showInputBox({
+      title: options.title,
+      prompt: l10n.t(BackgroundJobMessages.ParameterPrompt, {
+        label: parameter.label || parameter.name,
+        name: parameter.name,
+        type: parameter.type,
+      }),
+      value: parameter.defaultValue ?? "",
+      ignoreFocusOut: true,
+      validateInput: (v) => {
+        switch (parameterValueProblem(parameter, v)) {
+          case "required":
+            return BackgroundJobMessages.ValueRequired;
+          case "number":
+            return BackgroundJobMessages.ValueNumber;
+          default:
+            return undefined;
+        }
+      },
+    });
+    if (value === undefined) {
+      return undefined;
+    }
+    answers[parameter.name] = value;
+  }
+  return answers;
 }

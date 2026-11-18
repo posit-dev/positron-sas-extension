@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { l10n } from "vscode";
 
+import type { TriggerWords, Weekday } from "./schedules";
 import type { SasError } from "./types";
 
 export const BackgroundJobMessages = {
@@ -121,6 +122,71 @@ export const BackgroundJobMessages = {
     "A SAS job that Submit as Background Job made is made again the next time you submit its program.",
   ),
 
+  // Schedules.
+  SchedulesListError: l10n.t(
+    "Could not list your SAS job schedules. {message}",
+  ),
+  NoSchedules: l10n.t(
+    "No schedules yet. Right-click a SAS job in SAS Jobs and select Schedule.",
+  ),
+  ScheduleTitle: l10n.t("Schedule {name}"),
+  ScheduleName: l10n.t("Name of the schedule"),
+  ScheduleKind: l10n.t("When should {name} run?"),
+  KindOnce: l10n.t("Once"),
+  KindDates: l10n.t("On several dates"),
+  KindMinutes: l10n.t("Every few minutes"),
+  KindHours: l10n.t("Every few hours"),
+  KindDaily: l10n.t("Every day"),
+  KindWorkdays: l10n.t("Every weekday (Monday to Friday)"),
+  KindWeekly: l10n.t("Every week, on chosen days"),
+  KindMonthly: l10n.t("Every month, on a chosen day"),
+  ScheduleDate: l10n.t("Date (YYYY-MM-DD)"),
+  ScheduleDates: l10n.t("Dates (YYYY-MM-DD), separated by commas"),
+  ScheduleTime: l10n.t("Time of day (HH:MM, 24-hour clock), in {zone}"),
+  ScheduleEveryMinutes: l10n.t("How many minutes between runs"),
+  ScheduleEveryHours: l10n.t("How many hours between runs"),
+  ScheduleMinute: l10n.t("Minute past the hour (0-59)"),
+  ScheduleDays: l10n.t("On which days"),
+  ScheduleDayOfMonth: l10n.t("On which day of the month"),
+  LastDayOfMonth: l10n.t("Last day of the month"),
+  DayOfMonth: l10n.t("Day {day}"),
+  EveryMinutesItem: l10n.t("Every {n} minutes"),
+  EveryHoursItem: l10n.t("Every {n} hours"),
+  InvalidDate: l10n.t("Enter a date as YYYY-MM-DD."),
+  InvalidDates: l10n.t("Enter dates as YYYY-MM-DD, separated by commas."),
+  InvalidTime: l10n.t("Enter a time as HH:MM, from 00:00 to 23:59."),
+  InvalidMinute: l10n.t("Enter a whole number from 0 to 59."),
+  PickDays: l10n.t("Choose at least one day."),
+  Scheduled: l10n.t("Scheduled {name}: {when}. Next run: {next}."),
+  ScheduledNoNext: l10n.t("Scheduled {name}: {when}."),
+  ScheduleError: l10n.t("Could not schedule {name}. {message}"),
+  NeverFires: l10n.t(
+    "{name} would never run: its time has passed. Choose a time in the future.",
+  ),
+  EnableNeverFires: l10n.t(
+    "{name} can't be enabled because it has no runs left, such as a one-time schedule whose time has passed. Create a new schedule instead.",
+  ),
+  EnableError: l10n.t("Could not change {name}. {message}"),
+  DeleteScheduleConfirm: l10n.t(
+    "Delete the schedule {name}? The SAS job and its past runs are kept.",
+  ),
+  DeleteSchedulesConfirm: l10n.t(
+    "Delete {count} schedules? The SAS jobs and their past runs are kept.",
+  ),
+  PickJobToSchedule: l10n.t("Choose the SAS job to schedule"),
+  Disabled: l10n.t("disabled"),
+  NoMoreRuns: l10n.t("no more runs"),
+  NextRuns: l10n.t("Next runs"),
+  LastRun: l10n.t("Last run"),
+  LastRunFailed: l10n.t("failed to start (HTTP {status})"),
+  LastRunStarted: l10n.t("started"),
+  Values: l10n.t("Values"),
+  SasJob: l10n.t("SAS job"),
+  TimeZone: l10n.t("Time zone"),
+  DeleteSasJobSchedulesDetail: l10n.t(
+    "Schedules that run it stop working. Delete them in SAS Job Schedules.",
+  ),
+
   // Tooltip labels.
   State: l10n.t("State"),
   SubmittedAt: l10n.t("Submitted"),
@@ -172,3 +238,40 @@ function responseData(error: unknown): unknown {
   }
   return response.data;
 }
+
+/** Words for describing schedules, such as "Weekdays at 06:30". */
+export const TriggerWordText: TriggerWords = {
+  once: l10n.t("Once on {date} at {time}"),
+  dates: l10n.t("On {dates} at {time}"),
+  minutes: l10n.t("Every {n} minutes"),
+  everyMinute: l10n.t("Every minute"),
+  hours: l10n.t("Every {n} hours at minute {minute}"),
+  everyHour: l10n.t("Every hour at minute {minute}"),
+  daily: l10n.t("Daily at {time}"),
+  everyDays: l10n.t("Every {n} days at {time}"),
+  workdays: l10n.t("Weekdays at {time}"),
+  weekly: l10n.t("Weekly on {days} at {time}"),
+  monthly: l10n.t("Monthly on day {day} at {time}"),
+  monthlyLast: l10n.t("Monthly on the last day at {time}"),
+  other: l10n.t("Custom schedule"),
+  days: {
+    monday: l10n.t("Mon"),
+    tuesday: l10n.t("Tue"),
+    wednesday: l10n.t("Wed"),
+    thursday: l10n.t("Thu"),
+    friday: l10n.t("Fri"),
+    saturday: l10n.t("Sat"),
+    sunday: l10n.t("Sun"),
+  },
+};
+
+/** Full day names, for choosing days. */
+export const DayNames: Record<Weekday, string> = {
+  monday: l10n.t("Monday"),
+  tuesday: l10n.t("Tuesday"),
+  wednesday: l10n.t("Wednesday"),
+  thursday: l10n.t("Thursday"),
+  friday: l10n.t("Friday"),
+  saturday: l10n.t("Saturday"),
+  sunday: l10n.t("Sunday"),
+};

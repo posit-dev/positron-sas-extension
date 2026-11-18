@@ -215,5 +215,15 @@
   "commands.SAS.sasJob.delete": "Delete SAS Job",
   "commands.SAS.sasJobs.refresh": "Refresh",
   "commands.SAS.sasJobs.loadMore": "Load More SAS Jobs",
-  "views.SAS.sasJobs": "SAS Jobs"
+  "views.SAS.sasJobs": "SAS Jobs",
+  "commands.SAS.sasJob.schedule": "Schedule...",
+  "commands.SAS.sasJobSchedules.new": "New Schedule...",
+  "commands.SAS.sasJobSchedule.runNow": "Run Now",
+  "commands.SAS.sasJobSchedule.enable": "Enable Schedule",
+  "commands.SAS.sasJobSchedule.disable": "Disable Schedule",
+  "commands.SAS.sasJobSchedule.copyId": "Copy Schedule ID",
+  "commands.SAS.sasJobSchedule.delete": "Delete Schedule",
+  "commands.SAS.sasJobSchedules.refresh": "Refresh",
+  "commands.SAS.sasJobSchedules.loadMore": "Load More Schedules",
+  "views.SAS.sasJobSchedules": "SAS Job Schedules"
 }
