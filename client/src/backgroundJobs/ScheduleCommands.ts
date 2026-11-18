@@ -26,9 +26,13 @@ import {
   SchedulerJob,
   buildSchedule,
   buildTrigger,
+  fireTimesProblem,
   jobRequestIdOf,
 } from "./schedules";
 import type { ExecutionJob, JobDefinition } from "./types";
+
+/** The Scheduler would not run a new schedule at the times asked for. */
+class UnexpectedTimesError extends Error {}
 
 export interface SchedulesHost {
   jobs: JobsModel;
@@ -182,15 +186,24 @@ export class ScheduleCommands implements Disposable {
           language: this.host.language,
         }),
       );
-      this.provider.upsert(created);
-      let next: string | undefined;
+      // Check the times the Scheduler will actually use before leaving the
+      // schedule in place: a bad trigger shape can start many runs at once.
+      let times: string[] = [];
       try {
-        next = created.id
-          ? (await this.host.schedules.fireTimes(created.id, 1))[0]
-          : undefined;
+        times = created.id
+          ? await this.host.schedules.fireTimes(created.id, 10)
+          : [];
       } catch {
-        next = undefined;
+        times = [];
       }
+      if (created.id && fireTimesProblem(times, answers)) {
+        await this.host.schedules
+          .deleteSchedule(created.id)
+          .catch(() => undefined);
+        throw new UnexpectedTimesError();
+      }
+      this.provider.upsert(created);
+      const next = times[0];
       window.showInformationMessage(
         next
           ? l10n.t(BackgroundJobMessages.Scheduled, {
@@ -213,10 +226,12 @@ export class ScheduleCommands implements Disposable {
       window.showErrorMessage(
         error instanceof NeverFiresError
           ? l10n.t(BackgroundJobMessages.NeverFires, { name })
-          : l10n.t(BackgroundJobMessages.ScheduleError, {
-              name,
-              message: backgroundJobErrorMessage(error),
-            }),
+          : error instanceof UnexpectedTimesError
+            ? l10n.t(BackgroundJobMessages.UnexpectedFireTimes, { name })
+            : l10n.t(BackgroundJobMessages.ScheduleError, {
+                name,
+                message: backgroundJobErrorMessage(error),
+              }),
       );
     }
   }

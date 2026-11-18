@@ -167,6 +167,9 @@ export const BackgroundJobMessages = {
     "{name} can't be enabled because it has no runs left, such as a one-time schedule whose time has passed. Create a new schedule instead.",
   ),
   EnableError: l10n.t("Could not change {name}. {message}"),
+  UnexpectedFireTimes: l10n.t(
+    "The SAS Viya Scheduler would not run {name} at the times you chose, so the schedule was removed before it could run. Please report this.",
+  ),
   DeleteScheduleConfirm: l10n.t(
     "Delete the schedule {name}? The SAS job and its past runs are kept.",
   ),

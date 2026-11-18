@@ -10,8 +10,12 @@
 //   each run is an ordinary background job that the Background Jobs view
 //   lists. The job request holds the parameter values.
 // - Triggers are TIMEEVENT with a recurrence. `hours` is required for every
-//   kind, as a comma-separated string: for minutely triggers it limits the
-//   hours they run in, for hourly ones it is the first hour.
+//   kind, as a comma-separated string, and EACH listed hour starts its own
+//   series. For minutely and hourly triggers it must be a single hour ("0"):
+//   listing all 24 made an every-5-minutes schedule fire once per hour that
+//   had begun, 19 jobs at a time by the evening. Its fire times still looked
+//   distinct for a schedule starting at a future midnight; only the uneven
+//   gaps showed it. fireTimesProblem checks new schedules for exactly that.
 // - dayOfMonth 32 is the last day of the month. Minutely steps are limited to
 //   divisors of 60, hourly steps to divisors of 24 (per the SAS docs).
 // - An inactive trigger has no fire times. Pausing through the state endpoint
@@ -127,8 +131,6 @@ export interface ScheduleAnswers {
   timeZone: string;
 }
 
-const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i).join(",");
-
 const splitTime = (time: string | undefined): [string, string] => {
   const [h, m] = (time ?? "00:00").split(":");
   return [String(Number(h) || 0), String(Number(m) || 0)];
@@ -160,7 +162,8 @@ export function buildTrigger(
     case "minutes":
       recurrence.type = "minutely";
       recurrence.skipCount = answers.every ?? 15;
-      hours = ALL_HOURS;
+      // One series from midnight; every listed hour would start another.
+      hours = "0";
       minutes = "0";
       break;
     case "hours":
@@ -402,4 +405,37 @@ export function lastRun(
     jobId: latest.body?.id,
     status: latest.httpStatusCode,
   };
+}
+
+/**
+ * Why the fire times of a new schedule are not what was asked for, or
+ * undefined when they are fine. They must be distinct and increasing, and
+ * for every-n-minutes or every-n-hours schedules exactly n apart. A
+ * schedule that fails this must not be left running: a bad trigger shape can
+ * start many runs at once.
+ */
+export function fireTimesProblem(
+  times: readonly string[],
+  answers: Pick<ScheduleAnswers, "kind" | "every">,
+): "duplicate" | "uneven" | undefined {
+  const at = times.map((t) => Date.parse(t));
+  for (let i = 1; i < at.length; i++) {
+    if (!(at[i] > at[i - 1])) {
+      return "duplicate";
+    }
+  }
+  const step =
+    answers.kind === "minutes"
+      ? (answers.every ?? 15) * 60_000
+      : answers.kind === "hours"
+        ? (answers.every ?? 1) * 3_600_000
+        : undefined;
+  if (step !== undefined) {
+    for (let i = 1; i < at.length; i++) {
+      if (at[i] - at[i - 1] !== step) {
+        return "uneven";
+      }
+    }
+  }
+  return undefined;
 }

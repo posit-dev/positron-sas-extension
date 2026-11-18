@@ -24,6 +24,7 @@ import {
   buildSchedule,
   buildTrigger,
   describeTrigger,
+  fireTimesProblem,
   isDate,
   isEnabled,
   isTime,
@@ -57,7 +58,6 @@ const base: Omit<ScheduleAnswers, "kind"> = {
   startDate: "2027-01-04",
   timeZone: "Europe/London",
 };
-const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i).join(",");
 
 describe("buildTrigger", () => {
   it("runs once on a date", () => {
@@ -98,12 +98,12 @@ describe("buildTrigger", () => {
     });
   });
 
-  it("runs every n minutes all day, which needs every hour listed", () => {
-    // With hours "9" the server ran it only around 09:00; with every hour
-    // listed it ran all day.
-    const t = buildTrigger({ ...base, kind: "minutes", every: 15 }, "m");
-    expect(t.recurrence).to.deep.include({ type: "minutely", skipCount: 15 });
-    expect(t.hours).to.equal(ALL_HOURS);
+  it("runs every n minutes from a single starting hour", () => {
+    // Each listed hour starts its own series. Listing all 24 made an
+    // every-5-minutes schedule fire 19 jobs at once by 18:40 on a live server.
+    const t = buildTrigger({ ...base, kind: "minutes", every: 5 }, "m");
+    expect(t.recurrence).to.deep.include({ type: "minutely", skipCount: 5 });
+    expect(t.hours).to.equal("0");
     expect(t.minutes).to.equal("0");
   });
 
@@ -265,6 +265,62 @@ describe("describeTrigger", () => {
   it("describes the stored form, as the server returns it", () => {
     const stored: SchedulerJob = json("schedule-created.json");
     expect(describeTrigger(stored.triggers[0], words)).to.match(/^Once on /);
+  });
+});
+
+describe("fireTimesProblem", () => {
+  const every = (startIso: string, minutes: number[]) => {
+    let at = Date.parse(startIso);
+    const out = [new Date(at).toISOString()];
+    for (const gap of minutes) {
+      at += gap * 60_000;
+      out.push(new Date(at).toISOString());
+    }
+    return out;
+  };
+
+  it("passes evenly spaced times", () => {
+    expect(
+      fireTimesProblem(every("2027-01-04T00:00:00Z", Array(9).fill(5)), {
+        kind: "minutes",
+        every: 5,
+      }),
+    ).to.equal(undefined);
+    expect(
+      fireTimesProblem(every("2027-01-04T00:15:00Z", Array(9).fill(240)), {
+        kind: "hours",
+        every: 4,
+      }),
+    ).to.equal(undefined);
+  });
+
+  it("catches the same time repeated, as the runaway schedule showed", () => {
+    // Recorded: an every-5-minutes schedule listing all hours had fire times
+    // 18:45, 18:45, 18:45, ... on the day it started.
+    const repeated = Array(10).fill("2026-11-18T18:45:00.000Z");
+    expect(fireTimesProblem(repeated, { kind: "minutes", every: 5 })).to.equal(
+      "duplicate",
+    );
+  });
+
+  it("catches uneven gaps, which hid the problem for a future start", () => {
+    // Recorded: starting at a future midnight, the same trigger's times were
+    // distinct but 5 and 15 minutes apart.
+    expect(
+      fireTimesProblem(every("2027-01-04T00:00:00Z", [5, 5, 15, 5]), {
+        kind: "minutes",
+        every: 5,
+      }),
+    ).to.equal("uneven");
+  });
+
+  it("lets weekly and monthly times be uneven, but not repeat", () => {
+    const weekly = every("2027-01-04T06:30:00Z", [3 * 1440, 4 * 1440]);
+    expect(fireTimesProblem(weekly, { kind: "weekly" })).to.equal(undefined);
+    expect(
+      fireTimesProblem([weekly[0], weekly[0]], { kind: "weekly" }),
+    ).to.equal("duplicate");
+    expect(fireTimesProblem([], { kind: "daily" })).to.equal(undefined);
   });
 });
 
