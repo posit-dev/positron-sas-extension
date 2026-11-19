@@ -1860,6 +1860,66 @@
         "command": "SAS.lsaf.newFolder",
         "title": "%commands.SAS.lsaf.newFolder%",
         "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.runJob",
+        "title": "%commands.SAS.lsaf.runJob%",
+        "category": "SAS LSAF",
+        "icon": "$(play)"
+      },
+      {
+        "command": "SAS.lsaf.runJobWithParameters",
+        "title": "%commands.SAS.lsaf.runJobWithParameters%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.runProgram",
+        "title": "%commands.SAS.lsaf.runProgram%",
+        "category": "SAS LSAF",
+        "icon": "$(play)"
+      },
+      {
+        "command": "SAS.lsaf.jobs.refresh",
+        "title": "%commands.SAS.lsaf.jobs.refresh%",
+        "category": "SAS LSAF",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.lsaf.jobs.openLog",
+        "title": "%commands.SAS.lsaf.jobs.openLog%",
+        "category": "SAS LSAF",
+        "icon": "$(output)"
+      },
+      {
+        "command": "SAS.lsaf.jobs.openManifest",
+        "title": "%commands.SAS.lsaf.jobs.openManifest%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.jobs.openJob",
+        "title": "%commands.SAS.lsaf.jobs.openJob%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.jobs.runAgain",
+        "title": "%commands.SAS.lsaf.jobs.runAgain%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.jobs.copyId",
+        "title": "%commands.SAS.lsaf.jobs.copyId%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.jobs.remove",
+        "title": "%commands.SAS.lsaf.jobs.remove%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.jobs.clearFinished",
+        "title": "%commands.SAS.lsaf.jobs.clearFinished%",
+        "category": "SAS LSAF",
+        "icon": "$(clear-all)"
       }
     ],
     "keybindings": [
@@ -1931,6 +1991,11 @@
           "command": "SAS.clinical.job.runAndPopulate",
           "when": "resourceExtname == .cjob && resourceScheme == sasClinicalWorkspace && SAS.clinical.jobsAvailable",
           "group": "1_run@1"
+        },
+        {
+          "command": "SAS.lsaf.runJob",
+          "when": "resourceExtname == .job && resourceScheme =~ /^sasLsaf(Workspace)?$/ && SAS.lsaf.available && SAS.lsaf.signedIn",
+          "group": "navigation@0"
         }
       ],
       "webview/context": [
@@ -2149,6 +2214,16 @@
           "command": "SAS.lsaf.signOut",
           "when": "view == lsafworkspaceprovider && SAS.lsaf.signedIn",
           "group": "9_account@0"
+        },
+        {
+          "command": "SAS.lsaf.jobs.refresh",
+          "when": "view == lsafjobsprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.lsaf.jobs.clearFinished",
+          "when": "view == lsafjobsprovider",
+          "group": "navigation@1"
         }
       ],
       "explorer/context": [
@@ -2835,6 +2910,16 @@
           "group": "7_compare@2"
         },
         {
+          "command": "SAS.lsaf.runJob",
+          "when": "view == lsafrepositoryprovider && viewItem =~ /;job;/",
+          "group": "1_run@0"
+        },
+        {
+          "command": "SAS.lsaf.runJobWithParameters",
+          "when": "view == lsafrepositoryprovider && viewItem =~ /;job;/",
+          "group": "1_run@1"
+        },
+        {
           "command": "SAS.lsaf.checkOut",
           "when": "view == lsafrepositoryprovider && viewItem =~ /;file;/ && viewItem =~ /;notCheckedOut;/",
           "group": "2_sync@0"
@@ -2878,6 +2963,21 @@
           "command": "SAS.lsaf.copyPath",
           "when": "view == lsafrepositoryprovider",
           "group": "5_copy@0"
+        },
+        {
+          "command": "SAS.lsaf.runProgram",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;sas;/",
+          "group": "1_run@0"
+        },
+        {
+          "command": "SAS.lsaf.runJob",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;job;/",
+          "group": "1_run@1"
+        },
+        {
+          "command": "SAS.lsaf.runJobWithParameters",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;job;/",
+          "group": "1_run@2"
         },
         {
           "command": "SAS.lsaf.checkOut",
@@ -2928,6 +3028,41 @@
           "command": "SAS.lsaf.copyPath",
           "when": "view == lsafworkspaceprovider",
           "group": "5_copy@0"
+        },
+        {
+          "command": "SAS.lsaf.jobs.openLog",
+          "when": "view == lsafjobsprovider && viewItem =~ /;run;/",
+          "group": "inline"
+        },
+        {
+          "command": "SAS.lsaf.jobs.openLog",
+          "when": "view == lsafjobsprovider && viewItem =~ /;run;/",
+          "group": "1_open@0"
+        },
+        {
+          "command": "SAS.lsaf.jobs.openManifest",
+          "when": "view == lsafjobsprovider && viewItem =~ /;finished;/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "SAS.lsaf.jobs.openJob",
+          "when": "view == lsafjobsprovider && viewItem =~ /;run;/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "SAS.lsaf.jobs.runAgain",
+          "when": "view == lsafjobsprovider && viewItem =~ /;run;/",
+          "group": "2_run@0"
+        },
+        {
+          "command": "SAS.lsaf.jobs.copyId",
+          "when": "view == lsafjobsprovider && viewItem =~ /;run;/",
+          "group": "3_copy@0"
+        },
+        {
+          "command": "SAS.lsaf.jobs.remove",
+          "when": "view == lsafjobsprovider && viewItem =~ /;run;/",
+          "group": "4_remove@0"
         }
       ],
       "editor/title/run": [
@@ -2946,6 +3081,10 @@
         {
           "when": "(editorLangId == sas || (editorLangId =~ /^(python|r|sql)$/ && resourceScheme =~ /^sas(Content|Server).*/)) && !SAS.hideRunMenuItem && SAS.connectionType == rest && SAS.backgroundJobsAvailable && SAS.jobDefinitionsAvailable",
           "command": "SAS.sasJob.saveAs"
+        },
+        {
+          "command": "SAS.lsaf.runProgram",
+          "when": "resourceExtname == .sas && resourceScheme == sasLsafWorkspace && SAS.lsaf.available && SAS.lsaf.signedIn"
         }
       ],
       "editor/context": [
@@ -3759,6 +3898,50 @@
         {
           "command": "SAS.lsaf.newFolder",
           "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.runJob",
+          "when": "SAS.lsaf.available && SAS.lsaf.signedIn && resourceScheme =~ /^sasLsaf(Workspace)?$/ && resourceExtname == .job"
+        },
+        {
+          "command": "SAS.lsaf.runJobWithParameters",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.runProgram",
+          "when": "SAS.lsaf.available && SAS.lsaf.signedIn && resourceScheme == sasLsafWorkspace && resourceExtname == .sas"
+        },
+        {
+          "command": "SAS.lsaf.jobs.refresh",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.jobs.openLog",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.jobs.openManifest",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.jobs.openJob",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.jobs.runAgain",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.jobs.copyId",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.jobs.remove",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.jobs.clearFinished",
+          "when": "false"
         }
       ],
       "file/newFile": [
@@ -3992,6 +4175,11 @@
         "view": "lsafjobsprovider",
         "contents": "%lsaf.views.signIn.welcome%",
         "when": "SAS.lsaf.available && !SAS.lsaf.signedIn"
+      },
+      {
+        "view": "lsafjobsprovider",
+        "contents": "%lsaf.views.jobs.welcome%",
+        "when": "SAS.lsaf.available && SAS.lsaf.signedIn"
       }
     ],
     "notebooks": [

@@ -7,12 +7,16 @@
 // (SAS.lsaf.available), and is independent of the active SAS profile.
 import { ExtensionContext, commands, window, workspace } from "vscode";
 
+import { JobsDataProvider } from "./JobsDataProvider";
+import { JobsModel } from "./JobsModel";
 import { RepositoryDataProvider } from "./RepositoryDataProvider";
 import { RepositoryModel } from "./RepositoryModel";
 import { WorkspaceDataProvider } from "./WorkspaceDataProvider";
 import { WorkspaceModel } from "./WorkspaceModel";
 import { LsafSession } from "./auth";
 import { REPOSITORY_SCHEME, WORKSPACE_SCHEME } from "./const";
+import { JobCommands } from "./jobCommands";
+import { JobOutputs } from "./jobOutputs";
 import { LsafDetector } from "./probe";
 import { RepositoryCommands } from "./repositoryCommands";
 import { CheckoutDecorator } from "./uris";
@@ -52,6 +56,35 @@ export function registerLsaf(context: ExtensionContext): void {
     repository.refresh();
     workspaceView.refresh();
   };
+  const jobsModel = new JobsModel(client);
+  const outputs = new JobOutputs(
+    jobsModel,
+    repositoryModel,
+    workspaceModel,
+    log,
+  );
+  const jobsView = new JobsDataProvider(
+    session,
+    jobsModel,
+    outputs,
+    context.globalState,
+    output,
+    context.extensionUri,
+    (run) => {
+      // Runs finish on a later poll, after jobCommands below exists.
+      jobCommands.notifyFinished(run);
+      // A run writes logs, listings and outputs into the trees.
+      refreshAll();
+    },
+  );
+  const jobCommands = new JobCommands(
+    jobsView,
+    jobsModel,
+    outputs,
+    workspaceModel,
+    output,
+    refreshAll,
+  );
 
   context.subscriptions.push(
     output,
@@ -84,7 +117,12 @@ export function registerLsaf(context: ExtensionContext): void {
     workspace.registerFileSystemProvider(WORKSPACE_SCHEME, workspaceView, {
       isCaseSensitive: true,
     }),
-    session.onDidChange(refreshAll),
+    jobsView,
+    jobCommands,
+    session.onDidChange(() => {
+      refreshAll();
+      jobsView.refresh();
+    }),
     commands.registerCommand("SAS.lsaf.signIn", () => session.signIn()),
     commands.registerCommand("SAS.lsaf.signOut", () => session.signOut()),
     commands.registerCommand("SAS.lsaf.refresh", () => {
