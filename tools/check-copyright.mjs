@@ -13,8 +13,10 @@ const filesToIgnore = [
   "website/**",
 ];
 
-const COPYRIGHT_REGEX = /^\/\/ Copyright © ([0-9-\s]+), SAS Institute/;
-const COPYRIGHT_TEMPLATE = `// Copyright © ${new Date().getFullYear()}, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+// Files from upstream carry SAS's header; files this fork adds carry Posit's.
+const COPYRIGHT_REGEX =
+  /^\/\/ Copyright © ([0-9-\s]+), (SAS Institute|Posit Software, PBC)/;
+const COPYRIGHT_TEMPLATE = `// Copyright © ${new Date().getFullYear()}, Posit Software, PBC. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 `;
