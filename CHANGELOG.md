@@ -6,6 +6,7 @@
 
 - The extension is published on [Open VSX](https://open-vsx.org/extension/posit/positron-sas), so you can install and update it from the Extensions view in Positron: search for `Positron SAS`. Installing from the VSIX file of a GitHub release still works
 - The extension's homepage on Open VSX and in the Extensions view now links to the [documentation site](https://posit-dev.github.io/positron-sas-extension/) instead of sas.com
+- The extension's icon on Open VSX and in the Extensions view is now the Posit logo instead of the SAS logo
 - Positron: choose the compute context of a SAS console on SAS Viya. A SAS Viya console now shows its compute context: the console tab and the header of **Console Information** read, for example, **Viya · SAS Studio**, and the console prints the full name when it starts. The new server icon in the title bar of the **Console** pane, or **SAS: Choose Compute Context...** in the Command Palette, lists the server's compute contexts and saves the choice as the connection profile's `context`, which SAS notebooks, the SAS views, new consoles, and background jobs use. A running console keeps the compute context it started with, also when restarted, so a message offers **Restart Now** to replace it with a console in the new context (this loses WORK and macro variables). Not available for SAS 9.4 or for profiles with a `serverId`
 
 ## 1.1.0 - 2026-11-18

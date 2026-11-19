@@ -11,7 +11,7 @@
   ],
   "publisher": "posit",
   "license": "Apache-2.0",
-  "icon": "icons/sas.png",
+  "icon": "icons/posit.png",
   "engines": {
     "vscode": "^1.95.0"
   },
