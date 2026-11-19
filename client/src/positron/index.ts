@@ -12,6 +12,7 @@ import {
   compareDatasets,
   selectDatasetFileForCompare,
 } from "./compareDatasets";
+import { evaluateMacroExpression } from "./macroExpression";
 import {
   CHOOSE_LOG_OUTPUT,
   CHOOSE_LOG_OUTPUT_FILTERED,
@@ -180,6 +181,8 @@ export async function initializePositronIntegration(
       "SAS.compareDatasets.withSelectedFile",
       compareDatasetFileWithSelected,
     ),
+    // Macro expression quick view, as in SAS Enterprise Guide (#158).
+    commands.registerCommand("SAS.evaluateMacroExpression", evaluateMacroExpression),
     // Dataset properties, like SAS Studio's table properties.
     commands.registerCommand("SAS.datasetProperties", showDatasetProperties),
     commands.registerCommand(

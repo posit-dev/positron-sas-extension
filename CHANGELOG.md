@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Positron: the **Variables** pane shows the SAS session's macro variables and WORK datasets, like the macro variable viewer in SAS Enterprise Guide ([#158](https://github.com/posit-dev/positron-sas-extension/issues/158)). GLOBAL macro variables are listed with their values. The AUTOMATIC ones, such as `&SYSERR` and `&SYSLAST`, are grouped under **Automatic macro variables**. WORK datasets and views are listed with their observations, variables and label; they expand to their columns and open in the Data Explorer. The pane updates after each console run and highlights what changed. Copying a macro variable gives a `%let` statement. Posit Assistant sees the same list, as it does for R and Python variables. On SAS Viya the extension reads the session through the Compute API without running SAS code, so `&SYSERR` keeps the value your code left. On other connections, a short hidden query runs after each run. The new `SAS.variablesPane.enabled` setting turns the pane off for SAS
+- Positron: **SAS: Evaluate Macro Expression...** evaluates anything that can follow `%let name=` in the SAS console and shows the result with any warnings or errors from the log, like the macro expression quick view in SAS Enterprise Guide ([#158](https://github.com/posit-dev/positron-sas-extension/issues/158)). It is in the Command Palette and in the title bar of the **Variables** pane
+
 ## 1.2.0 - 2026-11-19
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

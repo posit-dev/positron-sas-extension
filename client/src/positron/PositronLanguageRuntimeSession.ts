@@ -49,6 +49,9 @@ import {
   SasClient,
   type ColumnInfo as SasColumnInfo,
   type DatasetProperties,
+  type MacroExpressionResult,
+  type SessionSnapshot,
+  isSessionSnapshot,
 } from "./sasClient";
 import { OutputFiles } from "./outputFiles";
 import { showHtmlInViewer } from "./viewer";
@@ -71,6 +74,7 @@ import {
   workPathLiteral,
 } from "./xptFormat";
 import { SasDataExplorer } from "./sasDataExplorer";
+import { SasVariables } from "./sasVariables";
 import { openServerDataFile } from "./serverDataFiles";
 import {
   SasServerFilesConnection,
@@ -219,6 +223,10 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   private readonly _plots = new Map<string, SasPlot>();
   private _plotCount = 0;
   private readonly _dataExplorerListeners = new Map<string, Disposable[]>();
+
+  // The Variables pane's comm: macro variables and WORK tables (#158).
+  private _variables: SasVariables | undefined;
+  private _variablesListeners: Disposable[] = [];
 
   // Event emitters
   private _onDidReceiveRuntimeMessage =
@@ -584,8 +592,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     this._serverConnection = undefined;
   }
 
-  /** Open a Data Explorer comm for a dataset. */
-  openDataExplorer(lib: string, mem: string, title = `${lib}.${mem}`): void {
+  /** Open a Data Explorer comm for a dataset and return its id. */
+  openDataExplorer(lib: string, mem: string, title = `${lib}.${mem}`): string {
     const explorer = new SasDataExplorer(this.getSasClient(), lib, mem, title);
     this._dataExplorers.set(explorer.id, explorer);
 
@@ -624,6 +632,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         data: { title },
       });
     });
+    return explorer.id;
   }
 
   private closeDataExplorer(id: string): void {
@@ -743,6 +752,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   }
 
   private closeAllClients(): void {
+    this.closeVariables();
     for (const id of [...this._plots.keys()]) {
       this.closePlot(id);
     }
@@ -1042,6 +1052,12 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         this.setState(RuntimeState.Idle);
         console.log(`Execution complete, state set to Idle`);
 
+        // Update the Variables pane. First, so its hidden query reads the
+        // automatic macro variables before any other hidden step resets them.
+        this._variables?.refresh().catch((error) => {
+          console.warn("SAS Variables: refresh failed", error);
+        });
+
         // Refresh the Data Explorers whose datasets the run changed. After
         // idle, so it runs after anything queued while the code ran.
         this.refreshDataExplorers().catch(() => {});
@@ -1176,12 +1192,79 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   }
 
   async createClient(
-    _id: string,
-    _type: RuntimeClientType,
+    id: string,
+    type: RuntimeClientType,
     _params: Record<string, unknown>,
     _metadata?: Record<string, unknown>,
   ): Promise<void> {
-    // Comm channels are managed internally via openConnection/openDataExplorer.
+    // Positron asks for the Variables comm itself. The other comms are
+    // opened from here: openConnection, openDataExplorer, openPlots.
+    if (
+      type === RuntimeClientType.Variables &&
+      workspace.getConfiguration("SAS").get<boolean>("variablesPane.enabled", true)
+    ) {
+      this.openVariables(id);
+    }
+  }
+
+  /** Open the Variables comm Positron asked for, replacing an earlier one. */
+  private openVariables(id: string): void {
+    this.closeVariables();
+    const variables = new SasVariables(id, {
+      snapshot: () => this.sessionSnapshot(),
+      getColumns: (lib, mem) => this.getSasClient().getDatasetColumns(lib, mem),
+      deleteMacroVariables: (names) =>
+        this.getSasClient().deleteMacroVariables(names),
+      deleteWorkTables: (names) => this.getSasClient().deleteWorkTables(names),
+      openDataExplorer: (lib, mem) => this.openDataExplorer(lib, mem),
+    });
+    this._variables = variables;
+    this._variablesListeners = [
+      variables.onDidEmitData(({ messageId, data }) => {
+        this.fireCommMessage("comm_data", { comm_id: id, parent_id: messageId, data });
+      }),
+      variables.onDidEmitEvent((data) => {
+        this.fireCommMessage("comm_data", { comm_id: id, data });
+      }),
+    ];
+  }
+
+  private closeVariables(notify = true): void {
+    const variables = this._variables;
+    if (!variables) {
+      return;
+    }
+    if (notify) {
+      this.fireCommMessage("comm_closed", { comm_id: variables.id, data: {} });
+    }
+    this._variablesListeners.forEach((d) => d.dispose());
+    this._variablesListeners = [];
+    variables.dispose();
+    this._variables = undefined;
+  }
+
+  /**
+   * The macro variables and WORK tables. Viya reads them through the
+   * Compute API, which runs no SAS code and so leaves &SYSERR and the other
+   * automatic variables as the user's code set them. Other connections, and
+   * Viya when that fails, run a hidden query.
+   */
+  private async sessionSnapshot(): Promise<SessionSnapshot> {
+    const session = this._sasSession;
+    if (session && "getSessionSnapshot" in session) {
+      const read = session.getSessionSnapshot;
+      if (typeof read === "function") {
+        try {
+          const snapshot: unknown = await read();
+          if (isSessionSnapshot(snapshot)) {
+            return snapshot;
+          }
+        } catch (error) {
+          console.warn("SAS Variables: Compute API read failed, using SAS code", error);
+        }
+      }
+    }
+    return this.getSasClient().getSessionSnapshot();
   }
 
   async listClients(_type?: RuntimeClientType): Promise<Record<string, string>> {
@@ -1198,12 +1281,19 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     for (const [id] of this._plots) {
       result[id] = RuntimeClientType.Plot;
     }
+    if (this._variables) {
+      result[this._variables.id] = RuntimeClientType.Variables;
+    }
     return result;
   }
 
   removeClient(id: string): void {
     if (this._dataExplorers.has(id)) {
       this.closeDataExplorer(id);
+    }
+    if (this._variables?.id === id) {
+      // Positron closed it; no comm_closed back.
+      this.closeVariables(false);
     }
     this.closePlot(id);
   }
@@ -1235,6 +1325,10 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     const plot = this._plots.get(client_id);
     if (plot) {
       this.handlePlotMessage(plot, message_id, message);
+      return;
+    }
+    if (this._variables && client_id === this._variables.id) {
+      this._variables.sendMessage(message_id, message);
     }
   }
 
@@ -1500,6 +1594,11 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   /** Return the DATA/VIEW members of a library. */
   listMembers(lib: string): Promise<Array<{ name: string; type: string }>> {
     return this.getSasClient().getLibraryMembers(lib);
+  }
+
+  /** Evaluate a macro expression, as on the right side of %LET. */
+  evaluateMacroExpression(expression: string): Promise<MacroExpressionResult> {
+    return this.getSasClient().evaluateMacroExpression(expression);
   }
 
   /** Return the librefs assigned in this session. */
