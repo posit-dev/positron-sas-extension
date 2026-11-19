@@ -3715,7 +3715,7 @@
   "bugs": {
     "url": "https://github.com/posit-dev/positron-sas-extension/issues"
   },
-  "homepage": "https://www.sas.com",
+  "homepage": "https://posit-dev.github.io/positron-sas-extension/",
   "scripts": {
     "vscode:prepublish": "npm run lint && npm run compile && npm run compile-browser",
     "lint": "node node_modules/eslint/bin/eslint.js \"./client/src/**/*.ts\" \"./client/src/**/*.tsx\" \"./server/src/**/*.ts\"",
