@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      released: ${{ steps.package-json.outputs.has-updated }}
+      version: ${{ steps.package-json.outputs.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -50,3 +53,15 @@ jobs:
         if: steps.package-json.outputs.has-updated == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # A new release also goes to Open VSX, from the VSIX on the GitHub release.
+  openvsx:
+    needs: package
+    if: needs.package.outputs.released == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/publish-openvsx.yml
+    with:
+      tag: v${{ needs.package.outputs.version }}
+    secrets:
+      OPENVSX_SECRET: ${{ secrets.OPENVSX_SECRET }}

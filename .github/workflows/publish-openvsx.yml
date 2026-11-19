@@ -1,0 +1,78 @@
+# Publishes a release to Open VSX (https://open-vsx.org/extension/posit/positron-sas),
+# the extension gallery that Positron uses. Fork-only: the upstream
+# sassoftware/vscode-sas-extension publishes to the VS Code Marketplace instead.
+#
+# It publishes the VSIX attached to the GitHub release, so Open VSX gets the
+# same file as the release, without a rebuild. package.yml calls it after it
+# creates a release. (A `release` trigger would not work: GitHub starts no
+# workflows for a release created with the workflow's GITHUB_TOKEN.)
+#
+# Only releases are published: the tag must look like v1.2.3 and its GitHub
+# release must not be a pre-release, so development builds (v1.2.3-dev.N, see
+# prerelease.yml) and the demo-videos assets never go out.
+#
+# To publish an existing release by hand, run Actions > Publish to Open VSX >
+# Run workflow with its tag, or `gh workflow run publish-openvsx.yml -f tag=v1.2.3`.
+# Publishing a version that is already on Open VSX does nothing.
+name: Publish to Open VSX
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, for example v1.2.3"
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+    secrets:
+      OPENVSX_SECRET:
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$TAG is not a release tag such as v1.2.3."
+            exit 1
+          fi
+          prerelease="$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)"
+          if [ "$prerelease" != false ]; then
+            echo "::error::$TAG is a pre-release; only releases go to Open VSX."
+            exit 1
+          fi
+
+      - name: Download the VSIX
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" --pattern "positron-sas-${TAG#v}.vsix" --dir dist
+          ls -l dist
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OPENVSX_SECRET }}
+          TAG: ${{ inputs.tag }}
+        run: npx --yes ovsx@1.3.0 publish "dist/positron-sas-${TAG#v}.vsix" --skip-duplicate
