@@ -238,6 +238,8 @@ Quarto's own shortcuts do nothing in a `{sas}` chunk, and an extension cannot ov
 ]
 ```
 
+These lenses and commands fill a gap in the Quarto extension, which runs only R, Python, Julia, and C# cells. A change proposed to Quarto ([quarto-dev/quarto#1237](https://github.com/quarto-dev/quarto/pull/1237)) lets it run cells of any language that has a Positron runtime, `{sas}` included, with its own lenses and shortcuts. The extension declares its SAS runtime for that, so Quarto can find it before any connection profile exists. Once a Quarto release includes the change, the extension's lenses step aside for that version, so each chunk shows one **Run Cell**.
+
 The console is not the SAS session that a render uses: sasquatch opens its own through saspy (see [Reports with Posit Assistant](#reports-with-posit-assistant)). Tables you create in `WORK` from the console are not there when the document renders, and data passed with `sas_from_r()` in an `{r}` chunk is not in the console.
 
 ## Traceability

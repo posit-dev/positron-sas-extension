@@ -90,7 +90,11 @@ export class SASLanguageRuntimeManager implements LanguageRuntimeManager {
   }
 
   /**
-   * Get the recommended workspace runtime
+   * Get the recommended workspace runtime: the active profile. It starts only
+   * when picked (Explicit), like the discovered runtimes. Positron starts an
+   * Implicit recommendation when a .sas file opens, and, because of the
+   * `languageRuntimes` contribution, asks for the recommendation at startup,
+   * which would connect (and prompt for sign-in) without the user asking.
    */
   async recommendedWorkspaceRuntime(): Promise<
     LanguageRuntimeMetadata | undefined
@@ -116,7 +120,7 @@ export class SASLanguageRuntimeManager implements LanguageRuntimeManager {
       languageId: "sas",
       languageVersion: "9.4+",
       base64EncodedIconSvg: this.getSASIconSvg(),
-      startupBehavior: LanguageRuntimeStartupBehavior.Implicit,
+      startupBehavior: LanguageRuntimeStartupBehavior.Explicit,
       sessionLocation: this.getSessionLocation(profile),
       extraRuntimeData: {
         profile: activeProfileName,
