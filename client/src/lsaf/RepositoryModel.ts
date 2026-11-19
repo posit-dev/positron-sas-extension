@@ -58,6 +58,7 @@ export class RepositoryModel {
       ItemCollection<RepositoryItem>
     >(repositoryContainerUrl(path), {
       component: "children",
+      childType: "all",
       expand: "item",
       limit: CHILDREN_LIMIT,
     });

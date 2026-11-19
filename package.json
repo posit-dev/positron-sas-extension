@@ -1815,6 +1815,51 @@
         "command": "SAS.lsaf.copyPath",
         "title": "%commands.SAS.lsaf.copyPath%",
         "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.checkOut",
+        "title": "%commands.SAS.lsaf.checkOut%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.checkIn",
+        "title": "%commands.SAS.lsaf.checkIn%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.undoCheckOut",
+        "title": "%commands.SAS.lsaf.undoCheckOut%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.copyToWorkspace",
+        "title": "%commands.SAS.lsaf.copyToWorkspace%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.addToRepository",
+        "title": "%commands.SAS.lsaf.addToRepository%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.compareWithRepository",
+        "title": "%commands.SAS.lsaf.compareWithRepository%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.upload",
+        "title": "%commands.SAS.lsaf.upload%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.newFile",
+        "title": "%commands.SAS.lsaf.newFile%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.newFolder",
+        "title": "%commands.SAS.lsaf.newFolder%",
+        "category": "SAS LSAF"
       }
     ],
     "keybindings": [
@@ -2790,6 +2835,31 @@
           "group": "7_compare@2"
         },
         {
+          "command": "SAS.lsaf.checkOut",
+          "when": "view == lsafrepositoryprovider && viewItem =~ /;file;/ && viewItem =~ /;notCheckedOut;/",
+          "group": "2_sync@0"
+        },
+        {
+          "command": "SAS.lsaf.checkIn",
+          "when": "view == lsafrepositoryprovider && viewItem =~ /;checkedOutBySelf;/",
+          "group": "2_sync@1"
+        },
+        {
+          "command": "SAS.lsaf.undoCheckOut",
+          "when": "view == lsafrepositoryprovider && viewItem =~ /;checkedOutBySelf;/",
+          "group": "2_sync@2"
+        },
+        {
+          "command": "SAS.lsaf.copyToWorkspace",
+          "when": "view == lsafrepositoryprovider && viewItem =~ /;file;/",
+          "group": "2_sync@3"
+        },
+        {
+          "command": "SAS.lsaf.upload",
+          "when": "view == lsafrepositoryprovider && viewItem =~ /;container;/",
+          "group": "3_files@0"
+        },
+        {
           "command": "SAS.lsaf.download",
           "when": "view == lsafrepositoryprovider",
           "group": "3_files@1"
@@ -2807,6 +2877,56 @@
         {
           "command": "SAS.lsaf.copyPath",
           "when": "view == lsafrepositoryprovider",
+          "group": "5_copy@0"
+        },
+        {
+          "command": "SAS.lsaf.checkOut",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;file;/ && viewItem =~ /;notCheckedOut;/",
+          "group": "2_sync@0"
+        },
+        {
+          "command": "SAS.lsaf.checkIn",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;checkedOutBySelf;/",
+          "group": "2_sync@1"
+        },
+        {
+          "command": "SAS.lsaf.undoCheckOut",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;checkedOutBySelf;/",
+          "group": "2_sync@2"
+        },
+        {
+          "command": "SAS.lsaf.addToRepository",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;notInRepository;/",
+          "group": "2_sync@3"
+        },
+        {
+          "command": "SAS.lsaf.compareWithRepository",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;inRepository;/",
+          "group": "2_sync@4"
+        },
+        {
+          "command": "SAS.lsaf.newFile",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;folder;/",
+          "group": "3_files@0"
+        },
+        {
+          "command": "SAS.lsaf.newFolder",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;folder;/",
+          "group": "3_files@1"
+        },
+        {
+          "command": "SAS.lsaf.upload",
+          "when": "view == lsafworkspaceprovider && viewItem =~ /;folder;/",
+          "group": "3_files@2"
+        },
+        {
+          "command": "SAS.lsaf.download",
+          "when": "view == lsafworkspaceprovider",
+          "group": "3_files@3"
+        },
+        {
+          "command": "SAS.lsaf.copyPath",
+          "when": "view == lsafworkspaceprovider",
           "group": "5_copy@0"
         }
       ],
@@ -3602,6 +3722,42 @@
         },
         {
           "command": "SAS.lsaf.copyPath",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.checkOut",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.checkIn",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.undoCheckOut",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.copyToWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.addToRepository",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.compareWithRepository",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.upload",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.newFile",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.newFolder",
           "when": "false"
         }
       ],

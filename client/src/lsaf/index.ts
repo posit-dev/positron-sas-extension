@@ -9,11 +9,14 @@ import { ExtensionContext, commands, window, workspace } from "vscode";
 
 import { RepositoryDataProvider } from "./RepositoryDataProvider";
 import { RepositoryModel } from "./RepositoryModel";
+import { WorkspaceDataProvider } from "./WorkspaceDataProvider";
+import { WorkspaceModel } from "./WorkspaceModel";
 import { LsafSession } from "./auth";
-import { REPOSITORY_SCHEME } from "./const";
+import { REPOSITORY_SCHEME, WORKSPACE_SCHEME } from "./const";
 import { LsafDetector } from "./probe";
 import { RepositoryCommands } from "./repositoryCommands";
 import { CheckoutDecorator } from "./uris";
+import { WorkspaceCommands } from "./workspaceCommands";
 
 export function registerLsaf(context: ExtensionContext): void {
   const output = window.createOutputChannel("SAS LSAF", { log: true });
@@ -36,8 +39,18 @@ export function registerLsaf(context: ExtensionContext): void {
     context.extensionUri,
     log,
   );
+  const workspaceModel = new WorkspaceModel(client);
+  const workspaceView = new WorkspaceDataProvider(
+    workspaceModel,
+    repositoryModel,
+    session,
+    decorator,
+    context.extensionUri,
+    log,
+  );
   const refreshAll = () => {
     repository.refresh();
+    workspaceView.refresh();
   };
 
   context.subscriptions.push(
@@ -46,11 +59,30 @@ export function registerLsaf(context: ExtensionContext): void {
     detector,
     decorator,
     repository,
-    new RepositoryCommands(repository, repositoryModel, session, output),
+    workspaceView,
+    new RepositoryCommands(
+      repository,
+      repositoryModel,
+      workspaceView,
+      workspaceModel,
+      session,
+      output,
+    ),
+    new WorkspaceCommands(
+      repository,
+      workspaceView,
+      repositoryModel,
+      workspaceModel,
+      output,
+      refreshAll,
+    ),
     window.registerFileDecorationProvider(decorator),
     workspace.registerFileSystemProvider(REPOSITORY_SCHEME, repository, {
       isCaseSensitive: true,
       isReadonly: true,
+    }),
+    workspace.registerFileSystemProvider(WORKSPACE_SCHEME, workspaceView, {
+      isCaseSensitive: true,
     }),
     session.onDidChange(refreshAll),
     commands.registerCommand("SAS.lsaf.signIn", () => session.signIn()),

@@ -20,9 +20,15 @@ import { ReportPresenter } from "../clinical/report/ReportPresenter";
 import { describeError } from "./LsafClient";
 import { RepositoryDataProvider } from "./RepositoryDataProvider";
 import { RepositoryModel } from "./RepositoryModel";
+import {
+  WorkspaceDataProvider,
+  WorkspaceNode,
+  isWorkspaceNode,
+} from "./WorkspaceDataProvider";
+import { WorkspaceModel } from "./WorkspaceModel";
 import { LsafSession } from "./auth";
 import { REPOSITORY_SCHEME, WORKSPACE_SCHEME } from "./const";
-import { isContainer } from "./items";
+import { isContainer, isWorkspaceFolder } from "./items";
 import { Messages } from "./messages";
 import { baseName } from "./paths";
 import { renderPropertiesReport } from "./propertiesReport";
@@ -39,6 +45,8 @@ export class RepositoryCommands implements Disposable {
   constructor(
     private readonly provider: RepositoryDataProvider,
     private readonly model: RepositoryModel,
+    private readonly workspaceView: WorkspaceDataProvider,
+    private readonly workspaceModel: WorkspaceModel,
     private readonly session: LsafSession,
     private readonly output: LogOutputChannel,
   ) {
@@ -56,8 +64,10 @@ export class RepositoryCommands implements Disposable {
       commands.registerCommand("SAS.lsaf.showVersions", (item: ItemArg) =>
         this.run(() => this.showVersions(item)),
       ),
-      commands.registerCommand("SAS.lsaf.download", (item: RepositoryItem) =>
-        this.run(() => this.download(item)),
+      commands.registerCommand(
+        "SAS.lsaf.download",
+        (item: RepositoryItem | WorkspaceNode) =>
+          this.run(() => this.download(item)),
       ),
       commands.registerCommand("SAS.lsaf.copyPath", (item: { path: string }) =>
         env.clipboard.writeText(item?.path ?? ""),
@@ -215,17 +225,38 @@ export class RepositoryCommands implements Disposable {
     }
   }
 
-  async download(item: RepositoryItem | undefined): Promise<void> {
-    const items = this.provider.selection(item);
+  async download(arg: RepositoryItem | WorkspaceNode | undefined) {
+    const items: Array<{
+      name: string;
+      folder: boolean;
+      content: () => Promise<Uint8Array>;
+    }> = isWorkspaceNode(arg)
+      ? this.workspaceView.selection(arg).map((node) => ({
+          name: node.name ?? baseName(node.path),
+          folder: isWorkspaceFolder(node),
+          content: () =>
+            isWorkspaceFolder(node)
+              ? this.workspaceModel.downloadFolder(node.path)
+              : this.workspaceModel.getContent(node.path),
+        }))
+      : this.provider.selection(arg).map((item) => ({
+          name: item.name ?? baseName(item.path),
+          folder: isContainer(item),
+          content: () =>
+            isContainer(item)
+              ? this.model.downloadContainer(item.path)
+              : this.model.getContent(item.path),
+        }));
     if (!items.length) {
       return;
     }
+    const fileName = (each: (typeof items)[number]) =>
+      each.folder ? `${each.name}.zip` : each.name;
     if (items.length === 1) {
       const only = items[0];
-      const container = isContainer(only);
       const target = await window.showSaveDialog({
         title: Messages.DownloadTitle,
-        defaultUri: defaultTarget(container ? `${only.name}.zip` : only.name),
+        defaultUri: defaultTarget(fileName(only)),
       });
       if (!target) {
         return;
@@ -235,12 +266,7 @@ export class RepositoryCommands implements Disposable {
           location: ProgressLocation.Notification,
           title: l10n.t(Messages.Downloading, { name: only.name }),
         },
-        async () => {
-          const content = container
-            ? await this.model.downloadContainer(only.path)
-            : await this.model.getContent(only.path);
-          await workspace.fs.writeFile(target, content);
-        },
+        async () => workspace.fs.writeFile(target, await only.content()),
       );
       return;
     }
@@ -261,16 +287,9 @@ export class RepositoryCommands implements Disposable {
       },
       async () => {
         for (const each of items) {
-          const container = isContainer(each);
-          const content = container
-            ? await this.model.downloadContainer(each.path)
-            : await this.model.getContent(each.path);
           await workspace.fs.writeFile(
-            Uri.joinPath(
-              folder[0],
-              container ? `${each.name}.zip` : baseName(each.path),
-            ),
-            content,
+            Uri.joinPath(folder[0], fileName(each)),
+            await each.content(),
           );
         }
       },
