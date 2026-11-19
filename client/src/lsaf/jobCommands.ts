@@ -204,13 +204,14 @@ export class JobCommands implements Disposable {
       name: baseName(run.jobPath),
       outcome: outcomeLabel(run.outcome).toLowerCase(),
     });
-    const show =
+    const items = [Messages.OpenLog, Messages.ShowManifest];
+    const shown =
       run.outcome === "failed"
-        ? window.showErrorMessage
+        ? window.showErrorMessage(message, ...items)
         : run.outcome === "warnings"
-          ? window.showWarningMessage
-          : window.showInformationMessage;
-    show(message, Messages.OpenLog, Messages.ShowManifest).then((answer) => {
+          ? window.showWarningMessage(message, ...items)
+          : window.showInformationMessage(message, ...items);
+    shown.then((answer) => {
       const node: JobNode = { kind: "run", run };
       if (answer === Messages.OpenLog) {
         void this.run(() => this.openLog(node));

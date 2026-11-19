@@ -74,18 +74,18 @@ export class LsafSession implements Disposable {
   }
 
   /** Log on silently with a stored encrypted password, if there is one. */
-  private async restore(): Promise<void> {
+  private async restore(): Promise<boolean> {
     const apiUrl = this.url;
     if (!apiUrl) {
-      return;
+      return false;
     }
     const userId = this.context.globalState.get<string>(lastUserKey(apiUrl));
     if (!userId) {
-      return;
+      return false;
     }
     const secret = await this.secrets.get(secretKey(apiUrl, userId));
     if (!secret) {
-      return;
+      return false;
     }
     const client = this.newClient(apiUrl);
     client.setCredentials({ userId, secret });
@@ -100,12 +100,14 @@ export class LsafSession implements Disposable {
         // locked): forget it, so the next sign-in asks.
         await this.deleteSecret(apiUrl, userId);
       }
-      return;
+      return false;
     }
-    if (this.url === apiUrl) {
-      this.client = client;
-      await this.update();
+    if (this.url !== apiUrl) {
+      return false;
     }
+    this.client = client;
+    await this.update();
+    return true;
   }
 
   async signIn(): Promise<boolean> {
@@ -113,6 +115,11 @@ export class LsafSession implements Disposable {
     if (!apiUrl) {
       window.showErrorMessage(Messages.NotDetected);
       return false;
+    }
+    // The stored password may still work if resuming at startup failed only
+    // because the server was unreachable then.
+    if (await this.restore()) {
+      return true;
     }
     const userId = await window.showInputBox({
       title: Messages.SignInTitle,

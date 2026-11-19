@@ -22,14 +22,15 @@ const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function memento(): MementoLike {
-  const data = new Map<string, unknown>();
+  // Stored as JSON, as VS Code stores global state.
+  const data = new Map<string, string>();
   return {
     get: <T>(key: string): T | undefined => {
-      const value: T | undefined = structuredClone(data.get(key)) ?? undefined;
-      return value;
+      const json = data.get(key);
+      return json === undefined ? undefined : JSON.parse(json);
     },
     update: async (key: string, value: unknown) => {
-      data.set(key, structuredClone(value));
+      data.set(key, JSON.stringify(value));
     },
   };
 }
