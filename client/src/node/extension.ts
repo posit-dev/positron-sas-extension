@@ -69,6 +69,7 @@ import {
 } from "../positron";
 import { BackgroundJobs } from "../backgroundJobs";
 import { ClinicalRepository } from "../clinical";
+import { registerLsaf } from "../lsaf";
 import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
 import {
   addLocalSasProfile,
@@ -239,6 +240,8 @@ export async function activate(context: ExtensionContext) {
   ClinicalRepository.register(context);
   // Submit programs as SAS Viya background jobs (#150).
   BackgroundJobs.register(context);
+  // SAS Life Science Analytics Framework, when an LSAF server is configured.
+  registerLsaf(context);
 
   // Reset first to set "No Active Profiles"
   resetStatusBarItem();
@@ -338,6 +341,13 @@ function triggerProfileUpdate(): void {
   commands.executeCommand("SAS.close", true);
   const profileList = profileConfig.getAllProfiles();
   const activeProfileName = profileConfig.getActiveProfile();
+  // Without a profile, Sign In in the SAS view container can only ask for
+  // one; it is hidden when that container is not needed for LSAF.
+  commands.executeCommand(
+    "setContext",
+    "SAS.hasActiveProfile",
+    !!profileList[activeProfileName],
+  );
   if (profileList[activeProfileName]) {
     updateStatusBarItem();
 
