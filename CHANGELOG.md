@@ -4,6 +4,7 @@
 
 ### Features
 
+- Positron: run `{sas}` chunks of a Quarto document in the SAS console, one at a time, as for `{r}` and `{python}` chunks. The Quarto extension only runs R, Python, Julia, and C# cells, so `{sas}` chunks had no **Run Cell** and the shortcuts did nothing there. Each `{sas}` chunk now shows **Run Cell**, **Run Next Cell**, and **Run Above**. Quarto's shortcuts still do nothing in a `{sas}` chunk; the documentation shows how to bind them to the new **SAS: Run Quarto SAS Cell** and **SAS: Run Selection or Quarto SAS Cell** commands. The console is a different SAS session from the one sasquatch uses to render the document
 - The extension is published on [Open VSX](https://open-vsx.org/extension/posit/positron-sas), so you can install and update it from the Extensions view in Positron: search for `Positron SAS`. Installing from the VSIX file of a GitHub release still works
 - The extension's homepage on Open VSX and in the Extensions view now links to the [documentation site](https://posit-dev.github.io/positron-sas-extension/) instead of sas.com
 - The extension's icon on Open VSX and in the Extensions view is now the Posit logo instead of the SAS logo
