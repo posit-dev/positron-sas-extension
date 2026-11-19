@@ -1,4 +1,4 @@
-// Copyright © 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+// Copyright © 2026, Posit Software, PBC. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 // A local stand-in for the SAS Life Science Analytics Framework REST API 1.0,

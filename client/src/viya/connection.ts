@@ -1,4 +1,4 @@
-// Copyright © 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+// Copyright © 2026, Posit Software, PBC. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 // Extracted from client/src/clinical/RepositoryModel.ts so that features other
 // than the Clinical Repository can share one authenticated SAS Viya client.

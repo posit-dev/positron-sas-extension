@@ -1,4 +1,5 @@
 // Copyright © 2024, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+// Copyright © 2026, Posit Software, PBC. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from sassoftware/vscode-sas-ca-extension
 // client/src/components/ActionStatus.ts (Apache-2.0).

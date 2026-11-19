@@ -1,4 +1,4 @@
-// Copyright © 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+// Copyright © 2026, Posit Software, PBC. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 // Show a run's manifest as a report in the Viewer (or a webview outside

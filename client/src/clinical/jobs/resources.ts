@@ -1,4 +1,4 @@
-// Copyright © 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+// Copyright © 2026, Posit Software, PBC. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 // Between job resources and the URIs of the Clinical Acceleration file

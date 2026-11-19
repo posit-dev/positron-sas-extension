@@ -1,4 +1,4 @@
-// Copyright © 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+// Copyright © 2026, Posit Software, PBC. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 // Open SAS data files on the SAS server (SAS Server Files in the Data
