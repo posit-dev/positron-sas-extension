@@ -1,4 +1,4 @@
-// Copyright © 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+// Copyright © 2026, Posit Software, PBC. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 // Extracted from client/src/clinical/probe.ts so that any feature can detect
 // whether the active SAS Viya server runs the service it needs.
