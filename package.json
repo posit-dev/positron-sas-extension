@@ -1795,6 +1795,26 @@
         "title": "%commands.SAS.lsaf.refresh%",
         "category": "SAS LSAF",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "SAS.lsaf.showProperties",
+        "title": "%commands.SAS.lsaf.showProperties%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.showVersions",
+        "title": "%commands.SAS.lsaf.showVersions%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.download",
+        "title": "%commands.SAS.lsaf.download%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.copyPath",
+        "title": "%commands.SAS.lsaf.copyPath%",
+        "category": "SAS LSAF"
       }
     ],
     "keybindings": [
@@ -2768,6 +2788,26 @@
           "command": "SAS.clinical.compareSelected",
           "when": "view == clinicalworkspaceprovider && viewItem =~ /;file;/ && SAS.clinical.twoWorkspaceItemsSelected",
           "group": "7_compare@2"
+        },
+        {
+          "command": "SAS.lsaf.download",
+          "when": "view == lsafrepositoryprovider",
+          "group": "3_files@1"
+        },
+        {
+          "command": "SAS.lsaf.showProperties",
+          "when": "view == lsafrepositoryprovider",
+          "group": "4_props@0"
+        },
+        {
+          "command": "SAS.lsaf.showVersions",
+          "when": "view == lsafrepositoryprovider && viewItem =~ /;file;/",
+          "group": "4_props@1"
+        },
+        {
+          "command": "SAS.lsaf.copyPath",
+          "when": "view == lsafrepositoryprovider",
+          "group": "5_copy@0"
         }
       ],
       "editor/title/run": [
@@ -3547,6 +3587,22 @@
         {
           "command": "SAS.lsaf.refresh",
           "when": "SAS.lsaf.available"
+        },
+        {
+          "command": "SAS.lsaf.showProperties",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.showVersions",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.download",
+          "when": "false"
+        },
+        {
+          "command": "SAS.lsaf.copyPath",
+          "when": "false"
         }
       ],
       "file/newFile": [

@@ -51,11 +51,15 @@ export class ReportPresenter implements Disposable {
   private readonly server = new ViewerServer((target) => this.open(target));
   private readonly files = new OutputFiles(10);
 
-  /** `viewType` identifies the fallback webviews; `kind` names logs. */
+  /**
+   * `viewType` identifies the fallback webviews; `kind` names logs;
+   * `linkSchemes` are the file systems report links may open.
+   */
   constructor(
     private readonly output: LogOutputChannel,
     private readonly viewType: string,
     private readonly kind: string,
+    private readonly linkSchemes: ReadonlySet<string> = LINK_SCHEMES,
   ) {}
 
   /** The href of a link in a served report that opens `uri`. */
@@ -120,7 +124,7 @@ export class ReportPresenter implements Disposable {
     return target;
   }
 
-  /** Open a file a report links to, if it is a Clinical Acceleration file. */
+  /** Open a file a report links to, if it is in one of `linkSchemes`. */
   private async open(target: string): Promise<boolean> {
     let uri: Uri;
     try {
@@ -128,7 +132,7 @@ export class ReportPresenter implements Disposable {
     } catch {
       return false;
     }
-    if (!LINK_SCHEMES.has(uri.scheme)) {
+    if (!this.linkSchemes.has(uri.scheme)) {
       this.output.warn(`${this.kind} report: refused to open ${target}.`);
       return false;
     }
