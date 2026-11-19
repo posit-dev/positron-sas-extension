@@ -69,6 +69,7 @@ import {
 } from "../positron";
 import { BackgroundJobs } from "../backgroundJobs";
 import { ClinicalRepository } from "../clinical";
+import { registerLsaf } from "../lsaf";
 import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
 import {
   addLocalSasProfile,
@@ -239,6 +240,8 @@ export async function activate(context: ExtensionContext) {
   ClinicalRepository.register(context);
   // Submit programs as SAS Viya background jobs (#150).
   BackgroundJobs.register(context);
+  // SAS Life Science Analytics Framework, when an LSAF server is configured.
+  registerLsaf(context);
 
   // Reset first to set "No Active Profiles"
   resetStatusBarItem();

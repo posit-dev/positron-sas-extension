@@ -776,6 +776,18 @@
             "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$",
             "patternErrorMessage": "%configuration.SAS.backgroundJobs.keepResultsFor.pattern%",
             "markdownDescription": "%configuration.SAS.backgroundJobs.keepResultsFor%"
+          },
+          "SAS.lsaf.url": {
+            "order": 15,
+            "type": "string",
+            "default": "",
+            "markdownDescription": "%configuration.SAS.lsaf.url%"
+          },
+          "SAS.lsaf.userId": {
+            "order": 16,
+            "type": "string",
+            "default": "",
+            "markdownDescription": "%configuration.SAS.lsaf.userId%"
           }
         }
       }
@@ -1767,6 +1779,22 @@
         "command": "SAS.clinical.workspace.undoCheckout",
         "title": "%clinical.commands.undoCheckOut%",
         "category": "SAS Clinical Acceleration"
+      },
+      {
+        "command": "SAS.lsaf.signIn",
+        "title": "%commands.SAS.lsaf.signIn%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.signOut",
+        "title": "%commands.SAS.lsaf.signOut%",
+        "category": "SAS LSAF"
+      },
+      {
+        "command": "SAS.lsaf.refresh",
+        "title": "%commands.SAS.lsaf.refresh%",
+        "category": "SAS LSAF",
+        "icon": "$(refresh)"
       }
     ],
     "keybindings": [
@@ -2036,6 +2064,26 @@
           "command": "SAS.clinical.workspace.collapseAll",
           "when": "view == clinicalworkspaceprovider",
           "group": "navigation@3"
+        },
+        {
+          "command": "SAS.lsaf.refresh",
+          "when": "view == lsafrepositoryprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.lsaf.signOut",
+          "when": "view == lsafrepositoryprovider && SAS.lsaf.signedIn",
+          "group": "9_account@0"
+        },
+        {
+          "command": "SAS.lsaf.refresh",
+          "when": "view == lsafworkspaceprovider",
+          "group": "navigation@0"
+        },
+        {
+          "command": "SAS.lsaf.signOut",
+          "when": "view == lsafworkspaceprovider && SAS.lsaf.signedIn",
+          "group": "9_account@0"
         }
       ],
       "explorer/context": [
@@ -3487,6 +3535,18 @@
         {
           "when": "false",
           "command": "SAS.clinical.workspace.undoCheckout"
+        },
+        {
+          "command": "SAS.lsaf.signIn",
+          "when": "SAS.lsaf.available && !SAS.lsaf.signedIn"
+        },
+        {
+          "command": "SAS.lsaf.signOut",
+          "when": "SAS.lsaf.available && SAS.lsaf.signedIn"
+        },
+        {
+          "command": "SAS.lsaf.refresh",
+          "when": "SAS.lsaf.available"
         }
       ],
       "file/newFile": [
@@ -3583,6 +3643,11 @@
           "id": "sas-clinical-view-container",
           "title": "%clinical.container%",
           "icon": "icons/dark/clinicalAccelerationDark.svg"
+        },
+        {
+          "id": "sas-lsaf-view-container",
+          "title": "%lsaf.container%",
+          "icon": "icons/dark/lsafDark.svg"
         }
       ]
     },
@@ -3668,6 +3733,23 @@
           "when": "SAS.authorized && SAS.connectionType == rest && SAS.clinicalAvailable",
           "visibility": "collapsed"
         }
+      ],
+      "sas-lsaf-view-container": [
+        {
+          "id": "lsafrepositoryprovider",
+          "name": "%lsaf.views.repository%",
+          "when": "SAS.lsaf.available"
+        },
+        {
+          "id": "lsafworkspaceprovider",
+          "name": "%lsaf.views.workspace%",
+          "when": "SAS.lsaf.available"
+        },
+        {
+          "id": "lsafjobsprovider",
+          "name": "%lsaf.views.jobs%",
+          "when": "SAS.lsaf.available"
+        }
       ]
     },
     "viewsWelcome": [
@@ -3683,6 +3765,21 @@
       {
         "view": "clinicalsearchprovider",
         "contents": "%clinical.views.search.welcome%"
+      },
+      {
+        "view": "lsafrepositoryprovider",
+        "contents": "%lsaf.views.signIn.welcome%",
+        "when": "SAS.lsaf.available && !SAS.lsaf.signedIn"
+      },
+      {
+        "view": "lsafworkspaceprovider",
+        "contents": "%lsaf.views.signIn.welcome%",
+        "when": "SAS.lsaf.available && !SAS.lsaf.signedIn"
+      },
+      {
+        "view": "lsafjobsprovider",
+        "contents": "%lsaf.views.signIn.welcome%",
+        "when": "SAS.lsaf.available && !SAS.lsaf.signedIn"
       }
     ],
     "notebooks": [
