@@ -267,6 +267,10 @@ An example `audit.jsonl` with one submission:
 
 On SAS Viya servers with SAS Clinical Acceleration, the **Clinical Acceleration** sidebar, next to the **SAS** one in the activity bar, shows the **Clinical Repository**, **Clinical Workspace**, **Clinical Repository Properties**, and **Clinical Version History** views. They let you browse the repository, edit files in your workspace, check files out and in, manage versions, and compare files and versions. The extension detects the service of the active profile's server and uses the existing SAS Viya sign-in. See [SAS Clinical Acceleration](./clinicalAcceleration.md) for details.
 
+## SAS Life Science Analytics Framework
+
+When the `SAS.lsaf.url` setting (or the `SAS_LSAF_URL` environment variable) points to a SAS Life Science Analytics Framework (LSAF) server, the **LSAF** sidebar in the activity bar shows the **Repository**, **Workspace**, and **Jobs** views. They let you browse the repository, edit files in your workspace, check files out and in, and run LSAF jobs and programs with a record of each run. LSAF has its own sign-in and doesn't depend on the active SAS profile. See [SAS Life Science Analytics Framework](./lsaf.md) for details.
+
 ## Local SAS
 
 The `stdio` connection type runs a SAS installation on the same machine as Positron, without SSH or SAS servers. The extension starts SAS as a child process in line mode (`-nodms`) and keeps it running for the session.
@@ -316,6 +320,7 @@ The profile's `autoExec` lines run once, right after SAS starts.
 | Sign-in through a Workbench OAuth integration | Yes | No | No |
 | **SAS Content** and **SAS Server** views | Yes | No | No |
 | Clinical Acceleration views | With SAS Clinical Acceleration | No | No |
+| LSAF views (independent of the profile) | With an LSAF server | With an LSAF server | With an LSAF server |
 | Automatic `local` profile | No | No | Yes, for SAS Analytics Pro and SAS 9.4 |
 
 ## Known Limitations
