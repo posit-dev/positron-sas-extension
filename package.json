@@ -4081,7 +4081,7 @@
         {
           "id": "sas-content-get-started",
           "name": "%views.SAS.signIn%",
-          "when": "(!(SAS.authorized || SAS.librariesDisplayed || SAS.serverDisplayed) && SAS.canSignIn) && !SAS.connection.direct"
+          "when": "(!(SAS.authorized || SAS.librariesDisplayed || SAS.serverDisplayed) && SAS.canSignIn) && !SAS.connection.direct && !(SAS.lsaf.available && !SAS.hasActiveProfile)"
         },
         {
           "id": "sas-content-invalid-connection",

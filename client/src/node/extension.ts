@@ -341,6 +341,13 @@ function triggerProfileUpdate(): void {
   commands.executeCommand("SAS.close", true);
   const profileList = profileConfig.getAllProfiles();
   const activeProfileName = profileConfig.getActiveProfile();
+  // Without a profile, Sign In in the SAS view container can only ask for
+  // one; it is hidden when that container is not needed for LSAF.
+  commands.executeCommand(
+    "setContext",
+    "SAS.hasActiveProfile",
+    !!profileList[activeProfileName],
+  );
   if (profileList[activeProfileName]) {
     updateStatusBarItem();
 

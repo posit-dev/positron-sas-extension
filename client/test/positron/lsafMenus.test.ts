@@ -142,6 +142,28 @@ describe("LSAF package.json contributions", () => {
     }
   });
 
+  it("hides the SAS Sign In only for LSAF without a SAS profile", () => {
+    const view = contributes.views["sas-view-container"].find(
+      (v: { id: string }) => v.id === "sas-content-get-started",
+    );
+    const visible = (keys: string[]) => {
+      const expr = String(view.when)
+        .replace(/[\w.]+/g, (key) =>
+          key === "true" || key === "false" ? key : String(keys.includes(key)),
+        )
+        .replace(/\btrue\b/g, "1")
+        .replace(/\bfalse\b/g, "0");
+      expect(expr).to.match(/^[01()|&! ]+$/);
+      return Boolean(eval(expr));
+    };
+    expect(visible(["SAS.canSignIn"])).to.equal(true);
+    expect(visible(["SAS.canSignIn", "SAS.hasActiveProfile"])).to.equal(true);
+    expect(visible(["SAS.canSignIn", "SAS.lsaf.available"])).to.equal(false);
+    expect(
+      visible(["SAS.canSignIn", "SAS.lsaf.available", "SAS.hasActiveProfile"]),
+    ).to.equal(true);
+  });
+
   it("titles every command", () => {
     const nls = JSON.parse(
       fs.readFileSync(path.join(root, "package.nls.json"), "utf8"),

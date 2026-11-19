@@ -25,6 +25,8 @@ The extension then asks that address whether it is an LSAF REST API. It shows th
 
 The optional `SAS.lsaf.userId` setting fills in your user ID when you sign in.
 
+If you use only LSAF and have no SAS connection profile, the **Sign In** button of the **SAS** sidebar is hidden while LSAF is detected: without a profile, it could only ask you to create one. Add a profile with **SAS: Add New Connection Profile** when you want a SAS console as well.
+
 ### Sign in
 
 Open the **LSAF** sidebar and click **Sign In**, or run **SAS LSAF: Sign In** from the Command Palette. Enter your LSAF user ID and password.
