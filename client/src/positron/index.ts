@@ -21,6 +21,7 @@ import {
 import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
 import { registerAssistantIntegration } from "./sasAssistant";
+import { registerQuartoSasCells } from "./quartoSasCells";
 import type { SasWorkspaceContextProvider } from "./sasAssistant";
 import { PositronDataViewerProvider } from "./PositronDataViewerProvider";
 import {
@@ -193,6 +194,10 @@ export async function initializePositronIntegration(
   context.subscriptions.push(
     commands.registerCommand("SAS.openDataFileWithSas", openDataFileWithSas),
   );
+
+  // Run {sas} chunks of Quarto documents in the SAS console. The Quarto
+  // extension only runs R, Python, Julia and C# cells.
+  context.subscriptions.push(registerQuartoSasCells());
 
   // Auto-start a Console session when a .sas file becomes the active editor
   // and no SAS Console session is already running.

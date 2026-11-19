@@ -886,6 +886,31 @@
         "category": "SAS"
       },
       {
+        "command": "SAS.quarto.runCell",
+        "title": "%commands.SAS.quarto.runCell%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.quarto.runNextCell",
+        "title": "%commands.SAS.quarto.runNextCell%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.quarto.runCellsAbove",
+        "title": "%commands.SAS.quarto.runCellsAbove%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.quarto.runCellsBelow",
+        "title": "%commands.SAS.quarto.runCellsBelow%",
+        "category": "SAS"
+      },
+      {
+        "command": "SAS.quarto.runCurrent",
+        "title": "%commands.SAS.quarto.runCurrent%",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.compareDatasets.active",
         "title": "%commands.SAS.compareDatasets.active%",
         "category": "SAS",
@@ -2922,6 +2947,26 @@
         {
           "when": "isPositron",
           "command": "SAS.compareDatasets"
+        },
+        {
+          "when": "isPositron && editorLangId == quarto",
+          "command": "SAS.quarto.runCell"
+        },
+        {
+          "when": "isPositron && editorLangId == quarto",
+          "command": "SAS.quarto.runNextCell"
+        },
+        {
+          "when": "isPositron && editorLangId == quarto",
+          "command": "SAS.quarto.runCellsAbove"
+        },
+        {
+          "when": "isPositron && editorLangId == quarto",
+          "command": "SAS.quarto.runCellsBelow"
+        },
+        {
+          "when": "isPositron && editorLangId == quarto",
+          "command": "SAS.quarto.runCurrent"
         },
         {
           "when": "false",

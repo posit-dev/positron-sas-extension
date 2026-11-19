@@ -215,6 +215,31 @@ Before the assistant says a report is done, it checks the `{sas}` chunks against
 
 The skill is part of the extension and works in Positron 2026.10 and later. In older versions, ask for the same steps by hand.
 
+## SAS Chunks in Quarto Documents
+
+In a Quarto document with `{sas}` code chunks, as the sasquatch R package uses, you can run single chunks in the SAS console, the same way you run `{r}` and `{python}` chunks. Above each `{sas}` chunk are **Run Cell**, **Run Next Cell**, and **Run Above**. The Command Palette also has **SAS: Run Quarto SAS Cell**, **SAS: Run Selection or Quarto SAS Cell**, and **SAS: Run Quarto SAS Cells Below**.
+
+The log goes to the console and the results to the **Viewer**, as for a `.sas` file. If no SAS console is running, one starts. Leading `*|` chunk-option lines are not sent. **Run Above** and **Run Next Cell** cover `{sas}` chunks only; run `{r}` chunks with Quarto's own lenses.
+
+Quarto's own shortcuts do nothing in a `{sas}` chunk, and an extension cannot override them. To run `{sas}` chunks with the same keys, add this to your `keybindings.json` (**Preferences: Open Keyboard Shortcuts (JSON)**). Use `ctrl` instead of `cmd` on Windows and Linux:
+
+```json
+[
+  {
+    "key": "cmd+shift+enter",
+    "command": "SAS.quarto.runCell",
+    "when": "editorTextFocus && editorLangId == quarto && SAS.inQuartoSasCell"
+  },
+  {
+    "key": "cmd+enter",
+    "command": "SAS.quarto.runCurrent",
+    "when": "editorTextFocus && editorLangId == quarto && SAS.inQuartoSasCell"
+  }
+]
+```
+
+The console is not the SAS session that a render uses: sasquatch opens its own through saspy (see [Reports with Posit Assistant](#reports-with-posit-assistant)). Tables you create in `WORK` from the console are not there when the document renders, and data passed with `sas_from_r()` in an `{r}` chunk is not in the console.
+
 ## Traceability
 
 The extension records who ran which SAS code, including code that Posit Assistant runs.
@@ -301,4 +326,5 @@ The profile's `autoExec` lines run once, right after SAS starts.
 - **No reconnect:** SAS sessions do not survive a reload of the Positron window. Positron discards them, and you start a new console.
 - **Data Explorer:** exporting a selection, searching the column list, and column filters are not supported.
 - **Plots:** SAS draws each graph once, so the Plots pane cannot redraw it at a new size.
+- **Quarto visual editor:** the lenses and commands for `{sas}` chunks work in the source editor only. Quarto's shortcuts do nothing in a `{sas}` chunk unless you add your own (see [SAS Chunks in Quarto Documents](#sas-chunks-in-quarto-documents)).
 - **Viewer for Posit Assistant:** the assistant can read the report in the **Viewer** only in Positron 2026.10 and later.
