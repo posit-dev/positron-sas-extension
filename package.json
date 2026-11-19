@@ -34,6 +34,11 @@
     "chatContextProvider"
   ],
   "contributes": {
+    "languageRuntimes": [
+      {
+        "languageId": "sas"
+      }
+    ],
     "languageModelTools": [
       {
         "name": "sas_list_libraries",
