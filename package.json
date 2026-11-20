@@ -875,6 +875,11 @@
         "category": "SAS"
       },
       {
+        "command": "SAS.addLocalSasProfile",
+        "title": "%commands.SAS.addLocalSasProfile%",
+        "category": "SAS"
+      },
+      {
         "command": "SAS.saveViyaTokenForSaspy",
         "title": "%commands.SAS.saveViyaTokenForSaspy%",
         "category": "SAS"

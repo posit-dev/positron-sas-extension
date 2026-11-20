@@ -74,7 +74,9 @@ import { registerLsaf } from "../lsaf";
 import { Sas7bdatEditorProvider } from "../positron/Sas7bdatEditorProvider";
 import {
   addLocalSasProfile,
+  findLocalSas,
   localSasCandidates,
+  stdioSasPath,
 } from "../positron/localSasProfile";
 import { XptEditorProvider } from "../positron/XptEditorProvider";
 
@@ -189,6 +191,9 @@ export async function activate(context: ExtensionContext) {
     commands.registerCommand("SAS.deleteProfile", deleteProfile),
     commands.registerCommand("SAS.updateProfile", updateProfile),
     commands.registerCommand("SAS.exportSaspyConfig", exportSaspyConfig),
+    commands.registerCommand("SAS.addLocalSasProfile", () =>
+      addLocalProfile(context, true),
+    ),
     commands.registerCommand("SAS.saveViyaTokenForSaspy", saveViyaTokenForSaspy),
     commands.registerCommand(
       "SAS.authorize",
@@ -272,21 +277,54 @@ export async function activate(context: ExtensionContext) {
  * Add the "local" profile when SAS is installed here. A write that fails
  * every retry (settings.json changed by another writer, or left with unsaved
  * changes) is reported with a Retry; the next start tries again too. Each
- * step is logged to the "SAS Local Profile" output channel.
+ * step is logged to the "SAS Local Profile" output channel. `manual` is the
+ * SAS: Add Local SAS Profile command, which reports what it did.
  */
-async function addLocalProfile(context: ExtensionContext): Promise<void> {
+async function addLocalProfile(
+  context: ExtensionContext,
+  manual = false,
+): Promise<void> {
   const log = (localProfileLog ??= window.createOutputChannel(
     "SAS Local Profile",
     { log: true },
   ));
+  const candidates = localSasCandidates(
+    workspace.getConfiguration("SAS").get<string[]>("localSasPaths") ?? [],
+  );
+  if (manual) {
+    const sasPath = findLocalSas(candidates);
+    if (!sasPath) {
+      log.info(
+        `No SAS found: none of these is an executable file: ${candidates.join(", ")}`,
+      );
+      window.showWarningMessage(
+        l10n.t(
+          "SAS was not found on this machine. If it is installed in another place, add the path of its launcher to the SAS.localSasPaths setting.",
+        ),
+      );
+      return;
+    }
+    const profiles = profileConfig.getAllProfiles() ?? {};
+    const existing = Object.keys(profiles).find(
+      (key) => stdioSasPath(profiles[key]) === sasPath,
+    );
+    if (existing !== undefined) {
+      window.showInformationMessage(
+        l10n.t(
+          'The connection profile "{name}" already uses the local SAS at {path}.',
+          { name: existing, path: sasPath },
+        ),
+      );
+      return;
+    }
+  }
   const localProfile = await addLocalSasProfile(
     profileConfig,
     context.globalState,
-    localSasCandidates(
-      workspace.getConfiguration("SAS").get<string[]>("localSasPaths") ?? [],
-    ),
+    candidates,
     undefined,
     {
+      manual,
       log: (message) => log.info(message),
       onFailed: (error) => {
         const retry = l10n.t("Retry");
@@ -302,7 +340,7 @@ async function addLocalProfile(context: ExtensionContext): Promise<void> {
           )
           .then((choice) => {
             if (choice === retry) {
-              void addLocalProfile(context);
+              void addLocalProfile(context, manual);
             }
           });
       },
@@ -312,6 +350,13 @@ async function addLocalProfile(context: ExtensionContext): Promise<void> {
     console.log(`Added connection profile "${localProfile}" for local SAS`);
     triggerProfileUpdate();
     updateViewSettings();
+    if (manual) {
+      window.showInformationMessage(
+        l10n.t('Added the connection profile "{name}" for the local SAS.', {
+          name: localProfile,
+        }),
+      );
+    }
     // Another writer (Posit Workbench at session start) can replace
     // settings.json after our write; say so if the profile is gone.
     setTimeout(() => {

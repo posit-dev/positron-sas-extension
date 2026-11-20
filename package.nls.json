@@ -10,6 +10,7 @@
   "commands.SAS.copyPath": "Copy Path",
   "commands.SAS.deleteProfile": "Delete Connection Profile",
   "commands.SAS.exportSaspyConfig": "Export saspy Configuration",
+  "commands.SAS.addLocalSasProfile": "Add Local SAS Profile",
   "commands.SAS.saveViyaTokenForSaspy": "Save Viya Token for saspy",
   "commands.SAS.console.chooseLogOutput": "Choose Console Log Output",
   "commands.SAS.compareDatasets": "Compare Datasets...",

@@ -36,6 +36,8 @@ In Positron, when SAS is installed locally, the extension adds a `local` stdio p
 
 For SAS 9.4 the extension uses `bin/sas_u8`, the launcher for the UTF-8 (Unicode) SAS session, not the `sas` script in `SASFoundation/9.4`. The extension reads SAS output as UTF-8, so a SAS session with another encoding can show garbled non-ASCII text. When you list a SAS 9.4 launcher in `SAS.localSasPaths`, use `bin/sas_u8` as well.
 
+A deleted profile is not added again unless there are no connection profiles at all. To add it on request, run **SAS: Add Local SAS Profile** from the Command Palette. The **SAS Local Profile** channel in the **Output** pane shows where the extension looked and why it added a profile or did not.
+
 If SAS is installed elsewhere, list its launcher in `SAS.localSasPaths` (a machine setting, fully qualified paths):
 
 ```json

@@ -64,6 +64,12 @@ export interface LocalProfileRetry {
   onFailed?: (error: unknown) => void;
   /** Called with each step: what was checked, found, skipped, or saved. */
   log?: (message: string) => void;
+  /**
+   * Added on request (the Add Local SAS Profile command): the added-once flag
+   * and other stdio profiles don't prevent it, only a stdio profile that
+   * already uses the same saspath.
+   */
+  manual?: boolean;
 }
 
 /**
@@ -124,6 +130,23 @@ export function localSasCandidates(
   ];
 }
 
+/** The first executable candidate (see localSasCandidates), if any. */
+export function findLocalSas(
+  candidates: string | readonly string[] = localSasCandidates(),
+  isExecutable: (path: string) => boolean = isExecutableFile,
+): string | undefined {
+  return (typeof candidates === "string" ? [candidates] : candidates).find(
+    (path) => isExecutable(path),
+  );
+}
+
+/** The saspath of a stdio profile, or undefined for other profiles. */
+export function stdioSasPath(profile: Profile): string | undefined {
+  return profile.connectionType === STDIO && "saspath" in profile
+    ? profile.saspath
+    : undefined;
+}
+
 /**
  * Adds a "local" stdio profile when SAS is installed on this machine (for example
  * a Workbench session started from a SAS Analytics Pro image), so SAS shows up in
@@ -131,6 +154,11 @@ export function localSasCandidates(
  * candidate (see localSasCandidates) becomes the profile's saspath. It is added once: an
  * existing stdio profile, or a user who deleted the added one, is left alone. It
  * becomes the active profile only if none is set.
+ *
+ * The added-once flag is ignored when there are no connection profiles at all:
+ * the added profile was then lost (for example when another writer replaced
+ * settings.json), not deleted for another profile. On Posit Workbench the flag
+ * outlives sessions and browsers, so it could otherwise never be added again.
  *
  * The profile and the active profile are written in one write. A failed write
  * (another writer changed settings.json at the same moment) is retried after
@@ -150,17 +178,23 @@ export async function addLocalSasProfile(
     sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     onFailed,
     log = () => {},
+    manual = false,
   }: LocalProfileRetry = {},
 ): Promise<string | undefined> {
-  if (state.get<boolean>(LOCAL_PROFILE_ADDED_KEY)) {
+  if (!manual && state.get<boolean>(LOCAL_PROFILE_ADDED_KEY)) {
+    if (Object.keys(store.getAllProfiles() ?? {}).length > 0) {
+      log(
+        `Skipped: the local SAS profile was added before (${LOCAL_PROFILE_ADDED_KEY} is set), so it is not added again.`,
+      );
+      return undefined;
+    }
     log(
-      `Skipped: the local SAS profile was added before (${LOCAL_PROFILE_ADDED_KEY} is set), so it is not added again.`,
+      `The local SAS profile was added before (${LOCAL_PROFILE_ADDED_KEY} is set), but there are no connection profiles, so it is added again.`,
     );
-    return undefined;
   }
-  const paths = typeof candidates === "string" ? [candidates] : candidates;
-  const sasPath = paths.find((path) => isExecutable(path));
+  const sasPath = findLocalSas(candidates, isExecutable);
   if (!sasPath) {
+    const paths = typeof candidates === "string" ? [candidates] : candidates;
     log(
       `No SAS found: none of these is an executable file: ${paths.join(", ")}`,
     );
@@ -181,7 +215,9 @@ export async function addLocalSasProfile(
     // Read afresh: another writer, or our last attempt, may have changed it.
     const profiles = store.getAllProfiles() ?? {};
     const stdio = Object.keys(profiles).find(
-      (key) => profiles[key].connectionType === STDIO,
+      (key) =>
+        profiles[key].connectionType === STDIO &&
+        (!manual || stdioSasPath(profiles[key]) === sasPath),
     );
     if (stdio !== undefined) {
       log(`Skipped: the stdio profile "${stdio}" already exists.`);
@@ -197,11 +233,7 @@ export async function addLocalSasProfile(
     try {
       await store.saveProfiles(active, { ...profiles, [name]: profile });
       const saved = store.getAllProfiles()?.[name];
-      if (
-        saved?.connectionType === STDIO &&
-        "saspath" in saved &&
-        saved.saspath === sasPath
-      ) {
+      if (saved && stdioSasPath(saved) === sasPath) {
         await state.update(LOCAL_PROFILE_ADDED_KEY, true);
         log(
           `Added the profile "${name}" for ${sasPath}${active === name ? " and made it the active profile" : ""}.`,

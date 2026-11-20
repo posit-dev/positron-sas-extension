@@ -7,6 +7,7 @@ Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
 ### Bug Fixes
 
 - Positron: the automatic `local` connection profile now also finds SAS in SAS Viya-based installations that have only the UTF-8 launcher `/opt/sas/viya/home/SASFoundation/bin/sas_u8`, without the `sas` script in `/opt/sas/viya/home/SASFoundation`. Before, no profile was added there unless the launcher was listed in `SAS.localSasPaths`
+- Positron: the automatic `local` connection profile is added again when there are no connection profiles at all. The extension adds it only once, so a deleted profile stays deleted, but a profile lost from `settings.json` (for example in Posit Workbench, which writes `settings.json` when a session starts) was never added again: on Posit Workbench the record that it was added outlives sessions and browsers. The new **SAS: Add Local SAS Profile** command adds the profile on request, and the **SAS Local Profile** output channel shows where the extension looked for SAS and why it added a profile or did not
 
 ## 1.2.0 - 2026-11-19
 

@@ -158,7 +158,11 @@ describe("addLocalSasProfile", () => {
   });
 
   it("does not re-add a profile the user deleted", async () => {
-    const store = new FakeStore();
+    const viya: Profile = {
+      connectionType: "rest",
+      endpoint: "https://viya.example.com",
+    } as Profile;
+    const store = new FakeStore({ viya }, "viya");
     const state = new FakeState();
     state.values[LOCAL_PROFILE_ADDED_KEY] = true;
 
@@ -170,7 +174,89 @@ describe("addLocalSasProfile", () => {
     );
 
     expect(name).to.be.undefined;
-    expect(store.profiles).to.deep.equal({});
+    expect(store.profiles).to.deep.equal({ viya });
+  });
+
+  it("adds the profile again when it was added before but no profile is left", async () => {
+    const store = new FakeStore();
+    const state = new FakeState();
+    state.values[LOCAL_PROFILE_ADDED_KEY] = true;
+
+    const name = await addLocalSasProfile(
+      store,
+      state,
+      DEFAULT_LOCAL_SAS_PATH,
+      sasPresent,
+    );
+
+    expect(name).to.equal("local");
+    expect(store.active).to.equal("local");
+    expect(store.profiles.local).to.deep.equal({
+      connectionType: "stdio",
+      saspath: DEFAULT_LOCAL_SAS_PATH,
+    });
+  });
+
+  describe("manual (Add Local SAS Profile)", () => {
+    const viya: Profile = {
+      connectionType: "rest",
+      endpoint: "https://viya.example.com",
+    } as Profile;
+    const other: Profile = {
+      connectionType: "stdio",
+      saspath: "/other/sas",
+    } as Profile;
+
+    it("adds the profile although it was added before", async () => {
+      const store = new FakeStore({ viya }, "viya");
+      const state = new FakeState();
+      state.values[LOCAL_PROFILE_ADDED_KEY] = true;
+
+      const name = await addLocalSasProfile(
+        store,
+        state,
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        { manual: true },
+      );
+
+      expect(name).to.equal("local");
+      expect(store.active).to.equal("viya");
+    });
+
+    it("adds the profile next to a stdio profile with another saspath", async () => {
+      const store = new FakeStore({ local: other }, "local");
+
+      const name = await addLocalSasProfile(
+        store,
+        new FakeState(),
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        { manual: true },
+      );
+
+      expect(name).to.equal("local-2");
+      expect(store.profiles.local).to.deep.equal(other);
+    });
+
+    it("does not add a second profile for the same saspath", async () => {
+      const same: Profile = {
+        connectionType: "stdio",
+        saspath: DEFAULT_LOCAL_SAS_PATH,
+      } as Profile;
+      const store = new FakeStore({ mine: same }, "mine");
+
+      const name = await addLocalSasProfile(
+        store,
+        new FakeState(),
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        { manual: true },
+      );
+
+      expect(name).to.be.undefined;
+      expect(Object.keys(store.profiles)).to.deep.equal(["mine"]);
+    });
   });
 
   it("picks a free name when 'local' is taken", async () => {
@@ -457,8 +543,12 @@ describe("addLocalSasProfile logging", () => {
   it("logs a skip when the profile was added before", async () => {
     const state = new FakeState();
     state.values[LOCAL_PROFILE_ADDED_KEY] = true;
+    const viya: Profile = {
+      connectionType: "rest",
+      endpoint: "https://viya.example.com",
+    } as Profile;
 
-    const messages = await run(new FakeStore(), state, sasPresent);
+    const messages = await run(new FakeStore({ viya }), state, sasPresent);
 
     expect(messages).to.have.length(1);
     expect(messages[0]).to.match(
