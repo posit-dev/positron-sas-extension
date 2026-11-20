@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
+
+### Bug Fixes
+
+- Positron: the automatic `local` connection profile now also finds SAS in SAS Viya-based installations that have only the UTF-8 launcher `/opt/sas/viya/home/SASFoundation/bin/sas_u8`, without the `sas` script in `/opt/sas/viya/home/SASFoundation`. Before, no profile was added there unless the launcher was listed in `SAS.localSasPaths`
+
 ## 1.2.0 - 2026-11-19
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

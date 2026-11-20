@@ -10,6 +10,7 @@ import {
   LocalProfileState,
   LocalProfileStore,
   SAS94_LOCAL_SAS_PATHS,
+  VIYA_SAS_U8_PATH,
   addLocalSasProfile,
   localSasCandidates,
   pathCandidates,
@@ -227,6 +228,22 @@ describe("addLocalSasProfile", () => {
     expect(state.values[LOCAL_PROFILE_ADDED_KEY]).to.be.undefined;
   });
 
+  it("finds a SAS Viya install that has only bin/sas_u8", async () => {
+    const store = new FakeStore();
+
+    await addLocalSasProfile(
+      store,
+      new FakeState(),
+      localSasCandidates([], ""),
+      (path) => path === "/opt/sas/viya/home/SASFoundation/bin/sas_u8",
+    );
+
+    expect(store.profiles.local).to.deep.equal({
+      connectionType: "stdio",
+      saspath: "/opt/sas/viya/home/SASFoundation/bin/sas_u8",
+    });
+  });
+
   it("finds a SAS 9.4 install", async () => {
     const store = new FakeStore();
     const sas94 = "/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8";
@@ -426,12 +443,13 @@ describe("localSasCandidates", () => {
     ]);
   });
 
-  it("lists extra paths, Analytics Pro, SAS 9.4, then PATH, in order", () => {
+  it("lists extra paths, Analytics Pro, SAS Viya, SAS 9.4, then PATH, in order", () => {
     const pathEnv = ["/usr/bin", "/opt/bin"].join(delimiter);
 
     expect(localSasCandidates(["/custom/sas"], pathEnv)).to.deep.equal([
       "/custom/sas",
       DEFAULT_LOCAL_SAS_PATH,
+      VIYA_SAS_U8_PATH,
       ...SAS94_LOCAL_SAS_PATHS,
       join("/usr/bin", "sas"),
       join("/opt/bin", "sas"),
@@ -443,6 +461,7 @@ describe("localSasCandidates", () => {
 
     expect(localSasCandidates(["sas", "./sas"], pathEnv)).to.deep.equal([
       DEFAULT_LOCAL_SAS_PATH,
+      VIYA_SAS_U8_PATH,
       ...SAS94_LOCAL_SAS_PATHS,
       join("/usr/bin", "sas"),
     ]);

@@ -26,12 +26,13 @@ In Positron, when SAS is installed locally, the extension adds a `local` stdio p
 
 1. The paths in the `SAS.localSasPaths` setting, if any
 2. `/opt/sas/viya/home/SASFoundation/sas` (SAS Analytics Pro images)
-3. Common SAS 9.4 Foundation locations:
+3. `/opt/sas/viya/home/SASFoundation/bin/sas_u8` (SAS Viya-based installations without the `sas` script)
+4. Common SAS 9.4 Foundation locations:
    - `/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8`
    - `/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8`
    - `/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8`
    - `/opt/SASHome/SASFoundation/9.4/bin/sas_u8`
-4. `sas` on `PATH`
+5. `sas` on `PATH`
 
 For SAS 9.4 the extension uses `bin/sas_u8`, the launcher for the UTF-8 (Unicode) SAS session, not the `sas` script in `SASFoundation/9.4`. The extension reads SAS output as UTF-8, so a SAS session with another encoding can show garbled non-ASCII text. When you list a SAS 9.4 launcher in `SAS.localSasPaths`, use `bin/sas_u8` as well.
 
@@ -151,6 +152,7 @@ The location of the SAS executable varies by installation. Common paths include:
 /opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8
 /usr/local/SASHome/SASFoundation/9.4/bin/sas_u8
 /opt/sas/viya/home/SASFoundation/sas    # SAS Analytics Pro
+/opt/sas/viya/home/SASFoundation/bin/sas_u8    # SAS Viya-based, without the sas script
 ```
 
 Check with your SAS administrator or installation documentation for the exact path on your system.

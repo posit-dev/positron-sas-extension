@@ -31,8 +31,9 @@ The extension adds a `local` connection profile automatically when it finds SAS.
 
 1. The paths in the `SAS.localSasPaths` setting
 2. `/opt/sas/viya/home/SASFoundation/sas`, the path in SAS Analytics Pro and SAS Viya-based installations
-3. Common SAS 9.4 locations, such as `/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8` and `/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8`
-4. `sas` on the `PATH`
+3. `/opt/sas/viya/home/SASFoundation/bin/sas_u8`, the UTF-8 launcher of SAS Viya-based installations that don't have the `sas` script
+4. Common SAS 9.4 locations, such as `/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8` and `/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8`
+5. `sas` on the `PATH`
 
 For SAS 9.4, the extension uses the UTF-8 launcher `bin/sas_u8`, because it reads SAS output as UTF-8. `SAS.localSasPaths` is a machine setting, so an administrator can set it for all users of a Workbench host or session image when SAS is installed elsewhere.
 

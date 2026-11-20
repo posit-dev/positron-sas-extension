@@ -15,6 +15,12 @@ import type {
 export const DEFAULT_LOCAL_SAS_PATH = "/opt/sas/viya/home/SASFoundation/sas";
 
 /**
+ * The UTF-8 launcher of a SAS Viya-based installation. Some images have only
+ * this one, without the `sas` script of DEFAULT_LOCAL_SAS_PATH.
+ */
+export const VIYA_SAS_U8_PATH = "/opt/sas/viya/home/SASFoundation/bin/sas_u8";
+
+/**
  * Common SAS 9.4 Foundation install locations. These are the UTF-8 launcher
  * `bin/sas_u8`, not the `sas` script (which may start a non-UTF-8 locale): the
  * extension reads SAS output as UTF-8.
@@ -101,7 +107,8 @@ export function pathCandidates(
 
 /**
  * Where to look for SAS, in order: the user's extra paths (SAS.localSasPaths),
- * the SAS Analytics Pro path, common SAS 9.4 install paths, then `sas` on PATH.
+ * the SAS Analytics Pro path, the SAS Viya UTF-8 launcher, common SAS 9.4
+ * install paths, then `sas` on PATH.
  */
 export function localSasCandidates(
   extraPaths: readonly string[] = [],
@@ -112,6 +119,7 @@ export function localSasCandidates(
       (path) => typeof path === "string" && isAbsolute(path),
     ),
     DEFAULT_LOCAL_SAS_PATH,
+    VIYA_SAS_U8_PATH,
     ...SAS94_LOCAL_SAS_PATHS,
     ...pathCandidates(SAS_COMMAND, pathEnv),
   ];
