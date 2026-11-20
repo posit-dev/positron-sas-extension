@@ -272,6 +272,47 @@ describe("stdio connection", () => {
     });
   });
 
+  describe("log routing", () => {
+    it("sends SAS's log (stderr) to the execution log once SAS is ready", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockStdin: any = new EventEmitter();
+      mockStdin.write = sandbox.stub();
+      mockStdin.end = sandbox.stub();
+      const mockStdout = new EventEmitter();
+      const mockStderr = new EventEmitter();
+      mockProcess = new EventEmitter();
+      mockProcess.stdin = mockStdin;
+      mockProcess.stdout = mockStdout;
+      mockProcess.stderr = mockStderr;
+      mockProcess.kill = sandbox.stub();
+      mockProcess.killed = false;
+      sandbox.stub(processLauncher, "spawn").returns(mockProcess);
+
+      session = new StdioSession({ saspath: fakeSas, sasOptions: [] });
+      const sessionLog: string[] = [];
+      const executionLog: string[] = [];
+      session.onSessionLogFn = (logs) =>
+        sessionLog.push(...logs.map((l) => l.line));
+      session.onExecutionLogFn = (logs) =>
+        executionLog.push(...logs.map((l) => l.line));
+
+      const setupPromise = session.setup();
+      mockStderr.emit("data", Buffer.from("NOTE: SAS initialization used"));
+      mockStdout.emit("data", Buffer.from("?"));
+      await setupPromise;
+
+      const runPromise = session.run("%put hello;");
+      mockStderr.emit(
+        "data",
+        Buffer.from(`1    %put hello;\nhello\n${LineCodes.RunEndCode}`),
+      );
+      await runPromise;
+
+      expect(sessionLog).to.deep.equal(["NOTE: SAS initialization used"]);
+      expect(executionLog).to.include.members(["1    %put hello;", "hello"]);
+    });
+  });
+
   describe("close", () => {
     it("sends ENDSAS and closes stdin", async () => {
       const config = {

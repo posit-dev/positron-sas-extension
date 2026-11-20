@@ -305,10 +305,17 @@ export class StdioSession extends Session {
       }
     }
 
+    // With -stdio, SAS writes its log to stderr. Once SAS is ready, that is
+    // the log of the code we run, so it goes to the execution log, as the SSH
+    // connection's does: the Positron console filters its own wrapper code
+    // out of it, and a silent run captures it instead of showing it.
+    const logFn = this._sessionReady
+      ? this._onExecutionLogFn
+      : this._onSessionLogFn;
     const outputLines = output.split(/\n|\r\n/);
     outputLines.forEach((line) => {
       if (line) {
-        this._onSessionLogFn?.([{ type: "normal", line }]);
+        logFn?.([{ type: "normal", line }]);
       }
     });
   };
