@@ -118,6 +118,8 @@ describe("stdio connection", () => {
       expect(spawnArgs[0]).to.equal(fakeSas);
       expect(spawnArgs[1]).to.include("-nodms");
       expect(spawnArgs[1]).to.include("-noterminal");
+      // Unwrapped log lines, so the console can filter its wrapper code.
+      expect(spawnArgs[1].join(" ")).to.include("-linesize max");
       expect(spawnArgs[1]).to.include("-memsize");
       expect(spawnArgs[1]).to.include("2G");
     });

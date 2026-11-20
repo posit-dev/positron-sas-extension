@@ -91,10 +91,16 @@ export class StdioSession extends Session {
 
       try {
         // Build SAS options
+        // -linesize max: SAS otherwise wraps log lines at about 78
+        // columns, and a wrapped line of the code the extension adds around
+        // a submission can't be told from the user's log. A -linesize in
+        // the profile's sasOptions comes later and wins.
         const resolvedSasOpts: string[] = [
           "-nodms",
           "-noterminal",
           "-nosyntaxcheck",
+          "-linesize",
+          "max",
         ];
 
         if (this._config.sasOptions?.length > 0) {
