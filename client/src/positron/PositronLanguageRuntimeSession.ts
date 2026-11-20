@@ -376,13 +376,6 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
       this.setState(RuntimeState.Ready);
 
-      // Positron opens the Variables comm and lists it as soon as the
-      // console exists, usually before SAS is up, so that first list is
-      // empty. Send the whole list again now that SAS can answer.
-      this._variables?.reload().catch((error) => {
-        console.warn("SAS Variables: refresh after start failed", error);
-      });
-
       // DISABLED: Auto-execution on session start
       // Enable ODS HTML5 output for plots (now called manually when first plot is needed)
       // console.log("Enabling ODS HTML5 output...");
@@ -1234,6 +1227,17 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         this.fireCommMessage("comm_data", { comm_id: id, data });
       }),
     ];
+    // Positron creates this client when the session goes Ready and never
+    // asks for the list itself afterwards (its own list requests come before
+    // the client exists and are skipped), so send the whole list now. After
+    // this call returns, so the comm exists on Positron's side.
+    setTimeout(() => {
+      if (this._variables === variables) {
+        variables.reload().catch((error) => {
+          console.warn("SAS Variables: initial list failed", error);
+        });
+      }
+    }, 0);
   }
 
   private closeVariables(notify = true): void {

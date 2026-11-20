@@ -225,11 +225,10 @@ export class SasVariables {
   }
 
   /**
-   * Read the session again and send Positron the whole list, not only what
-   * changed. Called when the session has started: Positron asks for the list
-   * as soon as the console exists, and may stop waiting for that answer while
-   * SAS is still starting, so a diff against it can be empty although the
-   * pane is.
+   * Read the session again and send Positron the whole list (a "refresh"
+   * event), not only what changed. Called when Positron has created the
+   * comm: Positron doesn't ask for the list itself then, so without it the
+   * pane stays empty until the first submission or a click on reload.
    */
   reload(): Promise<void> {
     return this.serialise(async () => {
