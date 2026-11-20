@@ -120,7 +120,16 @@ export class SSHSession extends Session {
   };
 
   protected _run = (code: string): Promise<RunResult> => {
+    // Take the ODS HTML5 body file name from the code, as the stdio
+    // connection does: with the pty echo off, the log has it only when
+    // SAS echoes the source.
     this._html5FileName = "";
+    for (const line of code.split(/\n|\r\n/)) {
+      this._html5FileName = extractOutputHtmlFileName(
+        line,
+        this._html5FileName,
+      );
+    }
 
     return new Promise((_resolve, _reject) => {
       this._resolve = _resolve;
@@ -277,10 +286,16 @@ export class SSHSession extends Session {
     ];
     const execArgs: string = resolvedEnv.join(" ");
 
+    // -linesize max: SAS otherwise wraps log lines at about 78 columns, and
+    // a wrapped line of the code the Positron console adds around a
+    // submission can't be told from the user's log. A -linesize in the
+    // profile's sasOptions comes later and wins.
     const resolvedSasOpts: string[] = [
       "-nodms",
       "-noterminal",
       "-nosyntaxcheck",
+      "-linesize",
+      "max",
     ];
 
     if (this._config.sasOptions?.length > 0) {
@@ -288,7 +303,12 @@ export class SSHSession extends Session {
     }
     const execSasOpts: string = resolvedSasOpts.join(" ");
 
-    this._stream.write(`${execArgs} ${this._config.saspath} ${execSasOpts} \n`);
+    // The shell runs in a pty, which echoes every line written to SAS (and
+    // wraps the echo at 80 columns) into the output, ahead of SAS's own log.
+    // Turn the echo off first.
+    this._stream.write(
+      `stty -echo; ${execArgs} ${this._config.saspath} ${execSasOpts} \n`,
+    );
   };
 
   /**
