@@ -224,6 +224,26 @@ export class SasVariables {
     });
   }
 
+  /**
+   * Read the session again and send Positron the whole list, not only what
+   * changed. Called when the session has started: Positron asks for the list
+   * as soon as the console exists, and may stop waiting for that answer while
+   * SAS is still starting, so a diff against it can be empty although the
+   * pane is.
+   */
+  reload(): Promise<void> {
+    return this.serialise(async () => {
+      await this.load();
+      if (!this.disposed) {
+        const variables = this.topLevel();
+        this.eventEmitter.fire({
+          method: "refresh",
+          params: { variables, length: variables.length, version: this.version },
+        });
+      }
+    });
+  }
+
   sendMessage(messageId: string, message: Record<string, unknown>): void {
     const method = String(message.method ?? "");
     const params: Record<string, unknown> =

@@ -354,6 +354,17 @@ describe("SasVariables", () => {
     expect(backend.deleteWorkTables.firstCall.args[0]).to.have.members(["CLASS", "V"]);
   });
 
+  it("reload sends the whole list, even when nothing changed", async () => {
+    const { request, variables, events } = makeVariables();
+    await request("list");
+    await variables.reload();
+    expect(events).to.have.length(1);
+    const refresh = json<{ method: string; params: ListResult }>(events[0]);
+    expect(refresh.method).to.equal("refresh");
+    expect(refresh.params.length).to.equal(refresh.params.variables.length);
+    expect(refresh.params.variables.map((v) => v.access_key)).to.include("A");
+  });
+
   it("sends only what changed after a run, with a new updated_time", async () => {
     const next: SessionSnapshot = {
       macros: [

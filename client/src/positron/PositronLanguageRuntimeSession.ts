@@ -378,8 +378,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
 
       // Positron opens the Variables comm and lists it as soon as the
       // console exists, usually before SAS is up, so that first list is
-      // empty. Read the session again now that it can answer.
-      this._variables?.refresh().catch((error) => {
+      // empty. Send the whole list again now that SAS can answer.
+      this._variables?.reload().catch((error) => {
         console.warn("SAS Variables: refresh after start failed", error);
       });
 
