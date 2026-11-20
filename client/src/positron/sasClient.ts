@@ -255,6 +255,7 @@ quit;
 %macro _sas_emit;
   %do _i = 1 %to &_sas_n;
     %put LIB=%superq(_sas_lib&_i);
+    %symdel _sas_lib&_i / nowarn;
   %end;
 %mend;
 %_sas_emit;
@@ -285,6 +286,7 @@ quit;
 %macro _sas_emit;
   %do _i = 1 %to &_sas_n;
     %put MEM=%superq(_sas_mem&_i)|%superq(_sas_typ&_i);
+    %symdel _sas_mem&_i _sas_typ&_i / nowarn;
   %end;
 %mend;
 %_sas_emit;
@@ -534,7 +536,9 @@ run;
   %if %symexist(_drn) %then %do;
     %do _i = 1 %to &_drn;
       %put DATAROW=%superq(_dr&_i);
+      %symdel _dr&_i / nowarn;
     %end;
+    %symdel _drn / nowarn;
   %end;
 %mend;
 %_emit_dr;
@@ -557,7 +561,9 @@ run;
   %if %symexist(_drn) %then %do;
     %do _i = 1 %to &_drn;
       %put DATAROW=%superq(_dr&_i);
+      %symdel _dr&_i / nowarn;
     %end;
+    %symdel _drn / nowarn;
   %end;
 %mend;
 %_emit_dr;
@@ -958,4 +964,329 @@ options notes source;
       };
     });
   }
+
+  /** Return the GLOBAL and AUTOMATIC macro variables and the WORK tables. */
+  async getSessionSnapshot(): Promise<SessionSnapshot> {
+    return parseSessionSnapshot(await this.execute(SNAPSHOT_CODE));
+  }
+
+  /** Delete GLOBAL macro variables. */
+  async deleteMacroVariables(names: string[]): Promise<void> {
+    const valid = names.filter((n) => /^[A-Za-z_]\w{0,31}$/.test(n));
+    if (valid.length > 0) {
+      await this.execute(`%symdel ${valid.join(" ")} / nowarn;`);
+    }
+  }
+
+  /** Delete datasets and views from WORK. */
+  async deleteWorkTables(names: string[]): Promise<void> {
+    const valid = names.filter((n) => /^[A-Za-z_]\w{0,31}$/.test(n));
+    if (valid.length > 0) {
+      await this.execute(`${SAVE_OPTIONS}
+proc datasets library=work nolist nowarn memtype=(data view);
+  delete ${valid.join(" ")};
+quit;
+${RESTORE_OPTIONS}`);
+    }
+  }
+
+  /**
+   * Evaluate a macro expression, as on the right side of %LET. The caller
+   * must check it with checkMacroExpression first.
+   */
+  async evaluateMacroExpression(expression: string): Promise<MacroExpressionResult> {
+    const error = checkMacroExpression(expression);
+    if (error) {
+      throw new Error(error);
+    }
+    // The value goes out in 200-character chunks, so log line wrapping
+    // can't split it.
+    const output = await this.execute(`
+%macro _sas_eval;
+%local _sas_opt _sas_ev _sas_len _sas_i;
+%let _sas_opt=%sysfunc(getoption(ls,keyword)) %sysfunc(getoption(ps,keyword));
+options nosource ls=max ps=max;
+%let _sas_ev=${expression};
+%let _sas_len=%length(%superq(_sas_ev));
+%put ${SENTINEL_START};
+%put EVLEN=&_sas_len;
+%do _sas_i = 1 %to &_sas_len %by ${VALUE_CHUNK};
+  %put EV=|%qsubstr(%superq(_sas_ev), &_sas_i, %sysfunc(min(${VALUE_CHUNK}, %eval(&_sas_len - &_sas_i + 1))));
+%end;
+%put ${SENTINEL_END};
+options source &_sas_opt;
+%mend _sas_eval;
+%_sas_eval
+%sysmacdelete _sas_eval / nowarn;
+`);
+    return parseMacroExpression(output);
+  }
+}
+
+/** A GLOBAL or AUTOMATIC macro variable of a SAS session. */
+export interface MacroVariable {
+  scope: "GLOBAL" | "AUTOMATIC";
+  name: string;
+  value: string;
+}
+
+/** A dataset or view in the WORK library. */
+export interface WorkTable {
+  name: string;
+  memtype: "DATA" | "VIEW";
+  /** Undefined for views, whose row count SAS doesn't know. */
+  rows?: number;
+  columns?: number;
+  /** Modification time, ISO 8601. */
+  modified?: string;
+  label?: string;
+}
+
+/** What the Variables pane shows: macro variables and WORK tables. */
+export interface SessionSnapshot {
+  macros: MacroVariable[];
+  tables: WorkTable[];
+}
+
+/**
+ * Macro variables the extension's own hidden queries create, which aren't
+ * the user's: `_SAS_*` and the indexed helpers of the Data Explorer queries.
+ */
+const INTERNAL_MACRO_NAME =
+  /^(_SAS_\w*|_DRN?\d*|_(NC|NI|HS|HBN|SSU|SSE|FTT|FTN)\d+|_S\d+_\d+|_HB\d+[BN]\d+|_FT[VC]\d+_\d+)$/i;
+
+export function isInternalMacroName(name: string): boolean {
+  return INTERNAL_MACRO_NAME.test(name);
+}
+
+/** Values go to the log in chunks this long, so log line wrapping can't split them. */
+const VALUE_CHUNK = 200;
+
+/**
+ * Parse the output of getSessionSnapshot. Each macro variable comes as a
+ * `MN<i>=scope|name|length` line followed by `MX<i>=|chunk` lines of up to
+ * 200 characters; WORK tables as `WT<i>=name|memtype|rows|columns|modified|label`.
+ */
+export function parseSessionSnapshot(stdout: string): SessionSnapshot {
+  const heads = new Map<number, { scope: MacroVariable["scope"]; name: string; length: number }>();
+  const chunks = new Map<number, string[]>();
+  const tables: WorkTable[] = [];
+  for (const line of parseSentinelOutput(stdout)) {
+    const match = /^(MN|MX|WT)(\d+)=(.*)$/.exec(line);
+    if (!match) {
+      continue;
+    }
+    const [, kind, index, rest] = match;
+    const i = Number(index);
+    if (kind === "MN") {
+      const [scopeText, name, length] = rest.split("|");
+      const scope =
+        scopeText === "GLOBAL" || scopeText === "AUTOMATIC" ? scopeText : undefined;
+      if (scope && name) {
+        heads.set(i, { scope, name, length: Number(length) || 0 });
+      }
+    } else if (kind === "MX") {
+      // The leading "|" keeps leading blanks.
+      chunks.set(i, [...(chunks.get(i) ?? []), rest.startsWith("|") ? rest.slice(1) : rest]);
+    } else {
+      const table = parseWorkTable(rest);
+      if (table) {
+        tables.push(table);
+      }
+    }
+  }
+  const macros: MacroVariable[] = [];
+  for (const [i, { scope, name, length }] of heads) {
+    if (!isInternalMacroName(name)) {
+      const value = joinChunks(chunks.get(i) ?? [], length);
+      macros.push({ scope, name, value: scope === "AUTOMATIC" ? cleanAutomatic(value) : value });
+    }
+  }
+  return { macros, tables };
+}
+
+/**
+ * Tidy an AUTOMATIC variable's value: SAS pads some (SYSLAST) with blanks,
+ * and a few unset ones hold bytes that aren't text.
+ */
+export function cleanAutomatic(value: string): string {
+  return value.replace(/\uFFFD/g, "").trimEnd();
+}
+
+/**
+ * Join value chunks written to the log. The log drops trailing blanks, so
+ * every chunk but the last is padded back to the chunk width, and the whole
+ * value to its known length.
+ */
+function joinChunks(parts: string[], length: number): string {
+  return parts
+    .map((p, i) => (i < parts.length - 1 ? p.padEnd(VALUE_CHUNK, " ") : p))
+    .join("")
+    .padEnd(length, " ");
+}
+
+function parseWorkTable(record: string): WorkTable | undefined {
+  const [name, memtype, rows, columns, modified, ...label] = record.split("|");
+  if (!name || (memtype !== "DATA" && memtype !== "VIEW")) {
+    return undefined;
+  }
+  const count = (value: string | undefined) => {
+    const n = parseSasNumber(value);
+    return n === null || n < 0 ? undefined : n;
+  };
+  const time = modified?.trim();
+  return {
+    name: name.trim(),
+    memtype,
+    rows: memtype === "VIEW" ? undefined : count(rows),
+    columns: count(columns),
+    modified: time && time !== "." ? time : undefined,
+    label: label.join("|").trim() || undefined,
+  };
+}
+
+/**
+ * SAS code for the snapshot. Everything runs inside a temporary macro whose
+ * locals all start with _SAS_, so nothing lands in the GLOBAL table and no
+ * local hides a user's global of the same name. VMACRO is read first, before
+ * anything else changes the automatic variables, and into a hash: creating
+ * macro variables while the view is being read can make it loop. VMACRO
+ * only gives the names; the values are written with %SUPERQ, because VMACRO
+ * shows the raw bytes of macro-quoted values (%STR, %NRSTR).
+ */
+const SNAPSHOT_CODE = `
+%macro _sas_vars;
+%local _sas_opt _sas_mc _sas_wc _sas_i _sas_j _sas_nm _sas_len;
+${SAVE_OPTIONS}
+%let _sas_mc=0;
+%let _sas_wc=0;
+data _null_;
+  length _s $9 _n $32;
+  if _n_ = 1 then do;
+    declare hash _h(ordered: 'a');
+    _h.defineKey('_k');
+    _h.defineData('_s', '_n');
+    _h.defineDone();
+  end;
+  set sashelp.vmacro(where=(scope in ('GLOBAL', 'AUTOMATIC') and offset = 0)) end=_eof;
+  _k + 1;
+  _s = scope; _n = name;
+  _h.add();
+  if _eof then do;
+    declare hiter _it('_h');
+    _i = 0;
+    _rc = _it.first();
+    do while (_rc = 0);
+      if upcase(substr(_n, 1, 5)) ne '_SAS_' then do;
+        _i + 1;
+        call symputx(cats('_sas_s', _i), _s, 'L');
+        call symputx(cats('_sas_n', _i), _n, 'L');
+      end;
+      _rc = _it.next();
+    end;
+    call symputx('_sas_mc', _i, 'L');
+  end;
+run;
+data _null_;
+  set sashelp.vtable(where=(libname = 'WORK' and memtype in ('DATA', 'VIEW'))) end=_eof;
+  call symputx(cats('_sas_w', _n_), strip(memname) || '|' || strip(memtype) || '|'
+    || strip(put(nlobs, best20.)) || '|' || strip(put(nvar, best20.)) || '|'
+    || strip(put(modate, e8601dt19.)) || '|' || substr(memlabel, 1, 120), 'L');
+  if _eof then call symputx('_sas_wc', _n_, 'L');
+run;
+%put ${SENTINEL_START};
+%do _sas_i = 1 %to &_sas_mc;
+  %let _sas_nm = &&_sas_n&_sas_i;
+  %let _sas_len = %length(%superq(&_sas_nm));
+  %put MN&_sas_i=&&_sas_s&_sas_i|&_sas_nm|&_sas_len;
+  %do _sas_j = 1 %to &_sas_len %by ${VALUE_CHUNK};
+    %put MX&_sas_i=|%qsubstr(%superq(&_sas_nm), &_sas_j, %sysfunc(min(${VALUE_CHUNK}, %eval(&_sas_len - &_sas_j + 1))));
+  %end;
+%end;
+%do _sas_i = 1 %to &_sas_wc;
+  %put WT&_sas_i=%superq(_sas_w&_sas_i);
+%end;
+%put ${SENTINEL_END};
+${RESTORE_OPTIONS}
+%mend _sas_vars;
+%_sas_vars
+%sysmacdelete _sas_vars / nowarn;
+`;
+
+/**
+ * Check a macro expression before it goes into hidden code. A semicolon
+ * would end the %LET early, and an unbalanced quote or parenthesis would
+ * leave the session waiting for the rest of a statement.
+ * Returns an error message, or undefined when the expression is safe.
+ */
+export function checkMacroExpression(expression: string): string | undefined {
+  if (expression.trim() === "") {
+    return "Enter a macro expression.";
+  }
+  if (/[;\r\n]/.test(expression)) {
+    return "The expression can't contain a semicolon or a line break.";
+  }
+  let quote: string | undefined;
+  let depth = 0;
+  for (const ch of expression) {
+    if (quote) {
+      if (ch === quote) {
+        quote = undefined;
+      }
+    } else if (ch === "'" || ch === '"') {
+      quote = ch;
+    } else if (ch === "(") {
+      depth++;
+    } else if (ch === ")") {
+      if (--depth < 0) {
+        return "The expression has an unmatched closing parenthesis.";
+      }
+    }
+  }
+  if (quote) {
+    return "The expression has an unmatched quote.";
+  }
+  if (depth > 0) {
+    return "The expression has an unmatched opening parenthesis.";
+  }
+  if (/\/\*|\*\//.test(expression)) {
+    return "The expression can't contain a comment.";
+  }
+  return undefined;
+}
+
+/** The result of evaluating a macro expression. */
+export interface MacroExpressionResult {
+  value: string;
+  /** WARNING and ERROR lines from the log. */
+  messages: string[];
+}
+
+/** Parse the output of evaluateMacroExpression. */
+export function parseMacroExpression(stdout: string): MacroExpressionResult {
+  const lines = stdout.split("\n").map((l) => l.trimEnd());
+  const messages = lines.filter((l) => /^(ERROR|WARNING)( \d+-\d+)?:/.test(l));
+  const parts: string[] = [];
+  let length = 0;
+  for (const line of parseSentinelOutput(stdout)) {
+    const len = /^EVLEN=(\d+)$/.exec(line);
+    if (len) {
+      length = Number(len[1]);
+    } else if (line.startsWith("EV=|")) {
+      parts.push(line.slice(4));
+    }
+  }
+  return { value: joinChunks(parts, length), messages: [...new Set(messages)] };
+}
+
+/** Whether a value has the shape of a SessionSnapshot. */
+export function isSessionSnapshot(value: unknown): value is SessionSnapshot {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "macros" in value &&
+    "tables" in value &&
+    Array.isArray(value.macros) &&
+    Array.isArray(value.tables)
+  );
 }

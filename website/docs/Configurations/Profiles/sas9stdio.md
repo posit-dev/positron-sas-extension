@@ -101,6 +101,8 @@ You can include SAS startup options in your profile:
 }
 ```
 
+The extension starts SAS with `-nodms -noterminal -nosyntaxcheck -linesize max`, followed by your `sasOptions`. With `-linesize max`, SAS doesn't wrap log lines, so the console can hide the code the extension adds around each submission. A `-linesize` in `sasOptions` comes later and takes precedence.
+
 ### With AutoExec
 
 You can configure AutoExec lines to run automatically when the session starts. They run once, right after SAS starts and before any code you submit. See [SAS Autoexec Settings](./additional.md#sas-autoexec-settings):

@@ -120,6 +120,25 @@ The Libraries view that [Accessing Libraries and Tables](./accessLibraries.md) d
 
 *The SAS sidebar on SAS Viya with the SAS Server view expanded to the Home folder of the compute session.*
 
+## Variables Pane
+
+The **Variables** pane shows the state of the SAS session: its macro variables and its WORK datasets. It works like the SAS Enterprise Guide macro variable viewer, and it updates after each console run. Changed entries are highlighted.
+
+- **GLOBAL macro variables:** each one is listed with its value. The type column shows **macro variable**. Values longer than 1,000 characters are cut off in the pane, but copying gets the whole value.
+- **Automatic macro variables:** the AUTOMATIC variables, such as `&SYSERR`, `&SYSLAST`, and `&SYSDATE9`, are grouped under **Automatic macro variables**. Expand it to see them.
+- **WORK datasets and views:** each one is listed as **WORK.*name*** with its number of observations and variables, and its label. Expand it to see the columns with their types, lengths, formats, and labels. Select the table icon to open it in the Data Explorer.
+- **Copy:** copying a macro variable gives a `%let` statement that recreates it, for example `%let cutoff=10;`. Copying a dataset gives its name.
+- **Filter:** type in the filter box to find variables by name.
+- **Delete all:** the **Delete all objects** button deletes the GLOBAL macro variables and the WORK datasets, after asking. It keeps the `POSIT_*` variables that identify the session and `_SASPROGRAMFILE`.
+
+The pane doesn't show local macro variables. They exist only while their macro runs.
+
+On SAS Viya, the extension reads the session through the Compute API, without running SAS code. On other connection types, it runs a short hidden query after each run. That query resets `&SYSERR` and the other step-level automatic variables, but the pane shows them as your code left them, because the query reads them first. To turn the pane off for SAS, set `SAS.variablesPane.enabled` to `false`.
+
+### Evaluate a macro expression
+
+Select **SAS: Evaluate Macro Expression...** in the Command Palette, or the variable icon in the title bar of the **Variables** pane. Enter anything that can follow `%let name=`, such as `%eval(&n + 1)` or `%sysfunc(today(), date9.)`. A message shows the result, with any warnings or errors from the log, and **Copy Value** copies it. The expression can't contain a semicolon, and its quotes and parentheses must be balanced.
+
 ## SAS Data Files
 
 The extension opens `.sas7bdat` and `.xpt` files in the Data Explorer through the SAS session. In the **Explorer**, right-click the file and select **Open with SAS**. Files opened from a view such as the **Clinical Repository** or **SAS Content** open this way too.
@@ -178,6 +197,7 @@ The extension gives Posit Assistant access to the SAS session and its results.
   ![The Positron Command Palette filtered to saspy. It offers SAS: Export saspy Configuration and SAS: Save Viya Token for saspy. Behind it, the SAS console shows a program that ran on SAS Viya, and the Viewer shows its scatter plot of weight against height and a table of the first five rows of SASHELP.CLASS.](/images/workbench/saspy-commands.png)
 
 - **Workspace context:** while a SAS console runs, the assistant knows the active profile and how to use the tools above.
+- **Session variables:** the assistant sees the macro variables and WORK datasets in the [Variables pane](#variables-pane), as it sees R and Python variables.
 - **Results:** the assistant reads the text copy of each result and looks at graphs in the **Plots** pane.
 - **`sas-results` skill:** in Positron 2026.10 and later, a skill tells the assistant where SAS output goes and how to read the report in the **Viewer**. The first time the assistant uses the skill, Positron asks whether it may load it. Choose **Allow**.
 - **`sas-quarto-report` skill:** a skill for turning a SAS analysis into a Quarto report. See [Reports with Posit Assistant](#reports-with-posit-assistant). Positron asks whether the assistant may load it, as for the `sas-results` skill.
@@ -312,6 +332,7 @@ The profile's `autoExec` lines run once, right after SAS starts.
 | Libraries in the **Connections** or **Data Connections** pane | Yes | Yes | Yes |
 | **SAS Server Files** connection | Yes | No | No |
 | **Data Explorer** | Yes | Yes | Yes |
+| Macro variables and WORK datasets in the **Variables** pane | Yes, without running SAS code | Yes | Yes |
 | `.sas7bdat` and `.xpt` files on disk | Yes (copied into WORK if the server can't see the path) | Yes (copied into WORK if the server can't see the path) | Yes |
 | `.sas7bdat` and `.xpt` files from other views | Yes | No | No |
 | Posit Assistant tools, context, and skill | Yes | Yes | Yes |

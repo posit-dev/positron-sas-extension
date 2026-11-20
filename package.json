@@ -710,6 +710,12 @@
             "scope": "machine",
             "markdownDescription": "%configuration.SAS.audit.logFile%"
           },
+          "SAS.variablesPane.enabled": {
+            "order": 11,
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "%configuration.SAS.variablesPane.enabled%"
+          },
           "SAS.console.logOutput": {
             "order": 11,
             "type": "array",
@@ -906,6 +912,12 @@
         "command": "SAS.compareDatasets",
         "title": "%commands.SAS.compareDatasets%",
         "category": "SAS"
+      },
+      {
+        "command": "SAS.evaluateMacroExpression",
+        "title": "%commands.SAS.evaluateMacroExpression%",
+        "category": "SAS",
+        "icon": "$(symbol-variable)"
       },
       {
         "command": "SAS.quarto.runCell",
@@ -2053,6 +2065,11 @@
         {
           "command": "SAS.console.chooseComputeContext",
           "when": "view == workbench.panel.positronConsole && SAS.consoleForeground && SAS.consoleComputeContext",
+          "group": "navigation"
+        },
+        {
+          "command": "SAS.evaluateMacroExpression",
+          "when": "view == workbench.panel.positronVariables && SAS.consoleForeground",
           "group": "navigation"
         },
         {
@@ -3304,6 +3321,10 @@
         {
           "when": "isPositron",
           "command": "SAS.compareDatasets"
+        },
+        {
+          "when": "isPositron && SAS.consoleForeground",
+          "command": "SAS.evaluateMacroExpression"
         },
         {
           "when": "isPositron && editorLangId == quarto",
