@@ -62,6 +62,8 @@ export interface LocalProfileRetry {
   sleep?: (ms: number) => Promise<void>;
   /** Called once when every attempt failed, with the last error. */
   onFailed?: (error: unknown) => void;
+  /** Called with each step: what was checked, found, skipped, or saved. */
+  log?: (message: string) => void;
 }
 
 /**
@@ -72,9 +74,6 @@ export interface LocalProfileRetry {
 export const LOCAL_PROFILE_RETRY_DELAYS_MS: readonly number[] = [
   1000, 2000, 4000, 8000,
 ];
-
-const hasStdioProfile = (profiles: { [name: string]: Profile }) =>
-  Object.values(profiles).some((profile) => profile.connectionType === STDIO);
 
 const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -150,17 +149,24 @@ export async function addLocalSasProfile(
     delaysMs = LOCAL_PROFILE_RETRY_DELAYS_MS,
     sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     onFailed,
+    log = () => {},
   }: LocalProfileRetry = {},
 ): Promise<string | undefined> {
   if (state.get<boolean>(LOCAL_PROFILE_ADDED_KEY)) {
+    log(
+      `Skipped: the local SAS profile was added before (${LOCAL_PROFILE_ADDED_KEY} is set), so it is not added again.`,
+    );
     return undefined;
   }
-  const sasPath = (
-    typeof candidates === "string" ? [candidates] : candidates
-  ).find((path) => isExecutable(path));
+  const paths = typeof candidates === "string" ? [candidates] : candidates;
+  const sasPath = paths.find((path) => isExecutable(path));
   if (!sasPath) {
+    log(
+      `No SAS found: none of these is an executable file: ${paths.join(", ")}`,
+    );
     return undefined;
   }
+  log(`Found SAS at ${sasPath}`);
 
   const profile: StdioProfile = {
     connectionType: STDIO,
@@ -174,7 +180,11 @@ export async function addLocalSasProfile(
     }
     // Read afresh: another writer, or our last attempt, may have changed it.
     const profiles = store.getAllProfiles() ?? {};
-    if (hasStdioProfile(profiles)) {
+    const stdio = Object.keys(profiles).find(
+      (key) => profiles[key].connectionType === STDIO,
+    );
+    if (stdio !== undefined) {
+      log(`Skipped: the stdio profile "${stdio}" already exists.`);
       await state.update(LOCAL_PROFILE_ADDED_KEY, true);
       return undefined;
     }
@@ -193,15 +203,18 @@ export async function addLocalSasProfile(
         saved.saspath === sasPath
       ) {
         await state.update(LOCAL_PROFILE_ADDED_KEY, true);
+        log(
+          `Added the profile "${name}" for ${sasPath}${active === name ? " and made it the active profile" : ""}.`,
+        );
         return name;
       }
       lastError = new Error("The profile is not in the settings after saving.");
     } catch (error) {
       lastError = error;
     }
-    console.warn(
-      `Could not save the local SAS profile (attempt ${attempt}/${attempts}): ${messageOf(lastError)}`,
-    );
+    const message = `Could not save the local SAS profile (attempt ${attempt}/${attempts}): ${messageOf(lastError)}`;
+    console.warn(message);
+    log(message);
   }
   onFailed?.(lastError);
   return undefined;

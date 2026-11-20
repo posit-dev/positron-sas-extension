@@ -433,6 +433,68 @@ describe("addLocalSasProfile", () => {
   });
 });
 
+describe("addLocalSasProfile logging", () => {
+  const run = async (
+    store: FakeStore,
+    state: FakeState,
+    isExecutable: (path: string) => boolean,
+  ) => {
+    const messages: string[] = [];
+    await addLocalSasProfile(store, state, ["/a/sas", "/b/sas"], isExecutable, {
+      log: (message) => messages.push(message),
+    });
+    return messages;
+  };
+
+  it("logs the paths it looked at when no SAS is found", async () => {
+    const messages = await run(new FakeStore(), new FakeState(), sasMissing);
+
+    expect(messages).to.deep.equal([
+      "No SAS found: none of these is an executable file: /a/sas, /b/sas",
+    ]);
+  });
+
+  it("logs a skip when the profile was added before", async () => {
+    const state = new FakeState();
+    state.values[LOCAL_PROFILE_ADDED_KEY] = true;
+
+    const messages = await run(new FakeStore(), state, sasPresent);
+
+    expect(messages).to.have.length(1);
+    expect(messages[0]).to.match(
+      /^Skipped: the local SAS profile was added before/,
+    );
+  });
+
+  it("names the stdio profile that prevents adding one", async () => {
+    const mine: Profile = {
+      connectionType: "stdio",
+      saspath: "/x/sas",
+    } as Profile;
+    const store = new FakeStore({ mine });
+
+    const messages = await run(store, new FakeState(), sasPresent);
+
+    expect(messages).to.deep.equal([
+      "Found SAS at /a/sas",
+      'Skipped: the stdio profile "mine" already exists.',
+    ]);
+  });
+
+  it("logs the added profile", async () => {
+    const messages = await run(
+      new FakeStore(),
+      new FakeState(),
+      (path) => path === "/b/sas",
+    );
+
+    expect(messages).to.deep.equal([
+      "Found SAS at /b/sas",
+      'Added the profile "local" for /b/sas and made it the active profile.',
+    ]);
+  });
+});
+
 describe("localSasCandidates", () => {
   it("uses the UTF-8 launcher bin/sas_u8 for SAS 9.4", () => {
     expect(SAS94_LOCAL_SAS_PATHS).to.deep.equal([

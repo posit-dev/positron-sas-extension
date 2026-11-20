@@ -3,6 +3,7 @@
 import {
   ConfigurationChangeEvent,
   ExtensionContext,
+  LogOutputChannel,
   Uri,
   authentication,
   commands,
@@ -78,6 +79,7 @@ import {
 import { XptEditorProvider } from "../positron/XptEditorProvider";
 
 let client: LanguageClient;
+let localProfileLog: LogOutputChannel | undefined;
 
 export let extensionContext: ExtensionContext | undefined;
 
@@ -269,9 +271,14 @@ export async function activate(context: ExtensionContext) {
 /**
  * Add the "local" profile when SAS is installed here. A write that fails
  * every retry (settings.json changed by another writer, or left with unsaved
- * changes) is reported with a Retry; the next start tries again too.
+ * changes) is reported with a Retry; the next start tries again too. Each
+ * step is logged to the "SAS Local Profile" output channel.
  */
 async function addLocalProfile(context: ExtensionContext): Promise<void> {
+  const log = (localProfileLog ??= window.createOutputChannel(
+    "SAS Local Profile",
+    { log: true },
+  ));
   const localProfile = await addLocalSasProfile(
     profileConfig,
     context.globalState,
@@ -280,6 +287,7 @@ async function addLocalProfile(context: ExtensionContext): Promise<void> {
     ),
     undefined,
     {
+      log: (message) => log.info(message),
       onFailed: (error) => {
         const retry = l10n.t("Retry");
         window
@@ -304,6 +312,17 @@ async function addLocalProfile(context: ExtensionContext): Promise<void> {
     console.log(`Added connection profile "${localProfile}" for local SAS`);
     triggerProfileUpdate();
     updateViewSettings();
+    // Another writer (Posit Workbench at session start) can replace
+    // settings.json after our write; say so if the profile is gone.
+    setTimeout(() => {
+      if (profileConfig.getAllProfiles()?.[localProfile]) {
+        log.info(`The profile "${localProfile}" is still in the settings.`);
+      } else {
+        log.warn(
+          `The profile "${localProfile}" is no longer in the settings: another writer replaced settings.json after it was added.`,
+        );
+      }
+    }, 15_000);
   }
 }
 
