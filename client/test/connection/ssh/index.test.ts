@@ -240,10 +240,15 @@ describe("ssh connection", () => {
       const commands: string[] = [];
       sandbox.stub(Client.prototype, "exec").callsFake((command, callback) => {
         commands.push(String(command));
-        const channel = new EventEmitter();
+        const emitter = new EventEmitter();
+        const channel = stubInterface<ClientChannel>();
+        channel.on.callsFake((event, listener) => {
+          emitter.on(String(event), (...args: unknown[]) => listener(...args));
+          return channel;
+        });
         callback(null, channel);
-        channel.emit("data", Buffer.from('<div id="IDX1">result</div>'));
-        channel.emit("close", 0);
+        emitter.emit("data", Buffer.from('<div id="IDX1">result</div>'));
+        emitter.emit("close", 0);
         return this;
       });
       // The log carries no body= line (no pty echo, OPTIONS NOSOURCE).
