@@ -1,4 +1,5 @@
 import { assert, expect } from "chai";
+import { EventEmitter } from "events";
 import * as sinon from "sinon";
 import { Client, ClientChannel } from "ssh2";
 import { StubbedInstance, stubInterface } from "ts-sinon";
@@ -57,9 +58,10 @@ describe("ssh connection", () => {
         return undefined;
       });
 
+      const writeStub = sandbox.stub();
       sandbox.stub(Client.prototype, "shell").callsArgWithAsync(0, null, {
         on: (streamOnStub = sandbox.stub()),
-        write: sandbox.stub(),
+        write: writeStub,
       });
 
       sandbox.stub(Client.prototype, "end");
@@ -79,6 +81,14 @@ describe("ssh connection", () => {
       });
 
       await session.setup();
+
+      // SAS starts with the pty echo off and unwrapped log lines.
+      const launch = writeStub.args
+        .map((args) => String(args[0]))
+        .find((chunk) => chunk.includes("/path/to/sas_u8"));
+      expect(launch?.startsWith("stty -echo; ")).to.be.true;
+      expect(launch).to.include("/path/to/sas_u8 -nodms");
+      expect(launch).to.include("-linesize max");
     });
 
     it("rejects on connection error", async () => {
@@ -214,6 +224,49 @@ describe("ssh connection", () => {
           "%put --vscode-sas-extension-submit-end--;\n",
         ),
       ).to.be.true;
+    });
+
+    it("takes the ODS body file name from the code, not from an echo", async () => {
+      let onDataListener;
+      streamStub.on.callsFake((event, callback) => {
+        if (event === "data") {
+          onDataListener = callback;
+          onDataListener("?");
+          return this;
+        }
+      });
+      await session.setup();
+
+      const commands: string[] = [];
+      sandbox.stub(Client.prototype, "exec").callsFake((command, callback) => {
+        commands.push(String(command));
+        const emitter = new EventEmitter();
+        const channel = stubInterface<ClientChannel>();
+        channel.on.callsFake((event, listener) => {
+          emitter.on(String(event), (...args: unknown[]) => listener(...args));
+          return channel;
+        });
+        callback(null, channel);
+        emitter.emit("data", Buffer.from('<div id="IDX1">result</div>'));
+        emitter.emit("close", 0);
+        return this;
+      });
+      // The log carries no body= line (no pty echo, OPTIONS NOSOURCE).
+      streamStub.write.callsFake((chunk) => {
+        if (chunk === "%put --vscode-sas-extension-submit-end--;\n") {
+          onDataListener("--vscode-sas-extension-submit-end--\n");
+        }
+        return true;
+      });
+
+      const result = await session.run(
+        'ods html5(id=vscode)\n  body="6f1e2d3c-4b5a-4987-a6b5-c4d3e2f1a0b9.htm";\nproc print data=sashelp.class; run;',
+      );
+
+      expect(commands[0]).to.match(
+        /6f1e2d3c-4b5a-4987-a6b5-c4d3e2f1a0b9\.htm$/,
+      );
+      expect(result.html5).to.include("IDX1");
     });
 
     it("runs long-running code to completion", async () => {

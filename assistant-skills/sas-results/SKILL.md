@@ -46,6 +46,22 @@ Positron build is older than 2026.10 and can't read the Viewer; say so, and
 ask the user to describe the output or re-run the code yourself to get the
 text copy.
 
+## Session variables: macro variables and WORK
+
+The session's variables, as the variables tools list them, are the SAS
+session's state:
+
+- each **GLOBAL macro variable**, with type `macro variable` and its value
+  (the pane cuts values off at 1,000 characters);
+- **Automatic macro variables**, one entry holding the AUTOMATIC ones such as
+  `SYSERR`, `SYSCC`, `SYSLAST` and `SYSDATE9`;
+- each **WORK dataset or view**, as `WORK.<name>`, with its observations and
+  variables.
+
+They are read after each run, so `SYSERR` and `SYSLAST` are what the user's
+last run left. To get a full value or anything else, run SAS code, for example
+`%put &=name;` or `%put _user_;`, and read the log.
+
 ## Comparing datasets
 
 To compare two SAS datasets (for example a double-programmed QC dataset with

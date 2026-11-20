@@ -42,6 +42,8 @@ const WRAPPER_SOURCE: RegExp[] = [
   /^;\*';\*";\*\/;run;quit;ods html5\(id=vscode\) close;$/i,
   /^\/\*\* LOG_START_INDICATOR \*\*\/$/,
   /^%let _SASPROGRAMFILE\b/i,
+  // The end-of-run marker the SSH and stdio connections append.
+  /^%put --vscode-sas-extension-submit-end--;$/,
 ];
 
 const WRAPPER_MESSAGES: RegExp[] = [

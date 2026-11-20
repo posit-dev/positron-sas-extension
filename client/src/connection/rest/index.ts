@@ -21,6 +21,7 @@ import { ComputeJob } from "./job";
 import { KeepAlive, httpStatus } from "./keepAlive";
 import { ComputeServer } from "./server";
 import { ComputeSession } from "./session";
+import { fetchSessionSnapshot } from "./sessionSnapshot";
 
 let sessionInstance: RestSession;
 
@@ -379,6 +380,12 @@ class RestSession extends Session {
 
   public sessionId = (): string => {
     return this._computeSession && this._computeSession.sessionId;
+  };
+
+  /** The macro variables and WORK tables, read without running SAS code. */
+  public getSessionSnapshot = () => {
+    const id = this.sessionId();
+    return id ? fetchSessionSnapshot(id) : undefined;
   };
 
   public cancel = async (): Promise<void> => {

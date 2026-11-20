@@ -26,6 +26,8 @@ A SAS 9.4 (remote – SSH) connection profile includes the following parameters:
 | `saspath`            | Path to SAS Executable on the server | Must be a fully qualified path on the SSH server to a SAS executable file.    |
 | `privateKeyFilePath` | SSH Private Key File (optional)      | Must be a fully qualified path on the same machine that VSCode is running on. |
 
+The extension opens a shell on the server, turns off the terminal echo with `stty -echo`, and starts SAS with `-nodms -noterminal -nosyntaxcheck -linesize max`, followed by the `sasOptions` of the profile. With `-linesize max`, SAS doesn't wrap log lines, so the Positron console can hide the code the extension adds around each submission. A `-linesize` in `sasOptions` comes later and takes precedence.
+
 ## Authenticating to a SAS Server
 
 The extension will attempt to authenticate to the SAS Server over ssh using the auth methods specified in the SSH Server configuration defined on the SAS Server. The extension currently supports using the SSH auth methods listed below:

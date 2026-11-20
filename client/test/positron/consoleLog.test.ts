@@ -27,6 +27,7 @@ describe("isWrapperLogLine", () => {
       CONSOLE_POSTAMBLE,
       "/** LOG_START_INDICATOR **/",
       "%let _SASPROGRAMFILE = %nrquote(%nrstr(/home/jdoe/a.sas));",
+      "%put --vscode-sas-extension-submit-end--;",
     ];
     wrapper.forEach((code, i) => {
       expect(isWrapperLogLine(`${i + 1}          ${code}`), code).to.equal(

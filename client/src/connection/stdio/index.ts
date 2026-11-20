@@ -91,10 +91,16 @@ export class StdioSession extends Session {
 
       try {
         // Build SAS options
+        // -linesize max: SAS otherwise wraps log lines at about 78
+        // columns, and a wrapped line of the code the extension adds around
+        // a submission can't be told from the user's log. A -linesize in
+        // the profile's sasOptions comes later and wins.
         const resolvedSasOpts: string[] = [
           "-nodms",
           "-noterminal",
           "-nosyntaxcheck",
+          "-linesize",
+          "max",
         ];
 
         if (this._config.sasOptions?.length > 0) {
@@ -279,7 +285,7 @@ export class StdioSession extends Session {
         return;
       }
       const trimmedLine = line.trimEnd();
-      if (trimmedLine.includes(LineCodes.RunEndCode)) {
+      if (trimmedLine.endsWith(LineCodes.RunEndCode)) {
         this.getResult();
       }
       if (!(trimmedLine.endsWith("?") || trimmedLine.endsWith(">"))) {
@@ -291,11 +297,6 @@ export class StdioSession extends Session {
   private onStderrData = (data: Buffer): void => {
     const output = data.toString().trimEnd();
 
-    // Detect run completion from STDERR as well (stdio writes %put here)
-    if (output.includes(LineCodes.RunEndCode)) {
-      this.getResult();
-    }
-
     if (this._sessionReady && !this._workDirectory) {
       const match = output.match(
         `${WORK_DIR_START_TAG}(/[\\s\\S]*?)${WORK_DIR_END_TAG}`,
@@ -305,10 +306,26 @@ export class StdioSession extends Session {
       }
     }
 
+    // With -stdio, SAS writes its log to stderr. Once SAS is ready, that is
+    // the log of the code we run, so it goes to the execution log, as the SSH
+    // connection's does: the Positron console filters its own wrapper code
+    // out of it, and a silent run captures it instead of showing it.
+    const logFn = this._sessionReady
+      ? this._onExecutionLogFn
+      : this._onSessionLogFn;
     const outputLines = output.split(/\n|\r\n/);
     outputLines.forEach((line) => {
-      if (line) {
-        this._onSessionLogFn?.([{ type: "normal", line }]);
+      if (!line) {
+        return;
+      }
+      logFn?.([{ type: "normal", line }]);
+      // The run ends at the output of `%put <RunEndCode>;` (stdio writes
+      // %put to stderr), as with SSH. Its source echo, "16   %put ...;",
+      // must not count: that ended the run early, and the marker line that
+      // followed then ended the next run, such as a silent query, before it
+      // had produced its log.
+      if (line.trimEnd().endsWith(LineCodes.RunEndCode)) {
+        this.getResult();
       }
     });
   };
