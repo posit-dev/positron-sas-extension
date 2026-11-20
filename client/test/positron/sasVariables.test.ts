@@ -14,8 +14,10 @@ import {
 import type { SessionSnapshot } from "../../src/positron/sasClient";
 import {
   AUTOMATIC_KEY,
+  STARTUP_KEY,
   SasVariables,
   type SasVariablesBackend,
+  StartupMacros,
   letStatement,
 } from "../../src/positron/sasVariables";
 
@@ -223,7 +225,12 @@ const SNAPSHOT: SessionSnapshot = {
   ],
 };
 
-function makeVariables(snapshots: SessionSnapshot[] = [SNAPSHOT]) {
+// By default the session started with no GLOBAL macro variables, so all of
+// them are the user's.
+function makeVariables(
+  snapshots: SessionSnapshot[] = [SNAPSHOT],
+  startup: StartupMacros = StartupMacros.of([]),
+) {
   let i = 0;
   const backend = {
     snapshot: sinon.stub().callsFake(async () => snapshots[Math.min(i++, snapshots.length - 1)]),
@@ -236,7 +243,7 @@ function makeVariables(snapshots: SessionSnapshot[] = [SNAPSHOT]) {
     openDataExplorer: sinon.stub().returns("explorer-1"),
   } satisfies SasVariablesBackend;
   let time = 1000;
-  const variables = new SasVariables("vars-1", backend, () => time);
+  const variables = new SasVariables("vars-1", backend, () => time, startup);
   const replies: Array<{ messageId: string; data: Record<string, unknown> }> = [];
   const events: Array<Record<string, unknown>> = [];
   variables.onDidEmitData((d) => replies.push({ messageId: d.messageId, data: Object.fromEntries(Object.entries(d.data)) }));
@@ -398,6 +405,69 @@ describe("SasVariables", () => {
     expect(summary.num_rows).to.equal(19);
     expect(summary.num_columns).to.equal(2);
     expect(JSON.parse(summary.column_schemas[0]).column_name).to.equal("NAME");
+  });
+
+  it("groups the GLOBAL variables the session started with", async () => {
+    const started: SessionSnapshot = {
+      ...SNAPSHOT,
+      macros: [
+        { scope: "GLOBAL", name: "POSIT_USER", value: "me" },
+        { scope: "GLOBAL", name: "STUDY", value: "abc" },
+        ...SNAPSHOT.macros.filter((m) => m.scope === "AUTOMATIC"),
+      ],
+    };
+    const later: SessionSnapshot = {
+      ...started,
+      macros: [
+        { scope: "GLOBAL", name: "X", value: "1" },
+        { scope: "GLOBAL", name: "STUDY", value: "xyz" },
+        ...started.macros.filter((m) => m.name !== "STUDY"),
+      ],
+    };
+    const { request, variables, events } = makeVariables([started, later], new StartupMacros());
+    const first = json<ListResult>((await request("list")).result);
+    expect(first.variables.map((v) => v.access_key)).to.deep.equal([
+      STARTUP_KEY,
+      AUTOMATIC_KEY,
+      "WORK.CLASS",
+      "WORK.V",
+    ]);
+    expect(first.variables[0].display_value).to.equal("2 variables");
+    const group = json<{ children: Array<{ access_key: string }> }>(
+      (await request("inspect", { path: [STARTUP_KEY] })).result,
+    );
+    expect(group.children.map((c) => c.access_key)).to.deep.equal(["POSIT_USER", "STUDY"]);
+    expect((await request("clipboard_format", { path: [STARTUP_KEY, "STUDY"] })).result)
+      .to.deep.equal({ content: "%let STUDY=abc;" });
+
+    // The user's %let X and a new value for STUDY: both are the user's now.
+    await variables.refresh();
+    const update = json<{ params: { assigned: Array<{ access_key: string; display_value: string }> } }>(events[0]);
+    expect(update.params.assigned.map((v) => v.access_key)).to.deep.equal(["STUDY", "X", STARTUP_KEY]);
+    expect(update.params.assigned[2].display_value).to.equal("1 variables");
+    const after = json<ListResult>((await request("list")).result);
+    expect(after.variables.map((v) => v.access_key).slice(0, 3)).to.deep.equal(["STUDY", "X", STARTUP_KEY]);
+  });
+
+  it("records the startup variables once, from the first snapshot with variables", () => {
+    const startup = new StartupMacros();
+    startup.record([]);
+    startup.record([{ scope: "GLOBAL", name: "A", value: "1" }]);
+    startup.record([{ scope: "GLOBAL", name: "B", value: "2" }]);
+    expect(startup.has({ scope: "GLOBAL", name: "A", value: "1" })).to.equal(true);
+    expect(startup.has({ scope: "GLOBAL", name: "A", value: "2" })).to.equal(false);
+    expect(startup.has({ scope: "GLOBAL", name: "B", value: "2" })).to.equal(false);
+  });
+
+  it("clear and delete leave the startup variables alone", async () => {
+    const { request, backend } = makeVariables(
+      [SNAPSHOT],
+      StartupMacros.of([{ scope: "GLOBAL", name: "B", value: "hello" }]),
+    );
+    await request("list");
+    expect((await request("delete", { names: ["B", "A"] })).result).to.deep.equal(["A"]);
+    await request("clear", { include_hidden_objects: false });
+    expect(backend.deleteMacroVariables.secondCall.args[0]).to.deep.equal(["A"]);
   });
 
   it("answers unknown methods with an error", async () => {

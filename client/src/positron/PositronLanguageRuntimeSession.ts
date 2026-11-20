@@ -74,7 +74,7 @@ import {
   workPathLiteral,
 } from "./xptFormat";
 import { SasDataExplorer } from "./sasDataExplorer";
-import { SasVariables } from "./sasVariables";
+import { SasVariables, StartupMacros } from "./sasVariables";
 import { openServerDataFile } from "./serverDataFiles";
 import {
   SasServerFilesConnection,
@@ -227,6 +227,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
   // The Variables pane's comm: macro variables and WORK tables (#158).
   private _variables: SasVariables | undefined;
   private _variablesListeners: Disposable[] = [];
+  /** The GLOBAL macro variables this SAS session started with. */
+  private _startupMacros = new StartupMacros();
 
   // Event emitters
   private _onDidReceiveRuntimeMessage =
@@ -1132,6 +1134,8 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       unregisterConsoleSession(this);
     }
     this._sasClient = undefined;
+    // A restart starts a new SAS, so its startup variables are recorded again.
+    this._startupMacros = new StartupMacros();
 
     if (this._sasSession) {
       await this._sasSession.close();
@@ -1217,7 +1221,7 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         this.getSasClient().deleteMacroVariables(names),
       deleteWorkTables: (names) => this.getSasClient().deleteWorkTables(names),
       openDataExplorer: (lib, mem) => this.openDataExplorer(lib, mem),
-    });
+    }, Date.now, this._startupMacros);
     this._variables = variables;
     this._variablesListeners = [
       variables.onDidEmitData(({ messageId, data }) => {
@@ -1278,7 +1282,17 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
     return this.getSasClient().getSessionSnapshot();
   }
 
-  async listClients(_type?: RuntimeClientType): Promise<Record<string, string>> {
+  async listClients(type?: RuntimeClientType): Promise<Record<string, string>> {
+    const all = this.allClients();
+    // Only the clients of the type asked for: Positron 2026.11 lists the
+    // positron.connection clients when a session starts and disposes each
+    // one it gets back, which closed the Variables comm too.
+    return type
+      ? Object.fromEntries(Object.entries(all).filter(([, t]) => t === type))
+      : all;
+  }
+
+  private allClients(): Record<string, string> {
     const result: Record<string, string> = {};
     if (this._connection) {
       result[this._connection.id] = RuntimeClientType.Connection;
