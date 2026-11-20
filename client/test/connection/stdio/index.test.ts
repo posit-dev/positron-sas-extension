@@ -311,6 +311,66 @@ describe("stdio connection", () => {
       expect(sessionLog).to.deep.equal(["NOTE: SAS initialization used"]);
       expect(executionLog).to.include.members(["1    %put hello;", "hello"]);
     });
+
+    it("ends a run at the end marker's output, not at its source echo", async () => {
+      // run() settles a few promise turns after the marker; the timers are fake.
+      const flush = async () => {
+        for (let i = 0; i < 20; i++) {
+          await Promise.resolve();
+        }
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockStdin: any = new EventEmitter();
+      mockStdin.write = sandbox.stub();
+      mockStdin.end = sandbox.stub();
+      const mockStdout = new EventEmitter();
+      const mockStderr = new EventEmitter();
+      mockProcess = new EventEmitter();
+      mockProcess.stdin = mockStdin;
+      mockProcess.stdout = mockStdout;
+      mockProcess.stderr = mockStderr;
+      mockProcess.kill = sandbox.stub();
+      mockProcess.killed = false;
+      sandbox.stub(processLauncher, "spawn").returns(mockProcess);
+
+      session = new StdioSession({ saspath: fakeSas, sasOptions: [] });
+      const executionLog: string[] = [];
+      session.onExecutionLogFn = (logs) =>
+        executionLog.push(...logs.map((l) => l.line));
+      const setupPromise = session.setup();
+      mockStdout.emit("data", Buffer.from("?"));
+      await setupPromise;
+
+      let firstDone = false;
+      const first = session.run("%let x=1;").then(() => (firstDone = true));
+      // The source echo of the wrapper's own %put arrives first.
+      mockStderr.emit(
+        "data",
+        Buffer.from(`1    %let x=1;\n2    %put ${LineCodes.RunEndCode};`),
+      );
+      await flush();
+      expect(firstDone).to.be.false;
+
+      mockStderr.emit("data", Buffer.from(LineCodes.RunEndCode));
+      await first;
+
+      // The next run gets its own log and ends at its own marker.
+      let secondDone = false;
+      const second = session
+        .run("%put snapshot;")
+        .then(() => (secondDone = true));
+      mockStderr.emit(
+        "data",
+        Buffer.from(
+          `3    %put snapshot;\nsnapshot\n4    %put ${LineCodes.RunEndCode};`,
+        ),
+      );
+      await flush();
+      expect(secondDone).to.be.false;
+      mockStderr.emit("data", Buffer.from(LineCodes.RunEndCode));
+      await second;
+      expect(executionLog).to.include("snapshot");
+    });
   });
 
   describe("close", () => {

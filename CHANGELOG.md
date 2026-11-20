@@ -9,7 +9,7 @@
 
 ### Bug Fixes
 
-- Positron, local SAS (`stdio` profiles): the console no longer shows the code the extension adds around a submission, such as the `/* positron: user=... */` comment, or the code and output of its own queries, such as the one that fills the **Variables** pane. The SAS log of a run now also goes to the **SAS Log** channel and to the **Problems** pane, as with SSH. SAS writes its log to stderr in this mode, and the extension treated all of it as connection messages
+- Positron, local SAS (`stdio` profiles): the console no longer shows the code the extension adds around a submission, such as the `/* positron: user=... */` comment, or the code and output of its own queries, such as the one that fills the **Variables** pane. The SAS log of a run now also goes to the **SAS Log** channel and to the **Problems** pane, as with SSH. SAS writes its log to stderr in this mode, and the extension treated all of it as connection messages. A run also ended too early, at the echo of the extension's end-of-run marker instead of its output, and the marker that followed then ended the next run before it had produced its log
 
 ## 1.2.0 - 2026-11-19
 
