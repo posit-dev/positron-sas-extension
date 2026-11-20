@@ -10,6 +10,7 @@ import {
   LocalProfileState,
   LocalProfileStore,
   SAS94_LOCAL_SAS_PATHS,
+  VIYA_SAS_U8_PATH,
   addLocalSasProfile,
   localSasCandidates,
   pathCandidates,
@@ -157,7 +158,11 @@ describe("addLocalSasProfile", () => {
   });
 
   it("does not re-add a profile the user deleted", async () => {
-    const store = new FakeStore();
+    const viya: Profile = {
+      connectionType: "rest",
+      endpoint: "https://viya.example.com",
+    } as Profile;
+    const store = new FakeStore({ viya }, "viya");
     const state = new FakeState();
     state.values[LOCAL_PROFILE_ADDED_KEY] = true;
 
@@ -169,7 +174,89 @@ describe("addLocalSasProfile", () => {
     );
 
     expect(name).to.be.undefined;
-    expect(store.profiles).to.deep.equal({});
+    expect(store.profiles).to.deep.equal({ viya });
+  });
+
+  it("adds the profile again when it was added before but no profile is left", async () => {
+    const store = new FakeStore();
+    const state = new FakeState();
+    state.values[LOCAL_PROFILE_ADDED_KEY] = true;
+
+    const name = await addLocalSasProfile(
+      store,
+      state,
+      DEFAULT_LOCAL_SAS_PATH,
+      sasPresent,
+    );
+
+    expect(name).to.equal("local");
+    expect(store.active).to.equal("local");
+    expect(store.profiles.local).to.deep.equal({
+      connectionType: "stdio",
+      saspath: DEFAULT_LOCAL_SAS_PATH,
+    });
+  });
+
+  describe("manual (Add Local SAS Profile)", () => {
+    const viya: Profile = {
+      connectionType: "rest",
+      endpoint: "https://viya.example.com",
+    } as Profile;
+    const other: Profile = {
+      connectionType: "stdio",
+      saspath: "/other/sas",
+    } as Profile;
+
+    it("adds the profile although it was added before", async () => {
+      const store = new FakeStore({ viya }, "viya");
+      const state = new FakeState();
+      state.values[LOCAL_PROFILE_ADDED_KEY] = true;
+
+      const name = await addLocalSasProfile(
+        store,
+        state,
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        { manual: true },
+      );
+
+      expect(name).to.equal("local");
+      expect(store.active).to.equal("viya");
+    });
+
+    it("adds the profile next to a stdio profile with another saspath", async () => {
+      const store = new FakeStore({ local: other }, "local");
+
+      const name = await addLocalSasProfile(
+        store,
+        new FakeState(),
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        { manual: true },
+      );
+
+      expect(name).to.equal("local-2");
+      expect(store.profiles.local).to.deep.equal(other);
+    });
+
+    it("does not add a second profile for the same saspath", async () => {
+      const same: Profile = {
+        connectionType: "stdio",
+        saspath: DEFAULT_LOCAL_SAS_PATH,
+      } as Profile;
+      const store = new FakeStore({ mine: same }, "mine");
+
+      const name = await addLocalSasProfile(
+        store,
+        new FakeState(),
+        DEFAULT_LOCAL_SAS_PATH,
+        sasPresent,
+        { manual: true },
+      );
+
+      expect(name).to.be.undefined;
+      expect(Object.keys(store.profiles)).to.deep.equal(["mine"]);
+    });
   });
 
   it("picks a free name when 'local' is taken", async () => {
@@ -225,6 +312,22 @@ describe("addLocalSasProfile", () => {
     expect(name).to.be.undefined;
     expect(store.profiles).to.deep.equal({});
     expect(state.values[LOCAL_PROFILE_ADDED_KEY]).to.be.undefined;
+  });
+
+  it("finds a SAS Viya install that has only bin/sas_u8", async () => {
+    const store = new FakeStore();
+
+    await addLocalSasProfile(
+      store,
+      new FakeState(),
+      localSasCandidates([], ""),
+      (path) => path === "/opt/sas/viya/home/SASFoundation/bin/sas_u8",
+    );
+
+    expect(store.profiles.local).to.deep.equal({
+      connectionType: "stdio",
+      saspath: "/opt/sas/viya/home/SASFoundation/bin/sas_u8",
+    });
   });
 
   it("finds a SAS 9.4 install", async () => {
@@ -416,6 +519,72 @@ describe("addLocalSasProfile", () => {
   });
 });
 
+describe("addLocalSasProfile logging", () => {
+  const run = async (
+    store: FakeStore,
+    state: FakeState,
+    isExecutable: (path: string) => boolean,
+  ) => {
+    const messages: string[] = [];
+    await addLocalSasProfile(store, state, ["/a/sas", "/b/sas"], isExecutable, {
+      log: (message) => messages.push(message),
+    });
+    return messages;
+  };
+
+  it("logs the paths it looked at when no SAS is found", async () => {
+    const messages = await run(new FakeStore(), new FakeState(), sasMissing);
+
+    expect(messages).to.deep.equal([
+      "No SAS found: none of these is an executable file: /a/sas, /b/sas",
+    ]);
+  });
+
+  it("logs a skip when the profile was added before", async () => {
+    const state = new FakeState();
+    state.values[LOCAL_PROFILE_ADDED_KEY] = true;
+    const viya: Profile = {
+      connectionType: "rest",
+      endpoint: "https://viya.example.com",
+    } as Profile;
+
+    const messages = await run(new FakeStore({ viya }), state, sasPresent);
+
+    expect(messages).to.have.length(1);
+    expect(messages[0]).to.match(
+      /^Skipped: the local SAS profile was added before/,
+    );
+  });
+
+  it("names the stdio profile that prevents adding one", async () => {
+    const mine: Profile = {
+      connectionType: "stdio",
+      saspath: "/x/sas",
+    } as Profile;
+    const store = new FakeStore({ mine });
+
+    const messages = await run(store, new FakeState(), sasPresent);
+
+    expect(messages).to.deep.equal([
+      "Found SAS at /a/sas",
+      'Skipped: the stdio profile "mine" already exists.',
+    ]);
+  });
+
+  it("logs the added profile", async () => {
+    const messages = await run(
+      new FakeStore(),
+      new FakeState(),
+      (path) => path === "/b/sas",
+    );
+
+    expect(messages).to.deep.equal([
+      "Found SAS at /b/sas",
+      'Added the profile "local" for /b/sas and made it the active profile.',
+    ]);
+  });
+});
+
 describe("localSasCandidates", () => {
   it("uses the UTF-8 launcher bin/sas_u8 for SAS 9.4", () => {
     expect(SAS94_LOCAL_SAS_PATHS).to.deep.equal([
@@ -426,12 +595,13 @@ describe("localSasCandidates", () => {
     ]);
   });
 
-  it("lists extra paths, Analytics Pro, SAS 9.4, then PATH, in order", () => {
+  it("lists extra paths, Analytics Pro, SAS Viya, SAS 9.4, then PATH, in order", () => {
     const pathEnv = ["/usr/bin", "/opt/bin"].join(delimiter);
 
     expect(localSasCandidates(["/custom/sas"], pathEnv)).to.deep.equal([
       "/custom/sas",
       DEFAULT_LOCAL_SAS_PATH,
+      VIYA_SAS_U8_PATH,
       ...SAS94_LOCAL_SAS_PATHS,
       join("/usr/bin", "sas"),
       join("/opt/bin", "sas"),
@@ -443,6 +613,7 @@ describe("localSasCandidates", () => {
 
     expect(localSasCandidates(["sas", "./sas"], pathEnv)).to.deep.equal([
       DEFAULT_LOCAL_SAS_PATH,
+      VIYA_SAS_U8_PATH,
       ...SAS94_LOCAL_SAS_PATHS,
       join("/usr/bin", "sas"),
     ]);

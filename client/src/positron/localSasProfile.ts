@@ -15,6 +15,12 @@ import type {
 export const DEFAULT_LOCAL_SAS_PATH = "/opt/sas/viya/home/SASFoundation/sas";
 
 /**
+ * The UTF-8 launcher of a SAS Viya-based installation. Some images have only
+ * this one, without the `sas` script of DEFAULT_LOCAL_SAS_PATH.
+ */
+export const VIYA_SAS_U8_PATH = "/opt/sas/viya/home/SASFoundation/bin/sas_u8";
+
+/**
  * Common SAS 9.4 Foundation install locations. These are the UTF-8 launcher
  * `bin/sas_u8`, not the `sas` script (which may start a non-UTF-8 locale): the
  * extension reads SAS output as UTF-8.
@@ -56,6 +62,14 @@ export interface LocalProfileRetry {
   sleep?: (ms: number) => Promise<void>;
   /** Called once when every attempt failed, with the last error. */
   onFailed?: (error: unknown) => void;
+  /** Called with each step: what was checked, found, skipped, or saved. */
+  log?: (message: string) => void;
+  /**
+   * Added on request (the Add Local SAS Profile command): the added-once flag
+   * and other stdio profiles don't prevent it, only a stdio profile that
+   * already uses the same saspath.
+   */
+  manual?: boolean;
 }
 
 /**
@@ -66,9 +80,6 @@ export interface LocalProfileRetry {
 export const LOCAL_PROFILE_RETRY_DELAYS_MS: readonly number[] = [
   1000, 2000, 4000, 8000,
 ];
-
-const hasStdioProfile = (profiles: { [name: string]: Profile }) =>
-  Object.values(profiles).some((profile) => profile.connectionType === STDIO);
 
 const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -101,7 +112,8 @@ export function pathCandidates(
 
 /**
  * Where to look for SAS, in order: the user's extra paths (SAS.localSasPaths),
- * the SAS Analytics Pro path, common SAS 9.4 install paths, then `sas` on PATH.
+ * the SAS Analytics Pro path, the SAS Viya UTF-8 launcher, common SAS 9.4
+ * install paths, then `sas` on PATH.
  */
 export function localSasCandidates(
   extraPaths: readonly string[] = [],
@@ -112,9 +124,27 @@ export function localSasCandidates(
       (path) => typeof path === "string" && isAbsolute(path),
     ),
     DEFAULT_LOCAL_SAS_PATH,
+    VIYA_SAS_U8_PATH,
     ...SAS94_LOCAL_SAS_PATHS,
     ...pathCandidates(SAS_COMMAND, pathEnv),
   ];
+}
+
+/** The first executable candidate (see localSasCandidates), if any. */
+export function findLocalSas(
+  candidates: string | readonly string[] = localSasCandidates(),
+  isExecutable: (path: string) => boolean = isExecutableFile,
+): string | undefined {
+  return (typeof candidates === "string" ? [candidates] : candidates).find(
+    (path) => isExecutable(path),
+  );
+}
+
+/** The saspath of a stdio profile, or undefined for other profiles. */
+export function stdioSasPath(profile: Profile): string | undefined {
+  return profile.connectionType === STDIO && "saspath" in profile
+    ? profile.saspath
+    : undefined;
 }
 
 /**
@@ -124,6 +154,11 @@ export function localSasCandidates(
  * candidate (see localSasCandidates) becomes the profile's saspath. It is added once: an
  * existing stdio profile, or a user who deleted the added one, is left alone. It
  * becomes the active profile only if none is set.
+ *
+ * The added-once flag is ignored when there are no connection profiles at all:
+ * the added profile was then lost (for example when another writer replaced
+ * settings.json), not deleted for another profile. On Posit Workbench the flag
+ * outlives sessions and browsers, so it could otherwise never be added again.
  *
  * The profile and the active profile are written in one write. A failed write
  * (another writer changed settings.json at the same moment) is retried after
@@ -142,17 +177,30 @@ export async function addLocalSasProfile(
     delaysMs = LOCAL_PROFILE_RETRY_DELAYS_MS,
     sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     onFailed,
+    log = () => {},
+    manual = false,
   }: LocalProfileRetry = {},
 ): Promise<string | undefined> {
-  if (state.get<boolean>(LOCAL_PROFILE_ADDED_KEY)) {
-    return undefined;
+  if (!manual && state.get<boolean>(LOCAL_PROFILE_ADDED_KEY)) {
+    if (Object.keys(store.getAllProfiles() ?? {}).length > 0) {
+      log(
+        `Skipped: the local SAS profile was added before (${LOCAL_PROFILE_ADDED_KEY} is set), so it is not added again.`,
+      );
+      return undefined;
+    }
+    log(
+      `The local SAS profile was added before (${LOCAL_PROFILE_ADDED_KEY} is set), but there are no connection profiles, so it is added again.`,
+    );
   }
-  const sasPath = (
-    typeof candidates === "string" ? [candidates] : candidates
-  ).find((path) => isExecutable(path));
+  const sasPath = findLocalSas(candidates, isExecutable);
   if (!sasPath) {
+    const paths = typeof candidates === "string" ? [candidates] : candidates;
+    log(
+      `No SAS found: none of these is an executable file: ${paths.join(", ")}`,
+    );
     return undefined;
   }
+  log(`Found SAS at ${sasPath}`);
 
   const profile: StdioProfile = {
     connectionType: STDIO,
@@ -166,7 +214,13 @@ export async function addLocalSasProfile(
     }
     // Read afresh: another writer, or our last attempt, may have changed it.
     const profiles = store.getAllProfiles() ?? {};
-    if (hasStdioProfile(profiles)) {
+    const stdio = Object.keys(profiles).find(
+      (key) =>
+        profiles[key].connectionType === STDIO &&
+        (!manual || stdioSasPath(profiles[key]) === sasPath),
+    );
+    if (stdio !== undefined) {
+      log(`Skipped: the stdio profile "${stdio}" already exists.`);
       await state.update(LOCAL_PROFILE_ADDED_KEY, true);
       return undefined;
     }
@@ -179,21 +233,20 @@ export async function addLocalSasProfile(
     try {
       await store.saveProfiles(active, { ...profiles, [name]: profile });
       const saved = store.getAllProfiles()?.[name];
-      if (
-        saved?.connectionType === STDIO &&
-        "saspath" in saved &&
-        saved.saspath === sasPath
-      ) {
+      if (saved && stdioSasPath(saved) === sasPath) {
         await state.update(LOCAL_PROFILE_ADDED_KEY, true);
+        log(
+          `Added the profile "${name}" for ${sasPath}${active === name ? " and made it the active profile" : ""}.`,
+        );
         return name;
       }
       lastError = new Error("The profile is not in the settings after saving.");
     } catch (error) {
       lastError = error;
     }
-    console.warn(
-      `Could not save the local SAS profile (attempt ${attempt}/${attempts}): ${messageOf(lastError)}`,
-    );
+    const message = `Could not save the local SAS profile (attempt ${attempt}/${attempts}): ${messageOf(lastError)}`;
+    console.warn(message);
+    log(message);
   }
   onFailed?.(lastError);
   return undefined;
