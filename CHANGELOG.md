@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Positron: the **Variables** pane groups the GLOBAL macro variables a SAS session already had when it started, such as `&POSIT_USER` and the ones an autoexec sets, under **Startup macro variables**, as it groups the AUTOMATIC ones. The variables your code sets, such as `%let x=1;`, are listed on their own at the top. A startup variable your code gives a new value moves out of the group. **Delete all objects** keeps the startup variables
+
+### Bug Fixes
+
+- Positron 2026.11: the **Variables** pane stayed empty for SAS, and its reload button spun forever. When a session starts, Positron 2026.11 closes the session's `positron.connection` clients, and the extension answered its request for them with all of its clients, so the **Variables** pane's was closed too. The extension now returns only the clients of the type asked for. Positron 2026.12 doesn't close these clients, so it wasn't affected
+
 ## 1.2.1 - 2026-11-20
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

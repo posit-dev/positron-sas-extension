@@ -13,8 +13,9 @@ import type {
 /**
  * The positron.variables comm of a SAS console (posit-dev/positron-sas-extension#158).
  * The Variables pane shows the session's GLOBAL macro variables, its
- * AUTOMATIC ones grouped under one entry, and its WORK datasets, which open
- * in the Data Explorer. Posit Assistant reads the same list through
+ * AUTOMATIC ones grouped under one entry, the GLOBAL ones the session
+ * started with (autoexec, POSIT_*) under another, and its WORK datasets,
+ * which open in the Data Explorer. Posit Assistant reads the same list through
  * positron.runtime.getSessionVariables.
  */
 
@@ -52,6 +53,50 @@ export interface VariablesEmitData {
 /** The access key of the entry that holds the AUTOMATIC macro variables. */
 export const AUTOMATIC_KEY = "(automatic)";
 
+/** The access key of the entry that holds the startup GLOBAL macro variables. */
+export const STARTUP_KEY = "(startup)";
+
+/**
+ * The GLOBAL macro variables a session had before the user's code ran: the
+ * first snapshot's. Kept by the runtime session, not the comm, so a comm
+ * Positron opens again later (a window reload) doesn't take the user's own
+ * variables for startup ones.
+ */
+export class StartupMacros {
+  private values: Map<string, string> | undefined;
+
+  /** A baseline that is already known. */
+  static of(macros: MacroVariable[]): StartupMacros {
+    const startup = new StartupMacros();
+    startup.values = StartupMacros.globals(macros);
+    return startup;
+  }
+
+  private static globals(macros: MacroVariable[]): Map<string, string> {
+    return new Map(
+      macros.filter((m) => m.scope === "GLOBAL").map((m) => [m.name, m.value]),
+    );
+  }
+
+  /**
+   * Record the baseline, once. An empty snapshot doesn't count: a running
+   * SAS always has AUTOMATIC variables, so SAS wasn't ready yet.
+   */
+  record(macros: MacroVariable[]): void {
+    if (!this.values && macros.length > 0) {
+      this.values = StartupMacros.globals(macros);
+    }
+  }
+
+  /**
+   * True for a GLOBAL variable that still has the value it started with.
+   * Once the user's code sets it, it counts as the user's.
+   */
+  has(m: MacroVariable): boolean {
+    return m.scope === "GLOBAL" && this.values?.get(m.name) === m.value;
+  }
+}
+
 /** The longest value the pane shows; the full value is copied. */
 const MAX_DISPLAY = 1000;
 
@@ -87,13 +132,20 @@ function macroVariable(m: MacroVariable, updated: number): PositronVariable {
   };
 }
 
-function automaticGroup(count: number, updated: number): PositronVariable {
+function macroGroup(
+  key: string,
+  name: string,
+  type: string,
+  info: string,
+  count: number,
+  updated: number,
+): PositronVariable {
   return {
-    access_key: AUTOMATIC_KEY,
-    display_name: "Automatic macro variables",
+    access_key: key,
+    display_name: name,
     display_value: `${count} variables`,
-    display_type: "AUTOMATIC",
-    type_info: "Macro variables SAS defines",
+    display_type: type,
+    type_info: info,
     kind: "map",
     length: count,
     size: 0,
@@ -158,17 +210,26 @@ export function letStatement(m: MacroVariable): string {
 }
 
 /** What a snapshot entry looks like when deciding whether it changed. */
-function signatures(snapshot: SessionSnapshot): Map<string, string> {
+function signatures(
+  snapshot: SessionSnapshot,
+  startup: StartupMacros,
+): Map<string, string> {
   const result = new Map<string, string>();
   const automatic: string[] = [];
+  const atStartup: string[] = [];
   for (const m of snapshot.macros) {
-    if (m.scope === "GLOBAL") {
-      result.set(m.name, m.value);
-    } else {
+    if (m.scope !== "GLOBAL") {
       automatic.push(`${m.name}=${m.value}`);
+    } else if (startup.has(m)) {
+      atStartup.push(`${m.name}=${m.value}`);
+    } else {
+      result.set(m.name, m.value);
     }
   }
   result.set(AUTOMATIC_KEY, automatic.join("\n"));
+  if (atStartup.length > 0) {
+    result.set(STARTUP_KEY, atStartup.join("\n"));
+  }
   for (const t of snapshot.tables) {
     result.set(
       tableKey(t.name),
@@ -200,6 +261,7 @@ export class SasVariables {
     readonly id: string,
     private readonly backend: SasVariablesBackend,
     private readonly now: () => number = Date.now,
+    private readonly startup: StartupMacros = new StartupMacros(),
   ) {}
 
   dispose(): void {
@@ -311,7 +373,8 @@ export class SasVariables {
     removed: string[];
   }> {
     const snapshot = await this.backend.snapshot();
-    const next = signatures(snapshot);
+    this.startup.record(snapshot.macros);
+    const next = signatures(snapshot, this.startup);
     const time = this.now();
     const changed: string[] = [];
     for (const [key, signature] of next) {
@@ -336,20 +399,50 @@ export class SasVariables {
     return this.updated.get(key) ?? 0;
   }
 
-  /** The pane's top level, sorted: macro variables, the group, tables. */
+  /** A GLOBAL macro variable the user set, shown on its own. */
+  private isUserMacro(m: MacroVariable): boolean {
+    return m.scope === "GLOBAL" && !this.startup.has(m);
+  }
+
+  /**
+   * The pane's top level, sorted: the user's macro variables, the startup
+   * and automatic groups, tables.
+   */
   private topLevel(): PositronVariable[] {
     const globals = this.snapshot.macros
-      .filter((m) => m.scope === "GLOBAL")
+      .filter((m) => this.isUserMacro(m))
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((m) => macroVariable(m, this.updatedTime(m.name)));
-    const automatic = this.snapshot.macros.filter((m) => m.scope === "AUTOMATIC");
+    const startup = this.startupMacros();
+    const automatic = this.automatic();
     const tables = [...this.snapshot.tables]
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((t) => workTable(t, this.updatedTime(tableKey(t.name))));
     return [
       ...globals,
+      ...(startup.length > 0
+        ? [
+            macroGroup(
+              STARTUP_KEY,
+              "Startup macro variables",
+              "GLOBAL",
+              "GLOBAL macro variables the session started with",
+              startup.length,
+              this.updatedTime(STARTUP_KEY),
+            ),
+          ]
+        : []),
       ...(automatic.length > 0
-        ? [automaticGroup(automatic.length, this.updatedTime(AUTOMATIC_KEY))]
+        ? [
+            macroGroup(
+              AUTOMATIC_KEY,
+              "Automatic macro variables",
+              "AUTOMATIC",
+              "Macro variables SAS defines",
+              automatic.length,
+              this.updatedTime(AUTOMATIC_KEY),
+            ),
+          ]
         : []),
       ...tables,
     ];
@@ -361,6 +454,23 @@ export class SasVariables {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  private startupMacros(): MacroVariable[] {
+    return this.snapshot.macros
+      .filter((m) => this.startup.has(m))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /** The variables of a group entry, or undefined for any other key. */
+  private group(key: string): MacroVariable[] | undefined {
+    if (key === AUTOMATIC_KEY) {
+      return this.automatic();
+    }
+    if (key === STARTUP_KEY) {
+      return this.startupMacros();
+    }
+    return undefined;
+  }
+
   private findTable(key: string | undefined): WorkTable | undefined {
     const name = key && tableName(key);
     return name
@@ -368,22 +478,23 @@ export class SasVariables {
       : undefined;
   }
 
-  /** The macro variable at a path: a GLOBAL name, or [group, AUTOMATIC name]. */
+  /** The macro variable at a path: a user's GLOBAL name, or [group, name]. */
   private findMacro(path: string[]): MacroVariable | undefined {
     if (path.length === 1) {
       return this.snapshot.macros.find(
-        (m) => m.scope === "GLOBAL" && m.name === path[0],
+        (m) => this.isUserMacro(m) && m.name === path[0],
       );
     }
-    if (path.length === 2 && path[0] === AUTOMATIC_KEY) {
-      return this.automatic().find((m) => m.name === path[1]);
+    if (path.length === 2) {
+      return this.group(path[0])?.find((m) => m.name === path[1]);
     }
     return undefined;
   }
 
   private async inspect(path: string[]): Promise<object> {
-    if (path.length === 1 && path[0] === AUTOMATIC_KEY) {
-      const children = this.automatic().map((m) => macroVariable(m, 0));
+    const group = path.length === 1 ? this.group(path[0]) : undefined;
+    if (group) {
+      const children = group.map((m) => macroVariable(m, 0));
       return { children, length: children.length };
     }
     const table = path.length === 1 ? this.findTable(path[0]) : undefined;
@@ -400,8 +511,9 @@ export class SasVariables {
     if (macro) {
       return letStatement(macro);
     }
-    if (path.length === 1 && path[0] === AUTOMATIC_KEY) {
-      return this.automatic().map(letStatement).join("\n");
+    const group = path.length === 1 ? this.group(path[0]) : undefined;
+    if (group) {
+      return group.map(letStatement).join("\n");
     }
     const table = this.findTable(path[0]);
     if (table) {
@@ -420,7 +532,7 @@ export class SasVariables {
 
   private async delete(keys: string[]): Promise<string[]> {
     const macros = keys.filter((k) =>
-      this.snapshot.macros.some((m) => m.scope === "GLOBAL" && m.name === k),
+      this.snapshot.macros.some((m) => this.isUserMacro(m) && m.name === k),
     );
     const tables = keys
       .map((k) => this.findTable(k)?.name)
@@ -435,10 +547,13 @@ export class SasVariables {
     return [...macros, ...tables.map(tableKey)];
   }
 
-  /** Delete the user's GLOBAL macro variables and WORK tables. */
+  /**
+   * Delete the user's GLOBAL macro variables and WORK tables. The startup
+   * ones stay: the session's setup (autoexec) may need them.
+   */
   private async clear(): Promise<void> {
     const macros = this.snapshot.macros
-      .filter((m) => m.scope === "GLOBAL" && !KEEP_ON_CLEAR.test(m.name))
+      .filter((m) => this.isUserMacro(m) && !KEEP_ON_CLEAR.test(m.name))
       .map((m) => m.name);
     const tables = this.snapshot.tables.map((t) => t.name);
     if (macros.length > 0) {

@@ -124,12 +124,13 @@ The Libraries view that [Accessing Libraries and Tables](./accessLibraries.md) d
 
 The **Variables** pane shows the state of the SAS session: its macro variables and its WORK datasets. It works like the SAS Enterprise Guide macro variable viewer, and it updates after each console run. Changed entries are highlighted.
 
-- **GLOBAL macro variables:** each one is listed with its value. The type column shows **macro variable**. Values longer than 1,000 characters are cut off in the pane, but copying gets the whole value.
+- **Your macro variables:** each GLOBAL macro variable your code sets is listed with its value. The type column shows **macro variable**. Values longer than 1,000 characters are cut off in the pane, but copying gets the whole value.
+- **Startup macro variables:** the GLOBAL variables the session already had when it started, such as `&POSIT_USER` and the ones your autoexec sets, are grouped under **Startup macro variables**. Expand it to see them. When your code gives one of them a new value, it moves out of the group and is listed with your own.
 - **Automatic macro variables:** the AUTOMATIC variables, such as `&SYSERR`, `&SYSLAST`, and `&SYSDATE9`, are grouped under **Automatic macro variables**. Expand it to see them.
 - **WORK datasets and views:** each one is listed as **WORK.*name*** with its number of observations and variables, and its label. Expand it to see the columns with their types, lengths, formats, and labels. Select the table icon to open it in the Data Explorer.
 - **Copy:** copying a macro variable gives a `%let` statement that recreates it, for example `%let cutoff=10;`. Copying a dataset gives its name.
 - **Filter:** type in the filter box to find variables by name.
-- **Delete all:** the **Delete all objects** button deletes the GLOBAL macro variables and the WORK datasets, after asking. It keeps the `POSIT_*` variables that identify the session and `_SASPROGRAMFILE`.
+- **Delete all:** the **Delete all objects** button deletes your GLOBAL macro variables and the WORK datasets, after asking. It keeps the startup macro variables, the `POSIT_*` variables that identify the session, and `_SASPROGRAMFILE`.
 
 The pane doesn't show local macro variables. They exist only while their macro runs.
 
