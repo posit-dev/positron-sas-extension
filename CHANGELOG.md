@@ -8,6 +8,7 @@
 
 ### Bug Fixes
 
+- Positron: the Data Explorer opens SAS datasets faster, whether from the **Variables**, **Connections** or **Data Connections** pane ([#177](https://github.com/posit-dev/positron-sas-extension/issues/177)). Opening a dataset took four SAS jobs before the first rows appeared; it now takes one. Its column lookup no longer reads the metadata of every assigned library. The grid keeps the rows it has read in blocks of 200, so scrolling back needs no new query. With a sort or filter active, the sorted and filtered rows are kept in a hidden WORK table instead of being sorted again for every page. The summary panel's statistics take two queries instead of six and wait until the rows the grid needs have been read. On SAS Viya, each hidden query also makes one request fewer, as it no longer asks for ODS results. With SAS 9 IOM and COM connections, a hidden query no longer takes at least 2 seconds, because the extension now polls the log sooner after a run starts
 - Positron 2026.11: the **Variables** pane stayed empty for SAS, and its reload button spun forever. When a session starts, Positron 2026.11 closes the session's `positron.connection` clients, and the extension answered its request for them with all of its clients, so the **Variables** pane's was closed too. The extension now returns only the clients of the type asked for. Positron 2026.12 doesn't close these clients, so it wasn't affected
 
 ## 1.2.1 - 2026-11-20
