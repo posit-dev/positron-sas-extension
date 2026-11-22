@@ -171,7 +171,10 @@ export class SasWorkspaceContextProvider {
           `as sascfg_personal.py in the working directory (not ~/.config/saspy) so the project ` +
           `is self-contained and deployable to Posit Connect, ` +
           `(4) In the .qmd file, start with an {r} chunk that runs library(sasquatch) and sas_connect(). ` +
-          `This first {r} chunk is required: without it Quarto picks the Jupyter engine and the {sas} chunks fail, ` +
+          `This first {r} chunk is required: without it Quarto picks the Jupyter engine and the {sas} chunks fail. ` +
+          `Between library(sasquatch) and sas_connect(), add these lines, which label {sas} chunk code as SAS (sasquatch labels it txt) so that it gets syntax highlighting: ` +
+          `knitr::knit_engines$set(sas = function(options) { out <- sasquatch::sas_engine(options); ` +
+          `if (is.character(out)) gsub("\`\`\`{.txt", "\`\`\`{.sas", out, fixed = TRUE) else out }), ` +
           `(5) Use \`\`\`{sas} code chunks for SAS code. ` +
           `In a {sas} chunk, options are written \`*| label: name;\` (not \`#|\`), and one blank line must follow the last option line, ` +
           `before the first SAS statement, or only the first option is read. ` +

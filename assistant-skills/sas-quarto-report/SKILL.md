@@ -103,6 +103,14 @@ A SAS report is a knitr Quarto document. Two things make that work:
    produce anything else and stops with an error. Do not write a `format:` field
    unless the user asks for one, and if they ask for Word (`docx`), Typst or
    another format, tell them that SAS chunks support only HTML and PDF.
+5. sasquatch labels the code of `{sas}` chunks as plain text (`txt`), so the
+   rendered report shows it without syntax highlighting. The `setup` chunk
+   therefore re-registers the `{sas}` chunk type, right after
+   `library(sasquatch)`, with a wrapper that labels the code as SAS (see the
+   example below). Copy those lines as they are. They change only the label, not
+   the output. Quarto 1.12 and later then highlight the SAS code. Quarto 1.11 and
+   earlier also need a `syntax-definitions:` entry with a downloaded `sas.xml`;
+   do not add that unless the user asks for highlighting with an older Quarto.
 
 ## The render uses its own SAS session
 
@@ -125,7 +133,8 @@ is not the SAS console session in Positron, where the analysis ran. So:
 Order the cells like this:
 
 - `setup`: the first chunk of the document, an `{r}` chunk with
-  `library(sasquatch)` followed by `sas_connect()`. It takes the place of the
+  `library(sasquatch)`, the highlighting wrapper, and `sas_connect()`, in that
+  order. It takes the place of the
   generic skill's `load-packages` cell for SAS reports. Do not split it up, and
   do not put another code chunk before it (the disclaimer callout and text may
   come first).
@@ -146,6 +155,11 @@ title: "Cars by origin"
 ```{r}
 #| label: setup
 library(sasquatch)
+# Label {sas} chunk code as SAS, so that it gets syntax highlighting
+knitr::knit_engines$set(sas = function(options) {
+  out <- sasquatch::sas_engine(options)
+  if (is.character(out)) gsub("```{.txt", "```{.sas", out, fixed = TRUE) else out
+})
 sas_connect()
 ```
 

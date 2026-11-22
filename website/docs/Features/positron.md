@@ -233,6 +233,7 @@ A SAS report follows these rules:
 - **Chunk options:** in a `{sas}` chunk, options are written `*| label: load-data;`. The `#|` form that `{r}` chunks use stops the render. Leave one blank line between the last `*|` line and the first SAS statement: without it, only the first option is read.
 - **Own SAS session:** the render opens its own SAS session through saspy, not your console session. Tables in `WORK` and macro variables from the console do not exist there. The report loads its data from permanent libraries or files, or repeats the DATA steps.
 - **Formats:** `{sas}` chunks produce HTML and PDF output only.
+- **Syntax highlighting:** the `setup` chunk also has the lines from [Syntax Highlighting in Rendered Documents](#syntax-highlighting-in-rendered-documents), so that the SAS code in the report is highlighted.
 
 Before the assistant says a report is done, it checks the `{sas}` chunks against these rules and renders the document. If it could not render, it says "Written, not rendered" and gives the reason.
 
@@ -264,6 +265,34 @@ Quarto's own shortcuts do nothing in a `{sas}` chunk, and an extension cannot ov
 These lenses and commands fill a gap in the Quarto extension, which runs only R, Python, Julia, and C# cells. A change proposed to Quarto ([quarto-dev/quarto#1237](https://github.com/quarto-dev/quarto/pull/1237)) lets it run cells of any language that has a Positron runtime, `{sas}` included, with its own lenses and shortcuts. The extension declares its SAS runtime for that, so Quarto can find it before any connection profile exists. Once a Quarto release includes the change, the extension's lenses step aside for that version, so each chunk shows one **Run Cell**.
 
 The console is not the SAS session that a render uses: sasquatch opens its own through saspy (see [Reports with Posit Assistant](#reports-with-posit-assistant)). Tables you create in `WORK` from the console are not there when the document renders, and data passed with `sas_from_r()` in an `{r}` chunk is not in the console.
+
+### Syntax Highlighting in Rendered Documents
+
+In a rendered document, the code of `{r}` chunks is highlighted, but the code of `{sas}` chunks is plain text. There are two causes:
+
+- sasquatch (version 0.1.3) labels the code of `{sas}` chunks as plain text (`txt`), not as SAS.
+- Quarto 1.11 and earlier use a Pandoc version that cannot highlight SAS. Quarto 1.12 and later can. The status bar shows the Quarto version that Positron uses.
+
+To highlight SAS code, add these lines to the `setup` chunk, after `library(sasquatch)`. They label the code of `{sas}` chunks as SAS and leave the chunk output as it is. They work for HTML and PDF output:
+
+````r
+knitr::knit_engines$set(sas = function(options) {
+  out <- sasquatch::sas_engine(options)
+  if (is.character(out)) gsub("```{.txt", "```{.sas", out, fixed = TRUE) else out
+})
+````
+
+With Quarto 1.11 or earlier, also save the SAS syntax definition [`sas.xml`](https://raw.githubusercontent.com/KDE/syntax-highlighting/e485d0b267199dbd9c8573366386acf170073725/data/syntax/sas.xml) next to the document and add it to the YAML header:
+
+```yaml
+---
+title: "My report"
+syntax-definitions:
+  - sas.xml
+---
+```
+
+Posit Assistant adds the lines to the `setup` chunk of the reports it writes (see [Reports with Posit Assistant](#reports-with-posit-assistant)). They do no harm if a later sasquatch version labels SAS code correctly itself.
 
 ## Traceability
 

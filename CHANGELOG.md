@@ -5,6 +5,7 @@
 ### Features
 
 - Positron: the **Variables** pane groups the GLOBAL macro variables a SAS session already had when it started, such as `&POSIT_USER` and the ones an autoexec sets, under **Startup macro variables**, as it groups the AUTOMATIC ones. The variables your code sets, such as `%let x=1;`, are listed on their own at the top. A startup variable your code gives a new value moves out of the group. **Delete all objects** keeps the startup variables
+- Positron: Quarto reports that Posit Assistant writes with `{sas}` chunks now highlight the SAS code when rendered ([#174](https://github.com/posit-dev/positron-sas-extension/issues/174)). sasquatch labels the code of `{sas}` chunks as plain text, so the report's `setup` chunk now has a few lines that label it as SAS. Highlighting needs Quarto 1.12 or later, or a SAS syntax definition with Quarto 1.11 and earlier. The documentation shows how to add the same lines to your own documents
 
 ### Bug Fixes
 
