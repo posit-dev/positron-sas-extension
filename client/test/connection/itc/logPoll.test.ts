@@ -13,6 +13,7 @@ import * as scripts from "../../../src/connection/itc/script";
 import { LineCodes, Tags } from "../../../src/connection/itc/script/env.json";
 import { ITCProtocol } from "../../../src/connection/itc/types";
 import { Session } from "../../../src/connection/session";
+import { extensionContext } from "../../../src/node/extension";
 
 describe("ITC log polling", () => {
   let sandbox: SinonSandbox;
@@ -38,22 +39,28 @@ describe("ITC log polling", () => {
     sandbox = createSandbox({});
     sandbox.stub(scripts, "getScript");
     stdinStub = sandbox.stub();
-    const stdoutOn = sandbox.stub().callsFake((event, callback) => {
+    // Untyped stubs, as in index.test.ts: the fake process only has what
+    // the session uses.
+    const stdoutOn: SinonStub = sandbox.stub();
+    stdoutOn.callsFake((event, callback) => {
       if (event === "data") {
         onData = callback;
       }
     });
-    sandbox.stub(proc, "spawn").returns({
+    const spawnStub: SinonStub = sandbox.stub(proc, "spawn");
+    spawnStub.returns({
       stdout: { on: stdoutOn, write: sandbox.stub() },
       stderr: { on: sandbox.stub() },
       stdin: { write: stdinStub, end: sandbox.stub() },
       on: sandbox.stub(),
       kill: sandbox.stub(),
     });
-    setContext({
+    const context: vscode.ExtensionContext = {
+      ...extensionContext,
       globalStorageUri: vscode.Uri.from({ scheme: "file", path: __dirname }),
       secrets: stubInterface<vscode.SecretStorage>(),
-    } satisfies Partial<vscode.ExtensionContext> as vscode.ExtensionContext);
+    };
+    setContext(context);
 
     session = getSession({ host: "localhost", sasOptions: [] }, ITCProtocol.COM);
     session.onExecutionLogFn = () => undefined;
