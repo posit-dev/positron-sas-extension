@@ -29,7 +29,7 @@ describe("SAS commands for coding agents", () => {
     return list && run && ai ? { ai, list, run } : undefined;
   }
 
-  it("lists both commands in the agent catalog", async function () {
+  it("lists the commands in the agent catalog", async function () {
     const api = agentApi();
     if (!api) {
       this.skip(); // Positron before 2026.11 has no agent commands.
@@ -40,6 +40,9 @@ describe("SAS commands for coding agents", () => {
     const listSessions = catalog.find((c) => c.id === "SAS.agent.listSessions");
     assert.ok(listSessions, ids.join(", "));
     assert.strictEqual(listSessions.readOnly, true);
+    const start = catalog.find((c) => c.id === "SAS.agent.startConsole");
+    assert.ok(start, ids.join(", "));
+    assert.notStrictEqual(start.readOnly, true);
   });
 
   it("reports no SAS console", async function () {
@@ -48,7 +51,12 @@ describe("SAS commands for coding agents", () => {
       this.skip();
     }
     const sessions = await api.run.call(api.ai, "SAS.agent.listSessions", []);
-    assert.deepStrictEqual(sessions, { ok: true, result: [] });
+    assert.ok(sessions.ok, JSON.stringify(sessions));
+    assert.deepStrictEqual(
+      Reflect.get(Object(sessions.result), "sessions"),
+      [],
+    );
+    assert.ok(Array.isArray(Reflect.get(Object(sessions.result), "profiles")));
 
     const run = await api.run.call(api.ai, "SAS.agent.runCode", [
       "%put hello;",
@@ -57,6 +65,21 @@ describe("SAS commands for coding agents", () => {
     assert.match(
       run.ok ? "" : (run.message ?? ""),
       /No SAS console is running/,
+    );
+  });
+
+  it("refuses to start a console with an unknown profile", async function () {
+    const api = agentApi();
+    if (!api) {
+      this.skip();
+    }
+    const start = await api.run.call(api.ai, "SAS.agent.startConsole", [
+      "no-such-profile",
+    ]);
+    assert.strictEqual(start.ok, false);
+    assert.match(
+      start.ok ? "" : (start.message ?? ""),
+      /no SAS connection profile 'no-such-profile'/,
     );
   });
 });
