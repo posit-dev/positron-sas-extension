@@ -1565,8 +1565,11 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
       }
     };
 
+    // `silent` tells the REST connection not to look for ODS results, which
+    // saves a request per job. The ITC connection takes it as skipPageHeaders,
+    // which suits hidden queries too; the others ignore it.
     session
-      .run(next.code)
+      .run(next.code, { silent: true })
       .then(() => {
         clearTimeout(timer);
         finish();
