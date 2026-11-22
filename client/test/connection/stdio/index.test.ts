@@ -17,6 +17,32 @@ import {
 import { LineCodes } from "../../../src/connection/stdio/types";
 import { assertThrowsAsync } from "../../utils";
 
+/** Bytes from text (as UTF-8) and single byte values, in order. */
+const bytes = (...parts: (string | number)[]): Buffer =>
+  Buffer.from(
+    parts.flatMap((part) =>
+      typeof part === "string" ? [...Buffer.from(part)] : [part],
+    ),
+  );
+
+/** What SAS writes to stderr for the system variables code. */
+const systemVarsOutput = (workDir: string, encoding: string) =>
+  `WORKDIR${workDir} WORKDIREND\nSASENC ${encoding} SASENCEND\n`;
+
+/**
+ * SAS's prompt, then its answer to the system variables code, which finishes
+ * setup.
+ */
+function startSas(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  child: any,
+  encoding = "utf-8",
+  workDir = "/tmp/work",
+): void {
+  child.stdout.emit("data", Buffer.from("?"));
+  child.stderr.emit("data", Buffer.from(systemVarsOutput(workDir, encoding)));
+}
+
 // setup() and run() attach the process handlers synchronously, so the tests emit
 // mock SAS output right after calling them. process.nextTick callbacks would not
 // run under the sandbox's fake timers, and the awaited promise would never settle.
@@ -108,7 +134,7 @@ describe("stdio connection", () => {
       const setupPromise = session.setup();
 
       // Simulate SAS ready prompt
-      mockStdout.emit("data", Buffer.from("?"));
+      startSas(mockProcess);
 
       await setupPromise;
 
@@ -151,7 +177,7 @@ describe("stdio connection", () => {
 
       const setupPromise = session.setup();
       expect(writeStub.called).to.be.false;
-      mockStdout.emit("data", Buffer.from("?"));
+      startSas(mockProcess);
       await setupPromise;
 
       expect(writeStub.calledWith("options pagesize=max;\n%let x = 1;\n")).to.be
@@ -243,7 +269,7 @@ describe("stdio connection", () => {
 
       // Setup session first
       const setupPromise = session.setup();
-      mockStdout.emit("data", Buffer.from("?"));
+      startSas(mockProcess);
       await setupPromise;
 
       // Now run some code
@@ -300,7 +326,7 @@ describe("stdio connection", () => {
 
       const setupPromise = session.setup();
       mockStderr.emit("data", Buffer.from("NOTE: SAS initialization used"));
-      mockStdout.emit("data", Buffer.from("?"));
+      startSas(mockProcess);
       await setupPromise;
 
       const runPromise = session.run("%put hello;");
@@ -340,7 +366,7 @@ describe("stdio connection", () => {
       session.onExecutionLogFn = (logs) =>
         executionLog.push(...logs.map((l) => l.line));
       const setupPromise = session.setup();
-      mockStdout.emit("data", Buffer.from("?"));
+      startSas(mockProcess);
       await setupPromise;
 
       let firstDone = false;
@@ -372,6 +398,163 @@ describe("stdio connection", () => {
       mockStderr.emit("data", Buffer.from(LineCodes.RunEndCode));
       await second;
       expect(executionLog).to.include("snapshot");
+    });
+  });
+
+  describe("session encoding", () => {
+    // run() settles a few promise turns after the marker; the timers are fake.
+    const flush = async () => {
+      for (let i = 0; i < 20; i++) {
+        await Promise.resolve();
+      }
+    };
+    let writeStub: sinon.SinonStub;
+    let executionLog: string[];
+
+    beforeEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockStdin: any = new EventEmitter();
+      writeStub = sandbox.stub();
+      mockStdin.write = writeStub;
+      mockStdin.end = sandbox.stub();
+      mockProcess = new EventEmitter();
+      mockProcess.stdin = mockStdin;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = sandbox.stub();
+      mockProcess.killed = false;
+      sandbox.stub(processLauncher, "spawn").returns(mockProcess);
+
+      session = new StdioSession({ saspath: fakeSas, sasOptions: [] });
+      executionLog = [];
+      session.onExecutionLogFn = (logs) =>
+        executionLog.push(...logs.map((l) => l.line));
+    });
+
+    it("asks SAS for its encoding and finishes setup when SAS reports it", async () => {
+      let ready = false;
+      const setupPromise = session.setup().then(() => (ready = true));
+      mockProcess.stdout.emit("data", Buffer.from("?"));
+      await flush();
+
+      expect(writeStub.firstCall.args[0]).to.include("&sysencoding");
+      expect(ready).to.be.false;
+
+      // The tag can arrive split over two chunks.
+      mockProcess.stderr.emit(
+        "data",
+        Buffer.from("WORKDIR/w WORKDIREND\nSASE"),
+      );
+      await flush();
+      expect(ready).to.be.false;
+      mockProcess.stderr.emit("data", Buffer.from("NC wlatin1 SASENCEND\n"));
+      await setupPromise;
+    });
+
+    it("writes code and reads the log in a wlatin1 session's encoding", async () => {
+      const setupPromise = session.setup();
+      startSas(mockProcess, "wlatin1");
+      await setupPromise;
+
+      const runPromise = session.run("%put ä€;");
+      mockProcess.stderr.emit(
+        "data",
+        bytes(0xe4, 0x80, `\n${LineCodes.RunEndCode}`),
+      );
+      await runPromise;
+
+      const code = writeStub
+        .getCalls()
+        .map((call) => call.args[0])
+        .find((arg) => Buffer.isBuffer(arg));
+      expect(Buffer.isBuffer(code)).to.be.true;
+      expect([...code]).to.deep.equal([
+        ...Buffer.from("%put "),
+        0xe4,
+        0x80,
+        ...Buffer.from(";\n"),
+      ]);
+      expect(executionLog).to.include("ä€");
+    });
+
+    it("warns when code has characters the session encoding lacks", async () => {
+      const setupPromise = session.setup();
+      startSas(mockProcess, "latin1");
+      await setupPromise;
+
+      const runPromise = session.run("%put €;");
+      mockProcess.stderr.emit("data", Buffer.from(LineCodes.RunEndCode));
+      await runPromise;
+
+      expect(executionLog.some((line) => line.includes("latin1"))).to.be.true;
+    });
+
+    it("reads a UTF-8 character split over two chunks", async () => {
+      const setupPromise = session.setup();
+      startSas(mockProcess);
+      await setupPromise;
+
+      const runPromise = session.run("%put ä;");
+      mockProcess.stderr.emit("data", Buffer.from([0xc3]));
+      mockProcess.stderr.emit("data", bytes(0xa4, `\n${LineCodes.RunEndCode}`));
+      await runPromise;
+
+      expect(executionLog).to.include("ä");
+      expect(writeStub.calledWith("%put ä;\n")).to.be.true;
+    });
+
+    it("goes on with UTF-8 when SAS does not report its encoding", async () => {
+      const setupPromise = session.setup();
+      mockProcess.stdout.emit("data", Buffer.from("?"));
+      await sandbox.clock.tickAsync(30_000);
+      await setupPromise;
+
+      expect(executionLog.some((line) => line.includes("did not report"))).to.be
+        .true;
+    });
+
+    it("goes on with UTF-8 when the encoding is not supported", async () => {
+      const setupPromise = session.setup();
+      startSas(mockProcess, "no-such-encoding");
+      await setupPromise;
+
+      expect(executionLog.some((line) => line.includes("no-such-encoding"))).to
+        .be.true;
+    });
+
+    it("rejects setup when SAS exits before it reports its encoding", async () => {
+      const setupPromise = session.setup();
+      mockProcess.stdout.emit("data", Buffer.from("?"));
+      mockProcess.emit("close", 1, null);
+
+      await assertThrowsAsync(
+        async () => await setupPromise,
+        "Could not start the SAS process.",
+      );
+    });
+
+    it("reads the HTML result in its charset, else in the session encoding", async () => {
+      const setupPromise = session.setup();
+      startSas(mockProcess, "wlatin1", fakeSasDir);
+      await setupPromise;
+
+      const run = async (name: string, html: Buffer) => {
+        writeFileSync(join(fakeSasDir, `${name}.htm`), new Uint8Array(html));
+        const runPromise = session.run(`ods html5 body="${name}.htm";`);
+        mockProcess.stderr.emit("data", Buffer.from(LineCodes.RunEndCode));
+        return await runPromise;
+      };
+      const latin = await run(
+        "11111111-2222-3333-4444-555555555555",
+        bytes('<div id="IDX1">', 0xe4),
+      );
+      expect(latin.html5).to.include("ä");
+
+      const utf8 = await run(
+        "11111111-2222-3333-4444-666666666666",
+        bytes('<meta charset="utf-8"><div id="IDX1">ä'),
+      );
+      expect(utf8.html5).to.include("ä");
     });
   });
 
@@ -408,7 +591,7 @@ describe("stdio connection", () => {
 
       // Setup session
       const setupPromise = session.setup();
-      mockStdout.emit("data", Buffer.from("?"));
+      startSas(mockProcess);
       await setupPromise;
 
       // Close session
@@ -444,14 +627,14 @@ describe("stdio connection", () => {
 
       session = new StdioSession({ saspath: fakeSas, sasOptions: [] });
       let setupPromise = session.setup();
-      first.stdout.emit("data", Buffer.from("?"));
+      startSas(first);
       await setupPromise;
 
       // SAS is still busy, so it does not exit on ENDSAS.
       session.close();
 
       setupPromise = session.setup();
-      second.stdout.emit("data", Buffer.from("?"));
+      startSas(second);
       await setupPromise;
       expect(spawnStub.calledTwice).to.be.true;
 

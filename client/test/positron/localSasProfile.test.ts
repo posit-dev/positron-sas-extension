@@ -257,6 +257,25 @@ describe("addLocalSasProfile", () => {
       expect(name).to.be.undefined;
       expect(Object.keys(store.profiles)).to.deep.equal(["mine"]);
     });
+
+    it("does not add a second profile for another launcher of the same install", async () => {
+      const u8: Profile = {
+        connectionType: "stdio",
+        saspath: "/opt/SASHome/SASFoundation/9.4/bin/sas_u8",
+      } as Profile;
+      const store = new FakeStore({ local: u8 }, "local");
+
+      const name = await addLocalSasProfile(
+        store,
+        new FakeState(),
+        "/opt/SASHome/SASFoundation/9.4/sas",
+        sasPresent,
+        { manual: true },
+      );
+
+      expect(name).to.be.undefined;
+      expect(Object.keys(store.profiles)).to.deep.equal(["local"]);
+    });
   });
 
   it("picks a free name when 'local' is taken", async () => {
@@ -330,7 +349,7 @@ describe("addLocalSasProfile", () => {
     });
   });
 
-  it("finds a SAS 9.4 install", async () => {
+  it("finds a SAS 9.4 install that has only bin/sas_u8", async () => {
     const store = new FakeStore();
     const sas94 = "/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8";
 
@@ -344,6 +363,23 @@ describe("addLocalSasProfile", () => {
     expect(store.profiles.local).to.deep.equal({
       connectionType: "stdio",
       saspath: sas94,
+    });
+  });
+
+  it("prefers the SAS 9.4 sas script, which starts the site's encoding", async () => {
+    const store = new FakeStore();
+    const dir = "/usr/local/SASHome/SASFoundation/9.4";
+
+    await addLocalSasProfile(
+      store,
+      new FakeState(),
+      localSasCandidates([], ""),
+      (path) => path === `${dir}/sas` || path === `${dir}/bin/sas_u8`,
+    );
+
+    expect(store.profiles.local).to.deep.equal({
+      connectionType: "stdio",
+      saspath: `${dir}/sas`,
     });
   });
 
@@ -586,11 +622,15 @@ describe("addLocalSasProfile logging", () => {
 });
 
 describe("localSasCandidates", () => {
-  it("uses the UTF-8 launcher bin/sas_u8 for SAS 9.4", () => {
+  it("looks for the sas script, then bin/sas_u8, of each SAS 9.4 install", () => {
     expect(SAS94_LOCAL_SAS_PATHS).to.deep.equal([
+      "/opt/sas/SASHome/SASFoundation/9.4/sas",
       "/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8",
+      "/usr/local/SASHome/SASFoundation/9.4/sas",
       "/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8",
+      "/opt/sasinside/SASHome/SASFoundation/9.4/sas",
       "/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8",
+      "/opt/SASHome/SASFoundation/9.4/sas",
       "/opt/SASHome/SASFoundation/9.4/bin/sas_u8",
     ]);
   });

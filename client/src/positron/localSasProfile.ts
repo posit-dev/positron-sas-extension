@@ -20,17 +20,22 @@ export const DEFAULT_LOCAL_SAS_PATH = "/opt/sas/viya/home/SASFoundation/sas";
  */
 export const VIYA_SAS_U8_PATH = "/opt/sas/viya/home/SASFoundation/bin/sas_u8";
 
-/**
- * Common SAS 9.4 Foundation install locations. These are the UTF-8 launcher
- * `bin/sas_u8`, not the `sas` script (which may start a non-UTF-8 locale): the
- * extension reads SAS output as UTF-8.
- */
-export const SAS94_LOCAL_SAS_PATHS: readonly string[] = [
-  "/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8",
-  "/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8",
-  "/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8",
-  "/opt/SASHome/SASFoundation/9.4/bin/sas_u8",
+/** Common SAS 9.4 Foundation install locations. */
+const SAS94_FOUNDATION_DIRS: readonly string[] = [
+  "/opt/sas/SASHome/SASFoundation/9.4",
+  "/usr/local/SASHome/SASFoundation/9.4",
+  "/opt/sasinside/SASHome/SASFoundation/9.4",
+  "/opt/SASHome/SASFoundation/9.4",
 ];
+
+/**
+ * The SAS 9.4 launchers to look for: in each install, the `sas` script, which
+ * starts SAS in the encoding the site configured, then the UTF-8 launcher
+ * `bin/sas_u8`. The connection reads SAS output in the session encoding
+ * (#182), so the site's choice works.
+ */
+export const SAS94_LOCAL_SAS_PATHS: readonly string[] =
+  SAS94_FOUNDATION_DIRS.flatMap((dir) => [`${dir}/sas`, `${dir}/bin/sas_u8`]);
 
 /** Name of the SAS launcher looked up on PATH when no known location has SAS. */
 const SAS_COMMAND = "sas";
@@ -140,6 +145,20 @@ export function findLocalSas(
   );
 }
 
+/**
+ * The SASFoundation directory of a launcher: `<dir>/sas` or
+ * `<dir>/bin/sas_<encoding>` (such as sas_u8 or sas_en), else the path itself.
+ */
+function sasInstallDir(sasPath: string): string {
+  const match = /^(.+)\/(?:sas|bin\/sas_[a-z0-9]+)$/i.exec(sasPath);
+  return match ? match[1] : sasPath;
+}
+
+/** Whether two launchers start the same SAS install (in any encoding). */
+export function sameSasInstall(a: string | undefined, b: string): boolean {
+  return a !== undefined && (a === b || sasInstallDir(a) === sasInstallDir(b));
+}
+
 /** The saspath of a stdio profile, or undefined for other profiles. */
 export function stdioSasPath(profile: Profile): string | undefined {
   return profile.connectionType === STDIO && "saspath" in profile
@@ -217,7 +236,7 @@ export async function addLocalSasProfile(
     const stdio = Object.keys(profiles).find(
       (key) =>
         profiles[key].connectionType === STDIO &&
-        (!manual || stdioSasPath(profiles[key]) === sasPath),
+        (!manual || sameSasInstall(stdioSasPath(profiles[key]), sasPath)),
     );
     if (stdio !== undefined) {
       log(`Skipped: the stdio profile "${stdio}" already exists.`);

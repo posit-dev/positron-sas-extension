@@ -88,7 +88,7 @@ Note: if ~/.ssh/config does not exist, run the following Powershell command to c
 }
 ```
 
-Note: the default path to the SAS executable (saspath) is /opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8. Check with your SAS administrator for the exact path.
+Note: the default path to the SAS executable (saspath) is /opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8, the UTF-8 launcher. Any launcher works, such as the site's `sas` script in `SASFoundation/9.4` or `bin/sas_en`: the extension detects the session encoding (see [Session Encoding](./sas9stdio.md#session-encoding)). Check with your SAS administrator for the exact path.
 
 9. Add the public part of the keypair to the SAS server. Add the contents of the key file to the ~/.ssh/authorized_keys file.
 
