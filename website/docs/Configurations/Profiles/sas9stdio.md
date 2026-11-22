@@ -27,14 +27,14 @@ In Positron, when SAS is installed locally, the extension adds a `local` stdio p
 1. The paths in the `SAS.localSasPaths` setting, if any
 2. `/opt/sas/viya/home/SASFoundation/sas` (SAS Analytics Pro images)
 3. `/opt/sas/viya/home/SASFoundation/bin/sas_u8` (SAS Viya-based installations without the `sas` script)
-4. Common SAS 9.4 Foundation locations:
-   - `/opt/sas/SASHome/SASFoundation/9.4/bin/sas_u8`
-   - `/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8`
-   - `/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8`
-   - `/opt/SASHome/SASFoundation/9.4/bin/sas_u8`
+4. Common SAS 9.4 Foundation locations, each with the `sas` script first and then the UTF-8 launcher `bin/sas_u8`:
+   - `/opt/sas/SASHome/SASFoundation/9.4`
+   - `/usr/local/SASHome/SASFoundation/9.4`
+   - `/opt/sasinside/SASHome/SASFoundation/9.4`
+   - `/opt/SASHome/SASFoundation/9.4`
 5. `sas` on `PATH`
 
-For SAS 9.4 the extension uses `bin/sas_u8`, the launcher for the UTF-8 (Unicode) SAS session, not the `sas` script in `SASFoundation/9.4`. The extension reads SAS output as UTF-8, so a SAS session with another encoding can show garbled non-ASCII text. When you list a SAS 9.4 launcher in `SAS.localSasPaths`, use `bin/sas_u8` as well.
+For SAS 9.4 the extension prefers the `sas` script in `SASFoundation/9.4`, which starts SAS in the encoding your site configured, and uses `bin/sas_u8` only when there is no script. See [Session Encoding](#session-encoding). To use another launcher, such as `bin/sas_u8` at a site whose `sas` script starts a LATIN1 session, list it in `SAS.localSasPaths` or set `saspath` in the profile.
 
 A deleted profile is not added again unless there are no connection profiles at all. To add it on request, run **SAS: Add Local SAS Profile** from the Command Palette. The **SAS Local Profile** channel in the **Output** pane shows where the extension looked and why it added a profile or did not.
 
@@ -153,13 +153,22 @@ The location of the SAS executable varies by installation. Common paths include:
 ### Linux/Unix
 
 ```
-/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8
-/usr/local/SASHome/SASFoundation/9.4/bin/sas_u8
+/opt/sasinside/SASHome/SASFoundation/9.4/sas    # the site's encoding
+/opt/sasinside/SASHome/SASFoundation/9.4/bin/sas_u8    # UTF-8
+/usr/local/SASHome/SASFoundation/9.4/bin/sas_en    # LATIN1
 /opt/sas/viya/home/SASFoundation/sas    # SAS Analytics Pro
 /opt/sas/viya/home/SASFoundation/bin/sas_u8    # SAS Viya-based, without the sas script
 ```
 
 Check with your SAS administrator or installation documentation for the exact path on your system.
+
+## Session Encoding
+
+The extension asks SAS for its session encoding (`&SYSENCODING`) when the session starts, and from then on reads the SAS log and results and writes your code in that encoding. Any SAS launcher works: the UTF-8 launcher `bin/sas_u8`, the site's `sas` script, or a launcher for another encoding, such as `bin/sas_en` (LATIN1). You can also choose the encoding with `-encoding` in `sasOptions`, for example `"sasOptions": ["-encoding", "wlatin1"]`.
+
+Use the encoding your site's data is stored in. A UTF-8 session can read WLATIN1 or LATIN1 datasets only through CEDA: it can't update them in place, and long character values can be truncated when SAS transcodes them. A session in the data's encoding avoids that.
+
+In a session that isn't UTF-8, characters your code uses that the encoding doesn't have, such as `€` in a LATIN1 session, are sent to SAS as `?`, and the log shows a warning. If SAS doesn't report its encoding within 30 seconds, or reports one the extension doesn't know, the extension uses UTF-8 and writes a warning to the log. Version 1.3.0 or later is needed for sessions that aren't UTF-8; earlier versions read all SAS output as UTF-8.
 
 ## Comparison with SSH Connection
 

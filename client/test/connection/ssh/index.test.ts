@@ -11,6 +11,21 @@ import {
 } from "../../../src/connection/ssh";
 import { assertThrowsAsync } from "../../utils";
 
+/** Bytes from text (as UTF-8) and single byte values, in order. */
+const bytes = (...parts: (string | number)[]): Buffer =>
+  Buffer.from(
+    parts.flatMap((part) =>
+      typeof part === "string" ? [...Buffer.from(part)] : [part],
+    ),
+  );
+
+/**
+ * What SAS writes for the system variables code; setup finishes when it
+ * arrives.
+ */
+const systemVarsOutput = (encoding = "utf-8") =>
+  Buffer.from(`WORKDIR/tmp/work WORKDIREND\nSASENC ${encoding} SASENCEND\n`);
+
 describe("ssh connection", () => {
   const seconds = 1000;
   let sandbox: sinon.SinonSandbox;
@@ -77,6 +92,7 @@ describe("ssh connection", () => {
         if (event === "data") {
           //simulate a question mark to resolve the promise
           callback("?");
+          callback(systemVarsOutput());
         }
       });
 
@@ -175,6 +191,7 @@ describe("ssh connection", () => {
           onDataListener = callback;
           //need to pass a "?" to the callback to resolve the promise here
           onDataListener("?");
+          onDataListener(systemVarsOutput());
           return this;
         }
       });
@@ -192,6 +209,7 @@ describe("ssh connection", () => {
           onDataListener = callback;
           //need to pass a "?" to the callback to resolve the promise here
           onDataListener("?");
+          onDataListener(systemVarsOutput());
           return this;
         }
       });
@@ -232,6 +250,7 @@ describe("ssh connection", () => {
         if (event === "data") {
           onDataListener = callback;
           onDataListener("?");
+          onDataListener(systemVarsOutput());
           return this;
         }
       });
@@ -269,6 +288,46 @@ describe("ssh connection", () => {
       expect(result.html5).to.include("IDX1");
     });
 
+    it("writes code and reads the log in a wlatin1 session's encoding", async () => {
+      let onDataListener;
+      streamStub.on.callsFake((event, callback) => {
+        if (event === "data") {
+          onDataListener = callback;
+          onDataListener(Buffer.from("?"));
+          onDataListener(systemVarsOutput("wlatin1"));
+          return this;
+        }
+      });
+      // A new session: the shared one is connected already, in UTF-8.
+      const latinSession = new SSHSession(config);
+      const executionLog: string[] = [];
+      latinSession.onExecutionLogFn = (logs) =>
+        executionLog.push(...logs.map((l) => l.line));
+      await latinSession.setup();
+
+      streamStub.write.callsFake((chunk) => {
+        if (chunk === "%put --vscode-sas-extension-submit-end--;\n") {
+          onDataListener(
+            bytes(0xe4, "\n--vscode-sas-extension-submit-end--\n"),
+          );
+        }
+        return true;
+      });
+      await latinSession.run("%put ä;");
+
+      const code = streamStub.write
+        .getCalls()
+        .map((call) => call.args[0])
+        .find((arg) => Buffer.isBuffer(arg));
+      expect(Buffer.isBuffer(code)).to.be.true;
+      expect([...code]).to.deep.equal([
+        ...Buffer.from("%put "),
+        0xe4,
+        ...Buffer.from(";\n"),
+      ]);
+      expect(executionLog).to.include("ä");
+    });
+
     it("runs long-running code to completion", async () => {
       let onDataListener;
       streamStub.on.callsFake((event, callback) => {
@@ -276,6 +335,7 @@ describe("ssh connection", () => {
           onDataListener = callback;
           //need to pass a "?" to the callback to resolve the promise here
           onDataListener("?");
+          onDataListener(systemVarsOutput());
           return this;
         }
       });
@@ -327,6 +387,7 @@ describe("ssh connection", () => {
           onDataListener = callback;
           //need to pass a "?" to the callback to resolve the promise here
           onDataListener("?");
+          onDataListener(systemVarsOutput());
           return this;
         }
       });
