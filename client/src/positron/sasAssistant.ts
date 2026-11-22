@@ -174,7 +174,7 @@ export class SasWorkspaceContextProvider {
           `This first {r} chunk is required: without it Quarto picks the Jupyter engine and the {sas} chunks fail. ` +
           `Between library(sasquatch) and sas_connect(), add these lines, which label {sas} chunk code as SAS (sasquatch labels it txt) so that it gets syntax highlighting: ` +
           `knitr::knit_engines$set(sas = function(options) { out <- sasquatch::sas_engine(options); ` +
-          `if (is.character(out)) gsub("\`\`\`{.txt", "\`\`\`{.sas", out, fixed = TRUE) else out }), ` +
+          `if (is.character(out)) gsub("\`\`\`{.txt", "\`\`\`{.sas .txt", out, fixed = TRUE) else out }), ` +
           `(5) Use \`\`\`{sas} code chunks for SAS code. ` +
           `In a {sas} chunk, options are written \`*| label: name;\` (not \`#|\`), and one blank line must follow the last option line, ` +
           `before the first SAS statement, or only the first option is read. ` +

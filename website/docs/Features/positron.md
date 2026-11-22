@@ -273,12 +273,12 @@ In a rendered document, the code of `{r}` chunks is highlighted, but the code of
 - sasquatch (version 0.1.3) labels the code of `{sas}` chunks as plain text (`txt`), not as SAS.
 - Quarto 1.11 and earlier use a Pandoc version that cannot highlight SAS. Quarto 1.12 and later can. The status bar shows the Quarto version that Positron uses.
 
-To highlight SAS code, add these lines to the `setup` chunk, after `library(sasquatch)`. They label the code of `{sas}` chunks as SAS and leave the chunk output as it is. They work for HTML and PDF output:
+To highlight SAS code, add these lines to the `setup` chunk, after `library(sasquatch)`. They label the code of `{sas}` chunks as SAS, with plain text as the fallback, so Quarto 1.11 and earlier still show it as a code block. The chunk output stays as it is. They work for HTML and PDF output:
 
 ````r
 knitr::knit_engines$set(sas = function(options) {
   out <- sasquatch::sas_engine(options)
-  if (is.character(out)) gsub("```{.txt", "```{.sas", out, fixed = TRUE) else out
+  if (is.character(out)) gsub("```{.txt", "```{.sas .txt", out, fixed = TRUE) else out
 })
 ````
 
