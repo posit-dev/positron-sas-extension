@@ -108,9 +108,11 @@ A SAS report is a knitr Quarto document. Two things make that work:
    therefore re-registers the `{sas}` chunk type, right after
    `library(sasquatch)`, with a wrapper that labels the code as SAS (see the
    example below). Copy those lines as they are. They change only the label, not
-   the output. Quarto 1.12 and later then highlight the SAS code. Quarto 1.11 and
-   earlier also need a `syntax-definitions:` entry with a downloaded `sas.xml`;
-   do not add that unless the user asks for highlighting with an older Quarto.
+   the output, and keep `txt` as a fallback label, so older Quarto versions still
+   show the code as a code block. Quarto 1.12 and later then highlight the SAS
+   code. Quarto 1.11 and earlier also need a `syntax-definitions:` entry with a
+   downloaded `sas.xml`; do not add that unless the user asks for highlighting
+   with an older Quarto.
 
 ## The render uses its own SAS session
 
@@ -158,7 +160,7 @@ library(sasquatch)
 # Label {sas} chunk code as SAS, so that it gets syntax highlighting
 knitr::knit_engines$set(sas = function(options) {
   out <- sasquatch::sas_engine(options)
-  if (is.character(out)) gsub("```{.txt", "```{.sas", out, fixed = TRUE) else out
+  if (is.character(out)) gsub("```{.txt", "```{.sas .txt", out, fixed = TRUE) else out
 })
 sas_connect()
 ```
