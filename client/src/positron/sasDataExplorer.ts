@@ -3,12 +3,51 @@
 
 import { EventEmitter } from "vscode";
 import { v4 as uuidv4 } from "uuid";
+import { DATA_VIEW_PREFIX } from "./sasClient";
 import type {
   BinningStats,
   ColumnInfo,
   HistogramBins,
   SasClient,
 } from "./sasClient";
+
+/**
+ * Rows are read from SAS and cached in blocks of this many. Each row read
+ * is a line in the SAS log, which has to come back to Positron, so blocks
+ * about the size of the grid's requests keep a scroll to a far row quick.
+ */
+export const BLOCK_ROWS = 50;
+/**
+ * The first rows read, on opening and after a sort or filter, include at
+ * most this many columns, as Positron asks for all columns soon after.
+ */
+export const PREFETCH_COLUMNS = 50;
+/** Most blocks kept per explorer; the least recently used go first. */
+const MAX_BLOCKS = 200;
+
+/** Numbers the WORK tables that hold sorted or filtered views. */
+let viewCounter = 0;
+
+interface MaterializedView {
+  table: string;
+  rows: number;
+}
+
+/**
+ * A view table being built, or built, for one sort and filter. When the
+ * build fails, rows keep coming from the dataset for that sort and filter.
+ */
+interface ViewEntry {
+  key: string;
+  promise: Promise<MaterializedView>;
+  /** Set once the table exists. */
+  result?: MaterializedView;
+}
+
+/** Identifies a sort and filter, so a view table is built once for each. */
+function viewKey(where?: string, orderBy?: string): string {
+  return `${where ?? ""}\u0000${orderBy ?? ""}`;
+}
 
 // SAS date formats (stored as days since 1960-01-01)
 const DATE_FORMATS = new Set([
@@ -257,6 +296,22 @@ export class SasDataExplorer {
   private columns: ColumnInfo[] | undefined;
   private unfilteredRowCount: number | undefined;
 
+  /** The dataset's change stamp when it was opened (see SasClient.getDatasetStamps). */
+  stamp: string | undefined;
+
+  /** Raw cell values by block and column index, in least recently used order. */
+  private readonly blocks = new Map<number, Map<number, string[]>>();
+  /** Bumped whenever the cached rows go stale, so fetches in flight are dropped. */
+  private generation = 0;
+  /** Serializes row reads, so a second request finds the first one's rows cached. */
+  private rowChain: Promise<unknown> = Promise.resolve();
+  /** The WORK table holding the current sort and filter, keyed by their clauses. */
+  private view: ViewEntry | undefined;
+  /** The row count for a filter, read before its view table is built. */
+  private filteredCount: { where: string; rows: number } | undefined;
+  /** Earlier view tables still to delete. */
+  private staleTables: string[] = [];
+
   constructor(
     private readonly client: SasClient,
     readonly lib: string,
@@ -266,24 +321,33 @@ export class SasDataExplorer {
   ) {}
 
   /**
-   * Pre-fetch columns and row count so the first get_state/get_data_values
-   * from Positron responds instantly without waiting for SAS round-trips.
-   * Retries if columns come back empty (SSH session warm-up race).
+   * Read the columns, row count, change stamp and first block of rows in one
+   * SAS job, so Positron's first get_state and get_data_values are answered
+   * without further round trips. Retries once if nothing comes back (SSH
+   * session warm-up race).
    */
   async warmUp(): Promise<void> {
-    this.columns = await this.client.getDatasetColumns(this.lib, this.mem);
-    if (this.columns.length === 0) {
+    const open = () =>
+      this.client.openDataset(this.lib, this.mem, {
+        rows: BLOCK_ROWS,
+        maxColumns: PREFETCH_COLUMNS,
+      });
+    let opened = await open();
+    if (opened.columns.length === 0 || opened.rowCount === 0) {
       await new Promise((r) => setTimeout(r, 1000));
-      this.columns = await this.client.getDatasetColumns(this.lib, this.mem);
+      opened = await open();
     }
-    this.unfilteredRowCount = await this.client.getDatasetRowCount(
-      this.lib, this.mem,
-    );
-    if (this.unfilteredRowCount === 0 && this.columns.length > 0) {
-      await new Promise((r) => setTimeout(r, 1000));
-      this.unfilteredRowCount = await this.client.getDatasetRowCount(
-        this.lib, this.mem,
-      );
+    this.columns = opened.columns;
+    this.unfilteredRowCount = opened.rowCount;
+    this.stamp = opened.stamp;
+    // Only a complete first block can be cached: a short one would look
+    // like the end of the table.
+    if (
+      opened.rowColumns > 0 &&
+      opened.rows.length === Math.min(BLOCK_ROWS, opened.rowCount)
+    ) {
+      const indices = opened.columns.slice(0, opened.rowColumns).map((_, i) => i);
+      this.storeBlocks(0, indices, opened.rows);
     }
   }
 
@@ -399,13 +463,25 @@ export class SasDataExplorer {
     // count(*) scan that blocks get_data_values in the serial queue.
     // For large datasets (e.g. 70K rows), this scan can take several seconds,
     // causing Positron to timeout waiting for cell data.
+    // With a filter, count the rows that pass it, unless its view table is
+    // already built and knows.
     let filteredRows: number;
-    if (!where && this.unfilteredRowCount !== undefined) {
+    if (where) {
+      const view = this.view?.key === viewKey(where, this.buildOrderByClause())
+        ? this.view.result
+        : undefined;
+      if (view) {
+        filteredRows = view.rows;
+      } else if (this.filteredCount?.where === where) {
+        filteredRows = this.filteredCount.rows;
+      } else {
+        filteredRows = await this.client.getDatasetRowCount(this.lib, this.mem, where);
+        this.filteredCount = { where, rows: filteredRows };
+      }
+    } else if (this.unfilteredRowCount !== undefined) {
       filteredRows = this.unfilteredRowCount;
     } else {
-      filteredRows = await this.client.getDatasetRowCount(
-        this.lib, this.mem, where,
-      );
+      filteredRows = await this.client.getDatasetRowCount(this.lib, this.mem);
     }
     if (this.unfilteredRowCount === undefined) {
       this.unfilteredRowCount = where
@@ -494,10 +570,6 @@ export class SasDataExplorer {
       };
     }).filter((s) => s.column_index >= 0);
 
-    const rowStart = selections.length > 0 ? selections[0].first_index : 0;
-    const rowEnd = selections.length > 0 ? selections[0].last_index : 99;
-    const numRows = rowEnd - rowStart + 1;
-
     const requestedIndices = (
       selections.length > 0
         ? selections.map((s) => s.column_index)
@@ -507,39 +579,240 @@ export class SasDataExplorer {
     if (requestedIndices.length === 0) {
       return { columns: [], row_labels: [] };
     }
+    const rowStart = selections.length > 0
+      ? Math.min(...selections.map((s) => s.first_index))
+      : 0;
+    const rowEnd = selections.length > 0
+      ? Math.max(...selections.map((s) => s.last_index))
+      : 99;
 
-    const requestedCols = requestedIndices.map((i) => columns[i]);
-    const colNames = requestedCols.map((c) => c.name);
-    const where = this.buildWhereClause();
-    const orderBy = this.buildOrderByClause();
+    await this.serializeRows(() => this.loadRows(requestedIndices, rowStart, rowEnd));
 
-    const effectiveRows = numRows;
-    const rows = await this.client.getDatasetRows(
-      this.lib, this.mem, colNames, rowStart, effectiveRows, where, orderBy,
-    );
-
-    // Each row is a pipe-delimited string: "|col1|col2|col3".
-    // Split on "|" and skip the leading empty element from the leading pipe.
-    const columnData: (string | number)[][] = requestedCols.map(() => []);
-    for (const row of rows) {
-      const cells = row.split("|").slice(1);
-      for (let ci = 0; ci < requestedCols.length; ci++) {
-        const raw = (cells[ci] ?? "").trimEnd();
-        const isNum = requestedCols[ci].type === "num";
+    // Rows past the end of the table aren't in the cache.
+    const first = requestedIndices[0];
+    let available = 0;
+    while (rowStart + available <= rowEnd && this.cell(rowStart + available, first) !== undefined) {
+      available++;
+    }
+    const columnData: (string | number)[][] = requestedIndices.map((ci) => {
+      const isNum = columns[ci].type === "num";
+      const values: (string | number)[] = [];
+      for (let r = rowStart; r < rowStart + available; r++) {
+        const raw = (this.cell(r, ci) ?? "").trimEnd();
         if (isNum && (raw === "" || /^\.[A-Z_]?$/.test(raw))) {
-          columnData[ci].push(0); // Positron sentinel for NULL
+          values.push(0); // Positron sentinel for NULL
         } else if (!isNum && raw === "") {
-          columnData[ci].push(0);
+          values.push(0);
         } else {
-          columnData[ci].push(raw.trim());
+          values.push(raw.trim());
         }
       }
-    }
+      return values;
+    });
 
     return {
       columns: columnData,
-      row_labels: Array.from({ length: rows.length }, (_, i) => [String(rowStart + i)]),
+      row_labels: Array.from({ length: available }, (_, i) => [String(rowStart + i)]),
     };
+  }
+
+  private serializeRows<T>(task: () => Promise<T>): Promise<T> {
+    const result = this.rowChain.then(task, task);
+    this.rowChain = result.catch(() => undefined);
+    return result;
+  }
+
+  /** A cached cell value, or undefined when it isn't cached or past the end. */
+  private cell(row: number, column: number): string | undefined {
+    return this.blocks.get(Math.floor(row / BLOCK_ROWS))?.get(column)?.[row % BLOCK_ROWS];
+  }
+
+  /**
+   * Make sure the cache holds the given columns for rows rowStart..rowEnd,
+   * reading what's missing in one SAS job: the missing columns, for the run
+   * of blocks that lacks any of them.
+   */
+  private async loadRows(
+    indices: number[],
+    rowStart: number,
+    rowEnd: number,
+    retried = false,
+  ): Promise<void> {
+    const firstBlock = Math.floor(rowStart / BLOCK_ROWS);
+    // Blocks past the end of the table hold nothing to read.
+    const total = this.knownRowCount();
+    const lastBlock = Math.min(
+      Math.floor(rowEnd / BLOCK_ROWS),
+      total === undefined ? Infinity : Math.floor((total - 1) / BLOCK_ROWS),
+    );
+    const missingColumns = new Set<number>();
+    const missingBlocks: number[] = [];
+    for (let b = firstBlock; b <= lastBlock; b++) {
+      const block = this.blocks.get(b);
+      if (block) {
+        // Most recently used goes last.
+        this.blocks.delete(b);
+        this.blocks.set(b, block);
+      }
+      const missing = indices.filter((i) => !block?.has(i));
+      if (missing.length > 0) {
+        missing.forEach((i) => missingColumns.add(i));
+        missingBlocks.push(b);
+      }
+    }
+    if (missingBlocks.length === 0) {
+      return;
+    }
+    const columns = this.columns ?? [];
+    // Nothing cached (a new sort or filter): read the other columns too.
+    if (this.blocks.size === 0) {
+      columns.slice(0, PREFETCH_COLUMNS).forEach((_, i) => missingColumns.add(i));
+    }
+    const fetchColumns = [...missingColumns].sort((a, b) => a - b);
+    const from = missingBlocks[0];
+    const to = missingBlocks[missingBlocks.length - 1];
+    const generation = this.generation;
+    const start = from * BLOCK_ROWS;
+    const { rows, view } = await this.readRows(
+      fetchColumns.map((i) => columns[i].name),
+      start,
+      (to - from + 1) * BLOCK_ROWS,
+    );
+    if (generation !== this.generation) {
+      return;
+    }
+    // The view table can vanish, e.g. when the user deletes everything in
+    // WORK. Rebuild it once rather than show an empty grid.
+    if (rows.length === 0 && view && start < view.rows && !retried) {
+      this.retireView();
+      return this.loadRows(indices, rowStart, rowEnd, true);
+    }
+    this.storeBlocks(from, fetchColumns, rows, to);
+  }
+
+  /** The number of rows with the current filter, when it's known without a query. */
+  private knownRowCount(): number | undefined {
+    const where = this.buildWhereClause();
+    if (!where) {
+      return this.unfilteredRowCount;
+    }
+    if (this.view?.result && this.view.key === viewKey(where, this.buildOrderByClause())) {
+      return this.view.result.rows;
+    }
+    return this.filteredCount?.where === where ? this.filteredCount.rows : undefined;
+  }
+
+  /** Cache rows (as getDatasetRows returns them) starting at block `from`. */
+  private storeBlocks(
+    from: number,
+    indices: number[],
+    rows: string[],
+    to = from + Math.max(0, Math.ceil(rows.length / BLOCK_ROWS) - 1),
+  ): void {
+    const cells = rows.map((row) => row.split("|").slice(1));
+    for (let b = from; b <= to; b++) {
+      const slice = cells.slice((b - from) * BLOCK_ROWS, (b - from + 1) * BLOCK_ROWS);
+      const block = this.blocks.get(b) ?? new Map<number, string[]>();
+      indices.forEach((ci, k) => block.set(ci, slice.map((c) => c[k] ?? "")));
+      this.blocks.delete(b);
+      this.blocks.set(b, block);
+    }
+    while (this.blocks.size > MAX_BLOCKS) {
+      this.blocks.delete(this.blocks.keys().next().value!);
+    }
+  }
+
+  /** Drop the cached rows, e.g. when the sort, filter or data changed. */
+  private clearRows(): void {
+    this.blocks.clear();
+    this.generation++;
+  }
+
+  /**
+   * Read rows for the current sort and filter. Without either, from the
+   * dataset itself. With one, from a WORK table that holds the sorted and
+   * filtered rows, so that scrolling doesn't sort the dataset again for each
+   * page. The first read after a change builds that table and returns its
+   * rows in the same job, which costs what sorting into a throwaway table
+   * would. If the table can't be built, pages come from the dataset with the
+   * WHERE and ORDER BY clauses, one job each.
+   */
+  private async readRows(
+    columns: string[],
+    start: number,
+    count: number,
+  ): Promise<{ rows: string[]; view?: MaterializedView }> {
+    const where = this.buildWhereClause();
+    const orderBy = this.buildOrderByClause();
+    if (!where && !orderBy) {
+      this.retireView();
+      return { rows: await this.client.getDatasetRows(this.lib, this.mem, columns, start, count) };
+    }
+    const key = viewKey(where, orderBy);
+    if (this.view?.key !== key) {
+      try {
+        return { rows: await this.buildView(key, where, orderBy, { columns, start, count }) };
+      } catch {
+        // Fall through: the failed build is remembered, the dataset is read.
+      }
+    }
+    const view = await this.view?.promise.catch(() => undefined);
+    if (view) {
+      return {
+        rows: await this.client.getDatasetRows("WORK", view.table, columns, start, count),
+        view,
+      };
+    }
+    return {
+      rows: await this.client.getDatasetRows(
+        this.lib, this.mem, columns, start, count, where, orderBy,
+      ),
+    };
+  }
+
+  /**
+   * Build the view table for a sort and filter, replacing the current one
+   * (deleted in the same job), and return the rows `read` asks for.
+   */
+  private buildView(
+    key: string,
+    where: string | undefined,
+    orderBy: string | undefined,
+    read: { columns: string[]; start: number; count: number },
+  ): Promise<string[]> {
+    const previous = this.view;
+    const stale = this.staleTables.splice(0);
+    const table = `${DATA_VIEW_PREFIX}${++viewCounter}`;
+    const job = (previous
+      ? previous.promise.then(({ table: old }) => [old], () => [])
+      : Promise.resolve([])
+    ).then((old) =>
+      this.client.materializeDataset(
+        this.lib, this.mem, table, where, orderBy, [...stale, ...old], read,
+      ),
+    );
+    const promise = job.then(({ rows }) => ({ table, rows }));
+    const view: ViewEntry = { key, promise };
+    this.view = view;
+    promise.then(
+      (result) => {
+        view.result = result;
+      },
+      () => {
+        this.staleTables.push(table);
+      },
+    );
+    return job.then(({ data }) => data);
+  }
+
+  /** Forget the current view table; it's deleted with the next one, or on dispose. */
+  private retireView(): void {
+    const view = this.view;
+    this.view = undefined;
+    view?.promise.then(
+      ({ table }) => this.staleTables.push(table),
+      () => undefined,
+    );
   }
 
   private async setSortColumns(
@@ -550,6 +823,7 @@ export class SasDataExplorer {
       typeof k === "object" && k !== null &&
       typeof toRecord(k).column_index === "number",
     );
+    this.clearRows();
     return this.getState();
   }
 
@@ -564,6 +838,7 @@ export class SasDataExplorer {
       const schema = toRecord(toRecord(f).column_schema);
       return typeof schema.column_index === "number";
     });
+    this.clearRows();
     // Reload state (filtered row count changes with new filters).
     return this.getState();
   }
@@ -613,26 +888,29 @@ export class SasDataExplorer {
     const names = (indices: number[]) => indices.map((i) => columns[i].name);
     const histogramColumns = [...new Set(histograms.map((h) => h.colIdx))];
 
-    // One query at a time: SAS runs silent jobs one by one anyway, and
-    // queueing them all at once let two open explorers fill the session's
-    // silent queue (10 jobs) and fail.
-    const nullCounts = await this.client.getColumnNullCounts(
-      this.lib, this.mem, names(nullCountIndices), where,
-    );
-    const numericStats = await this.client.getColumnSummaryStats(
-      this.lib, this.mem, names(numericStatsIndices), where,
-    );
-    const stringStats = await this.client.getColumnStringStats(
-      this.lib, this.mem, names(stringStatsIndices), where,
-    );
-    const freqTables = await this.client.getColumnFrequencyTables(
+    // Two background jobs: everything but the histogram counts, which need
+    // the bins computed from the first job's statistics. Background jobs
+    // wait while row reads are queued, so profiles don't hold up the grid.
+    const {
+      nullCounts,
+      numericStats,
+      stringStats,
+      frequencyTables: freqTables,
+      binning: binningStats,
+    } = await this.client.getColumnProfileStats(
       this.lib,
       this.mem,
-      frequencyTables.map((f) => ({ column: columns[f.colIdx].name, limit: f.limit })),
+      {
+        nullCounts: names(nullCountIndices),
+        numericStats: names(numericStatsIndices),
+        stringStats: names(stringStatsIndices),
+        frequencyTables: frequencyTables.map((f) => ({
+          column: columns[f.colIdx].name,
+          limit: f.limit,
+        })),
+        binning: names(histogramColumns),
+      },
       where,
-    );
-    const binningStats = await this.client.getColumnBinningStats(
-      this.lib, this.mem, names(histogramColumns), where,
     );
 
     // Bin each requested histogram, then count all of them in one query.
@@ -645,6 +923,7 @@ export class SasDataExplorer {
       this.mem,
       binned.map((b) => ({ column: columns[b.colIdx].name, bins: b.bins })),
       where,
+      "background",
     );
 
     const profiles = requests.map((raw) => {
@@ -741,6 +1020,9 @@ export class SasDataExplorer {
     const schemaChanged = !sameColumns(this.columns, columns);
     this.columns = columns;
     this.unfilteredRowCount = undefined;
+    this.filteredCount = undefined;
+    this.clearRows();
+    this.retireView();
     if (schemaChanged) {
       this.sortKeys = [];
       this.rowFilters = [];
@@ -750,13 +1032,29 @@ export class SasDataExplorer {
     }
   }
 
-  /** Clear cached counts so the next get_state re-queries from SAS. */
+  /** Clear cached counts and rows so the next requests re-read them from SAS. */
   invalidateCache(): void {
     this.unfilteredRowCount = undefined;
+    this.filteredCount = undefined;
+    this.clearRows();
   }
 
   dispose(): void {
     this.emitter.dispose();
     this.eventEmitter.dispose();
+    this.clearRows();
+    // Delete the view tables in WORK, once any build in flight is done.
+    const view = this.view;
+    this.view = undefined;
+    const stale = this.staleTables.splice(0);
+    const current = view
+      ? view.promise.then(({ table }) => [table], () => [])
+      : Promise.resolve([]);
+    current.then((tables) => {
+      const all = [...stale, ...tables];
+      if (all.length > 0) {
+        this.client.deleteWorkTables(all).catch(() => undefined);
+      }
+    });
   }
 }

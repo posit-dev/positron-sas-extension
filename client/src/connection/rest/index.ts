@@ -330,13 +330,19 @@ class RestSession extends Session {
 
     //Clear out the logs
     await this.printJobLog(job);
-    //Now get the results
-    const results = await job.results();
 
     const res: RunResult = {
       html5: "",
       title: "",
     };
+    // Hidden queries (Positron's silent jobs) write only to the log, so
+    // skip the request for ODS results.
+    if (runArgs.silent) {
+      return res;
+    }
+
+    //Now get the results
+    const results = await job.results();
 
     /*
       We can return more than just html, but for right now we are only returning

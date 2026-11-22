@@ -8,7 +8,7 @@ import {
   SasDataExplorer,
   computeHistogramBins,
 } from "../../src/positron/sasDataExplorer";
-import type { SasClient } from "../../src/positron/sasClient";
+import type { ProfileStatsRequest, SasClient } from "../../src/positron/sasClient";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -19,12 +19,22 @@ const SAMPLE_COLUMNS = [
 ];
 
 function makeClient(overrides: Partial<SasClient> = {}): SasClient {
-  return {
+  const client = {
     getLibraryList: sinon.stub().resolves([]),
     getLibraryMembers: sinon.stub().resolves([]),
     getDatasetColumns: sinon.stub().resolves(SAMPLE_COLUMNS),
     getDatasetRowCount: sinon.stub().resolves(100),
     getDatasetRows: sinon.stub().resolves([]),
+    openDataset: sinon.stub().resolves({
+      memtype: "DATA",
+      columns: SAMPLE_COLUMNS,
+      rowCount: 100,
+      stamp: "2000000000|100|3",
+      rows: [],
+      rowColumns: 0,
+    }),
+    materializeDataset: materializeFake(50),
+    deleteWorkTables: sinon.stub().resolves(),
     getColumnNullCounts: sinon.stub().resolves([0, 3, 0]),
     getColumnSummaryStats: sinon.stub().resolves([
       { minValue: 1, maxValue: 90, meanValue: 45, medianValue: 44, stdevValue: 10 },
@@ -37,6 +47,45 @@ function makeClient(overrides: Partial<SasClient> = {}): SasClient {
     clearColumnCache: sinon.stub(),
     ...overrides,
   } as unknown as SasClient;
+  // The combined profile query delegates to the single ones, so tests can
+  // stub and inspect those.
+  if (!overrides.getColumnProfileStats) {
+    Object.assign(client, {
+      getColumnProfileStats: sinon.stub().callsFake(
+        async (lib: string, mem: string, request: ProfileStatsRequest, where?: string) => ({
+          nullCounts: await client.getColumnNullCounts(lib, mem, request.nullCounts, where),
+          numericStats: await client.getColumnSummaryStats(lib, mem, request.numericStats, where),
+          stringStats: await client.getColumnStringStats(lib, mem, request.stringStats, where),
+          frequencyTables: await client.getColumnFrequencyTables(
+            lib, mem, request.frequencyTables, where,
+          ),
+          binning: await client.getColumnBinningStats(lib, mem, request.binning, where),
+        }),
+      ),
+    });
+  }
+  return client;
+}
+
+/** `count` rows of SAMPLE_COLUMNS, as getDatasetRows returns them, from row `start`. */
+function sampleRows(start: number, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => `|N${start + i}|${start + i}|1.5`);
+}
+
+/**
+ * A materializeDataset stub for a view of `total` rows, returning the rows
+ * the read asks for as sampleRows.
+ */
+function materializeFake(total: number): sinon.SinonStub {
+  return sinon.stub().callsFake(
+    async (
+      _lib, _mem, _table, _where, _orderBy, _drop,
+      read?: { columns: string[]; start: number; count: number },
+    ) => ({
+      rows: total,
+      data: read ? sampleRows(read.start, Math.max(0, Math.min(read.count, total - read.start))) : [],
+    }),
+  );
 }
 
 let msgCounter = 0;
@@ -115,12 +164,11 @@ describe("SasDataExplorer.get_state", () => {
   });
 
   it("reports unfiltered and filtered counts separately when filters are active", async () => {
-    // set_row_filters triggers getState internally (2 calls: filtered + unfiltered).
-    // We then call get_state explicitly (2 more calls).  Use alternating values so
-    // the final explicit call returns 50 (filtered) and 100 (unfiltered).
+    // The filtered count comes from a count with the WHERE clause (50); the
+    // view table is only built when rows are read.
     const rowCount = sinon.stub();
-    rowCount.resolves(100); // default: unfiltered
-    rowCount.withArgs("WORK", "CLASS", sinon.match.string).resolves(50); // filtered (has WHERE)
+    rowCount.resolves(100);
+    rowCount.withArgs("WORK", "CLASS", sinon.match.string).resolves(50);
     const client = makeClient({ getDatasetRowCount: rowCount });
     const explorer = new SasDataExplorer(client, "WORK", "CLASS");
 
@@ -133,6 +181,9 @@ describe("SasDataExplorer.get_state", () => {
     const unfiltered = result.table_unfiltered_shape as Record<string, unknown>;
     expect(filtered.num_rows).to.equal(50);
     expect(unfiltered.num_rows).to.equal(100);
+    // The filtered count is read once for both get_state calls.
+    expect(client.materializeDataset).to.have.property("callCount", 0);
+    expect(rowCount.withArgs("WORK", "CLASS", sinon.match.string).callCount).to.equal(1);
   });
 });
 
@@ -188,9 +239,17 @@ describe("SasDataExplorer.set_sort_columns", () => {
     expect(keys[0].ascending).to.equal(false);
   });
 
-  it("passes ORDER BY clause to getDatasetRows", async () => {
-    const getRows = sinon.stub().resolves([]);
-    const client = makeClient({ getDatasetRows: getRows });
+  it("builds the view and reads the first page in one job, later pages from the view", async () => {
+    const getRows = sinon.stub().callsFake(
+      async (_lib, _mem, _cols, start: number, n: number) =>
+        sampleRows(start, Math.max(0, Math.min(n, 1000 - start))),
+    );
+    const materialize = materializeFake(1000);
+    const client = makeClient({
+      getDatasetRowCount: sinon.stub().resolves(1000),
+      getDatasetRows: getRows,
+      materializeDataset: materialize,
+    });
     const explorer = new SasDataExplorer(client, "WORK", "CLASS");
 
     await sendRpc(explorer, "set_sort_columns", {
@@ -199,9 +258,118 @@ describe("SasDataExplorer.set_sort_columns", () => {
     await sendRpc(explorer, "get_data_values", {
       columns: [{ column_index: 0, spec: { first_index: 0, last_index: 4 } }],
     });
+    await sendRpc(explorer, "get_data_values", {
+      columns: [{ column_index: 0, spec: { first_index: 500, last_index: 504 } }],
+    });
+    await sendRpc(explorer, "get_data_values", {
+      columns: [{ column_index: 0, spec: { first_index: 900, last_index: 904 } }],
+    });
 
-    const orderBy: string = getRows.firstCall.args[6];
-    expect(orderBy).to.equal("AGE asc");
+    // The view is built once, and the job that builds it returns the first page.
+    expect(materialize.callCount).to.equal(1);
+    const [lib, mem, table, where, orderBy, drop, read] = materialize.firstCall.args;
+    expect([lib, mem, where, orderBy, drop]).to.deep.equal([
+      "WORK", "CLASS", undefined, "AGE asc", [],
+    ]);
+    expect(table).to.match(/^_SASDV\d+$/);
+    // Nothing is cached after a sort, so the first read takes all columns.
+    expect(read).to.deep.equal({ columns: ["NAME", "AGE", "HEIGHT"], start: 0, count: 50 });
+    // Later pages are read from the view without sorting again.
+    expect(getRows.callCount).to.equal(2);
+    for (const call of getRows.getCalls()) {
+      expect(call.args.slice(0, 2)).to.deep.equal(["WORK", table]);
+      expect(call.args[5]).to.be.undefined;
+      expect(call.args[6]).to.be.undefined;
+    }
+  });
+
+  it("shows the sorted first page from the job that builds the view", async () => {
+    const explorer = new SasDataExplorer(makeClient(), "WORK", "CLASS");
+    await sendRpc(explorer, "set_sort_columns", {
+      sort_keys: [{ column_index: 1, ascending: false }],
+    });
+    const { result } = (await sendRpc(explorer, "get_data_values", {
+      columns: [{ column_index: 0, spec: { first_index: 0, last_index: 1 } }],
+    })) as { result: { columns: unknown[][] } };
+    expect(result.columns[0]).to.deep.equal(["N0", "N1"]);
+  });
+
+  it("waits for a view being built instead of sorting again", async () => {
+    let finish: (v: { rows: number; data: string[] }) => void = () => undefined;
+    const materialize = sinon.stub().returns(new Promise((r) => (finish = r)));
+    const getRows = sinon.stub().callsFake(
+      async (_lib, _mem, _cols, start: number, n: number) => sampleRows(start, n),
+    );
+    const client = makeClient({
+      getDatasetRowCount: sinon.stub().resolves(1000),
+      getDatasetRows: getRows,
+      materializeDataset: materialize,
+    });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await sendRpc(explorer, "set_sort_columns", {
+      sort_keys: [{ column_index: 1, ascending: false }],
+    });
+    const first = sendRpc(explorer, "get_data_values", {
+      columns: [{ column_index: 1, spec: { first_index: 0, last_index: 1 } }],
+    });
+    const second = sendRpc(explorer, "get_data_values", {
+      columns: [{ column_index: 1, spec: { first_index: 400, last_index: 401 } }],
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(getRows.callCount).to.equal(0);
+    finish({ rows: 1000, data: sampleRows(0, 200) });
+    await Promise.all([first, second]);
+    expect(materialize.callCount).to.equal(1);
+    expect(getRows.callCount).to.equal(1);
+    expect(getRows.firstCall.args[1]).to.match(/^_SASDV\d+$/);
+  });
+
+  it("keeps reading from the dataset when the view can't be built", async () => {
+    const getRows = sinon.stub().callsFake(
+      async (_lib, _mem, _cols, start: number, n: number) => sampleRows(start, n),
+    );
+    const materialize = sinon.stub().rejects(new Error("no space"));
+    const client = makeClient({
+      getDatasetRowCount: sinon.stub().resolves(1000),
+      getDatasetRows: getRows,
+      materializeDataset: materialize,
+    });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+
+    await sendRpc(explorer, "set_sort_columns", { sort_keys: [{ column_index: 1, ascending: true }] });
+    for (const first of [0, 400, 800]) {
+      await sendRpc(explorer, "get_data_values", {
+        columns: [{ column_index: 1, spec: { first_index: first, last_index: first } }],
+      });
+    }
+    // One failed attempt, not one per page; every page, the first included,
+    // is sorted by its own query.
+    expect(materialize.callCount).to.equal(1);
+    expect(getRows.callCount).to.equal(3);
+    expect(getRows.getCalls().every(
+      (c) => c.args[0] === "WORK" && c.args[1] === "CLASS" && c.args[6] === "AGE asc",
+    )).to.be.true;
+  });
+
+  it("deletes the old view when the sort changes", async () => {
+    const materialize = materializeFake(100);
+    const getRows = sinon.stub().callsFake(
+      async (_lib, _mem, _cols, start: number, n: number) =>
+        sampleRows(start, Math.max(0, Math.min(n, 100 - start))),
+    );
+    const client = makeClient({ materializeDataset: materialize, getDatasetRows: getRows });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    const page = { columns: [{ column_index: 0, spec: { first_index: 0, last_index: 4 } }] };
+
+    await sendRpc(explorer, "set_sort_columns", { sort_keys: [{ column_index: 1, ascending: true }] });
+    await sendRpc(explorer, "get_data_values", page);
+    await sendRpc(explorer, "set_sort_columns", { sort_keys: [{ column_index: 1, ascending: false }] });
+    await sendRpc(explorer, "get_data_values", page);
+
+    expect(materialize.callCount).to.equal(2);
+    const first = materialize.firstCall.args[2];
+    expect(materialize.secondCall.args[4]).to.equal("AGE desc");
+    expect(materialize.secondCall.args[5]).to.deep.equal([first]);
   });
 });
 
@@ -220,7 +388,9 @@ describe("SasDataExplorer filter → WHERE clause", () => {
       columns: [{ column_index: 0, spec: { first_index: 0, last_index: 0 } }],
     });
 
-    return getRows.firstCall.args[5] as string | undefined;
+    // The filter goes into the view the rows are read from.
+    const materialize = client.materializeDataset as sinon.SinonStub;
+    return materialize.firstCall?.args[3] as string | undefined;
   }
 
   it("compare: numeric >", async () => {
@@ -330,7 +500,7 @@ describe("SasDataExplorer filter → WHERE clause", () => {
     await sendRpc(explorer, "get_data_values", {
       columns: [{ column_index: 0, spec: { first_index: 0, last_index: 0 } }],
     });
-    const where: string = getRows.firstCall.args[5];
+    const where: string = (client.materializeDataset as sinon.SinonStub).firstCall.args[3];
     expect(where).to.include("AGE > 10");
     expect(where).to.include("HEIGHT < 200");
     expect(where).to.include("and");
@@ -340,30 +510,30 @@ describe("SasDataExplorer filter → WHERE clause", () => {
 // ─── get_column_profiles ──────────────────────────────────────────────────────
 
 describe("SasDataExplorer.get_column_profiles", () => {
-  it("runs one profile query at a time", async () => {
-    let running = 0;
-    let maxRunning = 0;
-    const slow = <T>(value: T) =>
-      sinon.stub().callsFake(async () => {
-        running++;
-        maxRunning = Math.max(maxRunning, running);
-        await new Promise((r) => setTimeout(r, 5));
-        running--;
-        return value;
-      });
+  it("runs the profile queries as one background job, then the histogram counts", async () => {
     const client = makeClient({
-      getColumnNullCounts: slow([0]),
-      getColumnSummaryStats: slow([]),
-      getColumnStringStats: slow([]),
-      getColumnFrequencyTables: slow([]),
-      getColumnBinningStats: slow([]),
+      getColumnBinningStats: sinon.stub().resolves([{ n: 5, min: 1, max: 9, q1: 2, q3: 7, nonInteger: 0 }]),
     });
     const explorer = new SasDataExplorer(client, "WORK", "CLASS");
     await sendRpcForEvent(explorer, "get_column_profiles", {
       callback_id: "cb-seq",
-      profiles: [{ column_index: 0, profiles: [{ profile_type: "null_count" }] }],
+      profiles: [
+        { column_index: 0, profiles: [{ profile_type: "null_count" }, { profile_type: "small_frequency_table", params: { limit: 8 } }] },
+        { column_index: 1, profiles: [{ profile_type: "summary_stats" }, { profile_type: "small_histogram", params: { num_bins: 80 } }] },
+      ],
     });
-    expect(maxRunning).to.equal(1);
+    const combined = client.getColumnProfileStats as sinon.SinonStub;
+    expect(combined.callCount).to.equal(1);
+    expect(combined.firstCall.args[2]).to.deep.equal({
+      nullCounts: ["NAME"],
+      numericStats: ["AGE"],
+      stringStats: [],
+      frequencyTables: [{ column: "NAME", limit: 8 }],
+      binning: ["AGE"],
+    });
+    const counts = client.getColumnHistogramCounts as sinon.SinonStub;
+    expect(counts.callCount).to.equal(1);
+    expect(counts.firstCall.args[4]).to.equal("background");
   });
 
   it("fires return_column_profiles event with null counts", async () => {
@@ -596,7 +766,7 @@ describe("SasDataExplorer labels and refresh", () => {
     expect(events).to.deep.equal([{ method: "data_update", params: {} }]);
     // The row count is read again.
     await sendRpc(explorer, "get_state");
-    expect(client.getDatasetRowCount).to.have.property("callCount", 2);
+    expect(client.getDatasetRowCount).to.have.property("callCount", 1);
   });
 
   it("sends schema_update and drops sorts when the columns changed", async () => {
@@ -635,5 +805,142 @@ describe("SasDataExplorer labels and refresh", () => {
     explorer.onDidEmitEvent((e) => events.push(e));
     await explorer.refresh();
     expect(events).to.deep.equal([]);
+  });
+});
+
+// ─── opening and the row cache ────────────────────────────────────────────────
+
+describe("SasDataExplorer opening and row cache", () => {
+  function openedClient(rowCount = 1000, overrides: Partial<SasClient> = {}) {
+    const getRows = sinon.stub().callsFake(
+      async (_lib, _mem, cols: string[], start: number, n: number) =>
+        sampleRows(start, Math.max(0, Math.min(n, rowCount - start))).map((row) =>
+          // Only the requested columns, in order.
+          "|" + cols.map((c) => row.split("|")[1 + SAMPLE_COLUMNS.findIndex((s) => s.name === c)]).join("|"),
+        ),
+    );
+    return makeClient({
+      openDataset: sinon.stub().callsFake(async (_lib, _mem, { rows }: { rows: number }) => ({
+        memtype: "DATA",
+        columns: SAMPLE_COLUMNS,
+        rowCount,
+        stamp: "2000000000|1000|3",
+        rows: sampleRows(0, Math.min(rows, rowCount)),
+        rowColumns: 3,
+      })),
+      getDatasetRows: getRows,
+      ...overrides,
+    });
+  }
+
+  const page = (first: number, last: number, columns = [0, 1, 2]) => ({
+    columns: columns.map((column_index) => ({
+      column_index,
+      spec: { first_index: first, last_index: last },
+    })),
+  });
+
+  it("reads columns, row count, stamp and first rows in one job", async () => {
+    const client = openedClient();
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await explorer.warmUp();
+
+    expect(client.openDataset).to.have.property("callCount", 1);
+    expect((client.openDataset as sinon.SinonStub).firstCall.args).to.deep.equal([
+      "WORK", "CLASS", { rows: 50, maxColumns: 50 },
+    ]);
+    expect(explorer.stamp).to.equal("2000000000|1000|3");
+
+    const { result: state } = (await sendRpc(explorer, "get_state")) as {
+      result: { table_shape: { num_rows: number } };
+    };
+    expect(state.table_shape.num_rows).to.equal(1000);
+    const { result } = (await sendRpc(explorer, "get_data_values", page(0, 2))) as {
+      result: { columns: unknown[][]; row_labels: string[][] };
+    };
+    expect(result.columns).to.deep.equal([["N0", "N1", "N2"], ["0", "1", "2"], ["1.5", "1.5", "1.5"]]);
+    expect(result.row_labels).to.deep.equal([["0"], ["1"], ["2"]]);
+    // Everything came from the opening job.
+    for (const stub of ["getDatasetColumns", "getDatasetRowCount", "getDatasetRows"] as const) {
+      expect(client[stub], stub).to.have.property("callCount", 0);
+    }
+  });
+
+  it("fetches only the missing block, once", async () => {
+    const client = openedClient();
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await explorer.warmUp();
+
+    const { result } = (await sendRpc(explorer, "get_data_values", page(195, 204))) as {
+      result: { columns: unknown[][] };
+    };
+    expect(result.columns[1]).to.deep.equal(
+      Array.from({ length: 10 }, (_, i) => String(195 + i)),
+    );
+    await sendRpc(explorer, "get_data_values", page(160, 240));
+
+    // Blocks of 50 rows: 150-199 and 200-249, read once.
+    const getRows = client.getDatasetRows as sinon.SinonStub;
+    expect(getRows.callCount).to.equal(1);
+    expect(getRows.firstCall.args.slice(0, 5)).to.deep.equal([
+      "WORK", "CLASS", ["NAME", "AGE", "HEIGHT"], 150, 100,
+    ]);
+  });
+
+  it("reads concurrent requests for the same rows once", async () => {
+    const client = openedClient();
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await Promise.all([
+      sendRpc(explorer, "get_data_values", page(400, 450)),
+      sendRpc(explorer, "get_data_values", page(400, 450)),
+    ]);
+    expect(client.getDatasetRows).to.have.property("callCount", 1);
+  });
+
+  it("stops at the end of the table", async () => {
+    const client = openedClient(5);
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await explorer.warmUp();
+    const { result } = (await sendRpc(explorer, "get_data_values", page(0, 99, [1]))) as {
+      result: { columns: unknown[][]; row_labels: string[][] };
+    };
+    expect(result.columns[0]).to.deep.equal(["0", "1", "2", "3", "4"]);
+    expect(result.row_labels).to.have.length(5);
+    expect(client.getDatasetRows).to.have.property("callCount", 0);
+  });
+
+  it("re-reads rows after a refresh", async () => {
+    const client = openedClient();
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await explorer.warmUp();
+    await explorer.refresh();
+    await sendRpc(explorer, "get_data_values", page(0, 2));
+    expect(client.getDatasetRows).to.have.property("callCount", 1);
+  });
+
+  it("doesn't cache a short first block of a longer table", async () => {
+    // Fewer rows than expected came back: don't mistake that for the end.
+    const client = openedClient(1000, {
+      openDataset: sinon.stub().resolves({
+        memtype: "DATA", columns: SAMPLE_COLUMNS, rowCount: 1000, stamp: "s",
+        rows: sampleRows(0, 10), rowColumns: 3,
+      }),
+    });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await explorer.warmUp();
+    await sendRpc(explorer, "get_data_values", page(0, 2));
+    expect(client.getDatasetRows).to.have.property("callCount", 1);
+  });
+
+  it("deletes its view table on dispose", async () => {
+    const client = openedClient();
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+    await explorer.warmUp();
+    await sendRpc(explorer, "set_sort_columns", { sort_keys: [{ column_index: 1, ascending: false }] });
+    await sendRpc(explorer, "get_data_values", page(0, 2));
+    const table = (client.materializeDataset as sinon.SinonStub).firstCall.args[2];
+    explorer.dispose();
+    await new Promise((r) => setTimeout(r, 0));
+    expect((client.deleteWorkTables as sinon.SinonStub).firstCall.args[0]).to.deep.equal([table]);
   });
 });
