@@ -239,6 +239,23 @@ Before the assistant says a report is done, it checks the `{sas}` chunks against
 
 The skill is part of the extension and works in Positron 2026.10 and later. In older versions, ask for the same steps by hand.
 
+### Other Coding Agents
+
+Coding agents that work outside Positron, such as Claude Code, connect to Positron through its MCP server. Its session tools only reach Python and R sessions, so the extension adds two Positron commands that let an agent use the SAS console instead of starting its own SAS session with saspy ([#156](https://github.com/posit-dev/positron-sas-extension/issues/156)):
+
+- **`SAS.agent.listSessions`** lists the running SAS consoles with their profile and connection type, and marks the one in the foreground.
+- **`SAS.agent.runCode`** runs SAS code in the foreground SAS console, or in the console the agent names. The code and its log appear in the console as if you had typed them, and the code uses your WORK tables, librefs, and macro variables. The agent gets back the log as the console shows it and the text copy of the report. Reports still go to the **Viewer** and graphs to the **Plots** pane. A very long log is cut in the middle.
+
+To use them:
+
+1. Turn on the `ai.mcp.enabled` setting.
+2. Run **Positron MCP: Add to Coding Agent** from the Command Palette and pick your agent.
+3. Start a SAS console. An agent never starts one: without a console, `SAS.agent.runCode` asks the agent to have you start one.
+
+The agent finds the commands when it searches the Positron commands for SAS. To make sure it uses them, add a line such as "Run SAS code with the Positron command `SAS.agent.runCode`, not with saspy" to the agent's instructions file, for example `CLAUDE.md` or `AGENTS.md`.
+
+The console log filter applies to the log the agent gets, too. If you hide notes in the console, the agent doesn't see them either. The commands need Positron 2026.11 or later.
+
 ## SAS Chunks in Quarto Documents
 
 In a Quarto document with `{sas}` code chunks, as the sasquatch R package uses, you can run single chunks in the SAS console, the same way you run `{r}` and `{python}` chunks. Above each `{sas}` chunk are **Run Cell**, **Run Next Cell**, and **Run Above**. The Command Palette also has **SAS: Run Quarto SAS Cell**, **SAS: Run Selection or Quarto SAS Cell**, and **SAS: Run Quarto SAS Cells Below**.

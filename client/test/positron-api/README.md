@@ -38,6 +38,11 @@ Part of the rollout tracked in
   `getPreferredRuntime("sas")` resolves to one, and the configuration
   watcher re-discovers runtimes when profiles change. All metadata-level: no
   SAS server or session is required.
+- `agent-commands.test.ts` — the `SAS.agent.*` commands for external coding
+  agents (#156) are in Positron's agent command catalog
+  (`positron.ai.getAgentAllowedCommands`) and, run the way Positron's MCP
+  server runs them (`validateAndExecuteCommand`), report that no SAS console
+  is running. Skipped before Positron 2026.11.
 
 ## Running locally
 
