@@ -616,7 +616,11 @@ export class SASLanguageRuntimeSession implements LanguageRuntimeSession {
         data: { title },
       });
       // Remember the dataset's state, to refresh the explorer after a run
-      // that changes it.
+      // that changes it. Opening read it already, normally.
+      if (explorer.stamp !== undefined) {
+        this._dataExplorerStamps.set(explorer.id, explorer.stamp);
+        return;
+      }
       this.getSasClient()
         .getDatasetStamps([explorer])
         .then((stamps) => {

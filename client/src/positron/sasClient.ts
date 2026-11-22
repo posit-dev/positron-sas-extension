@@ -119,6 +119,20 @@ function parseIndexedRecords(
   return records;
 }
 
+/** Parse the `COL=name|type|length|format|informat|label` records of a column query. */
+function parseColumnRecords(output: string): ColumnInfo[] {
+  return parsePrefixedRecords(output, "COL")
+    .filter(([name]) => name)
+    .map(([name, type, len, fmt, inf, ...label]) => ({
+      name,
+      type: type || "char",
+      length: len ? parseInt(len, 10) : undefined,
+      format: fmt || undefined,
+      informat: inf || undefined,
+      label: label.join("|") || undefined,
+    }));
+}
+
 /** Parse a SAS numeric value from the log; missing (".", ".A") is null. */
 function parseSasNumber(value: string | undefined): number | null {
   const v = value?.trim() ?? "";
@@ -161,6 +175,85 @@ export function sasIdent(value: unknown): string {
   return value.toUpperCase();
 }
 
+/** Background jobs only run when no foreground job is waiting. */
+export type Priority = "foreground" | "background";
+
+interface QueuedJob {
+  code: string;
+  resolve: (output: string) => void;
+  reject: (err: unknown) => void;
+}
+
+/**
+ * Helper tables the Data Explorer keeps in WORK for a sorted or filtered
+ * view. They're hidden from the Variables and Connections panes.
+ */
+export const DATA_VIEW_PREFIX = "_SASDV";
+
+export function isInternalTableName(name: string): boolean {
+  return name.toUpperCase().startsWith(DATA_VIEW_PREFIX);
+}
+
+/**
+ * The dictionary.tables columns that change when a dataset does, joined with
+ * catx('|', ...) into a dataset's change stamp.
+ */
+const STAMP_FIELDS = "put(modate, 20.), put(nlobs, 20.), put(nvar, 20.)";
+
+/** What SasClient.openDataset returns: everything to show a dataset's first rows. */
+export interface OpenedDataset {
+  /** "DATA" or "VIEW"; undefined when the dataset doesn't exist. */
+  memtype?: string;
+  columns: ColumnInfo[];
+  rowCount: number;
+  /** Change stamp, as in getDatasetStamps. */
+  stamp?: string;
+  /** The first rows of the first `rowColumns` columns, as getDatasetRows returns them. */
+  rows: string[];
+  rowColumns: number;
+}
+
+/**
+ * A macro that writes the rows held in macro variables _dr1.._dr<_drn> to the
+ * log as `DR<i>=|chunk` lines of up to VALUE_CHUNK characters, so log line
+ * wrapping can't split a wide row. The leading "|" keeps leading blanks.
+ */
+function emitRowsMacro(name: string): string {
+  return `%macro ${name};
+  %local _i _j _len;
+  %if %symexist(_drn) %then %do;
+    %do _i = 1 %to &_drn;
+      %let _len = %length(%superq(_dr&_i));
+      %do _j = 1 %to &_len %by ${VALUE_CHUNK};
+        %put DR&_i=|%qsubstr(%superq(_dr&_i), &_j, %sysfunc(min(${VALUE_CHUNK}, %eval(&_len - &_j + 1))));
+      %end;
+      %symdel _dr&_i / nowarn;
+    %end;
+    %symdel _drn / nowarn;
+  %end;
+%mend;`;
+}
+
+/** Parse the rows written by emitRowsMacro, in order. */
+export function parseDataRows(output: string): string[] {
+  const records = parseIndexedRecords(output, "DR");
+  return [...records.keys()]
+    .sort((a, b) => a - b)
+    .map((i) =>
+      joinChunks(
+        records.get(i)!.map((chunk) => (chunk.startsWith("|") ? chunk.slice(1) : chunk)),
+        0,
+      ),
+    );
+}
+
+/** Data step statements that build `_row_` from the given columns. */
+function rowBuilder(columnNames: string[]): string {
+  return columnNames
+    .map((col) => `_row_ = cats(_row_, "|", strip(vvalue(${col})));`)
+    .join("\n    ");
+}
+
 // The properties read from dictionary.tables: output key, SQL expression.
 const PROPERTY_FIELDS: Array<[string, string]> = [
   ["MEMTYPE", "memtype"],
@@ -176,6 +269,20 @@ const PROPERTY_FIELDS: Array<[string, string]> = [
   ["ENCODING", "encoding"],
   ["DATAREP", "datarep"],
 ];
+
+/** Parse the output of SasClient.openDataset. */
+export function parseOpenedDataset(output: string): OpenedDataset {
+  const [head] = parsePrefixedRecords(output, "OPEN");
+  const [memtype, rowColumns, rowCount, ...stamp] = head ?? [];
+  return {
+    memtype: memtype || undefined,
+    columns: parseColumnRecords(output),
+    rowCount: parseSasNumber(rowCount) ?? 0,
+    stamp: memtype ? stamp.join("|") : undefined,
+    rows: parseDataRows(output),
+    rowColumns: parseSasNumber(rowColumns) ?? 0,
+  };
+}
 
 /** Parse the output of getDatasetProperties. */
 export function parseDatasetProperties(
@@ -220,6 +327,293 @@ export function parseDatasetProperties(
   };
 }
 
+export interface SummaryStats {
+  minValue: number | null;
+  maxValue: number | null;
+  meanValue: number | null;
+  stdevValue: number | null;
+  medianValue: number | null;
+}
+
+export interface StringStats {
+  numUnique: number;
+  numEmpty: number;
+}
+
+/** The column profile queries to run together, by column name. */
+export interface ProfileStatsRequest {
+  nullCounts: string[];
+  numericStats: string[];
+  stringStats: string[];
+  frequencyTables: Array<{ column: string; limit: number }>;
+  binning: string[];
+}
+
+/** The results of getColumnProfileStats, in request order. */
+export interface ProfileStats {
+  nullCounts: number[];
+  numericStats: SummaryStats[];
+  stringStats: StringStats[];
+  frequencyTables: FrequencyTable[];
+  binning: BinningStats[];
+}
+
+/**
+ * One query of a job: SAS steps, the %put statements that write its results
+ * between the sentinels, and steps that clean up after it. Several queries
+ * can share a job; their macro variables and record prefixes are distinct.
+ */
+interface QueryParts {
+  setup: string;
+  emit: string;
+  cleanup?: string;
+}
+
+function assembleQuery(parts: QueryParts[]): string {
+  return `
+options nosource nonotes;
+${parts.map((p) => p.setup).join("\n")}
+%put ${SENTINEL_START};
+${parts.map((p) => p.emit).join("\n")}
+%put ${SENTINEL_END};
+${parts.map((p) => p.cleanup ?? "").join("\n")}
+options notes source;
+`;
+}
+
+/** `LIB.MEM`, validated. */
+function dataSource(lib: unknown, mem: unknown): string {
+  return `${sasIdent(lib)}.${sasIdent(mem)}`;
+}
+
+function nullCountQuery(source: string, columnNames: string[], where?: string): QueryParts {
+  // Indexed macro names: `_nc_<column>` exceeds SAS's 32-character limit
+  // for long column names.
+  const selectExprs = columnNames
+    .map((col, i) => `nmiss(${col}) as _nc${i}`)
+    .join(", ");
+  const intoExprs = columnNames.map((_, i) => `:_nc${i} trimmed`).join(", ");
+  return {
+    setup: `${columnNames.map((_, i) => `%let _nc${i}=0;`).join("\n")}
+proc sql noprint;
+  select ${selectExprs}
+  into ${intoExprs}
+  from ${source}
+  ${where ? `where ${where}` : ""};
+quit;`,
+    emit: columnNames.map((_, i) => `%put NC${i}=&_nc${i};`).join("\n"),
+  };
+}
+
+function parseNullCounts(output: string, count: number): number[] {
+  const records = parseIndexedRecords(output, "NC");
+  return Array.from(
+    { length: count },
+    (_, i) => parseInt(records.get(i)?.[0] ?? "0", 10) || 0,
+  );
+}
+
+const SUMMARY_STATS = ["min", "max", "mean", "median", "std"];
+
+function summaryStatsQuery(source: string, columnNames: string[], where?: string): QueryParts {
+  // Indexed macro names, see nullCountQuery.
+  const selectExprs = columnNames
+    .map((col, i) =>
+      SUMMARY_STATS.map((fn, k) => `${fn}(${col}) as _s${i}_${k}`).join(", "),
+    )
+    .join(", ");
+  const intoExprs = columnNames
+    .map((_, i) => SUMMARY_STATS.map((_fn, k) => `:_s${i}_${k}`).join(", "))
+    .join(", ");
+  const initLines = columnNames
+    .map((_, i) => SUMMARY_STATS.map((_fn, k) => `%let _s${i}_${k}=;`).join(" "))
+    .join("\n");
+  return {
+    setup: `${initLines}
+proc sql noprint;
+  select ${selectExprs}
+  into ${intoExprs}
+  from ${source}
+  ${where ? `where ${where}` : ""};
+quit;`,
+    emit: columnNames
+      .map(
+        (_, i) =>
+          `%put STATS${i}=${SUMMARY_STATS.map((_fn, k) => `&_s${i}_${k}`).join("|")};`,
+      )
+      .join("\n"),
+  };
+}
+
+function parseSummaryStats(output: string, count: number): SummaryStats[] {
+  const records = parseIndexedRecords(output, "STATS");
+  return Array.from({ length: count }, (_, i) => {
+    const vals = records.get(i)?.[0]?.split("|") ?? [];
+    return {
+      minValue: parseSasNumber(vals[0]),
+      maxValue: parseSasNumber(vals[1]),
+      meanValue: parseSasNumber(vals[2]),
+      medianValue: parseSasNumber(vals[3]),
+      stdevValue: parseSasNumber(vals[4]),
+    };
+  });
+}
+
+function binningStatsQuery(source: string, columnNames: string[], where?: string): QueryParts {
+  const idx = columnNames.map((_, i) => i);
+  const names = (prefix: string) => idx.map((i) => `${prefix}${i}`).join(" ");
+  return {
+    setup: `${idx.map((i) => `%let _hs${i}=; %let _ni${i}=0;`).join("\n")}
+proc sql;
+  create view work._sas_hv as
+  select ${columnNames.join(", ")} from ${source}
+  ${where ? `where ${where}` : ""};
+quit;
+proc means data=work._sas_hv noprint;
+  var ${columnNames.join(" ")};
+  output out=work._sas_hs n=${names("_n")} min=${names("_lo")} max=${names("_hi")} q1=${names("_qa")} q3=${names("_qb")};
+run;
+proc sql noprint;
+  select ${columnNames.map((col) => `sum(${col} ne int(${col}))`).join(", ")}
+  into ${idx.map((i) => `:_ni${i} trimmed`).join(", ")}
+  from work._sas_hv;
+quit;
+data _null_;
+  set work._sas_hs;
+  ${idx
+    .map(
+      (i) =>
+        `call symputx('_hs${i}', catx('|', ${["_n", "_lo", "_hi", "_qa", "_qb"]
+          .map((v) => `put(${v}${i}, best32.)`)
+          .join(", ")}));`,
+    )
+    .join("\n  ")}
+run;`,
+    emit: idx.map((i) => `%put HS${i}=&_hs${i}|&_ni${i};`).join("\n"),
+    cleanup: `proc datasets library=work nolist;
+  delete _sas_hs;
+  delete _sas_hv / memtype=view;
+quit;`,
+  };
+}
+
+function parseBinningStats(output: string, count: number): BinningStats[] {
+  const records = parseIndexedRecords(output, "HS");
+  return Array.from({ length: count }, (_, i) => {
+    const vals = records.get(i)?.[0]?.split("|") ?? [];
+    return {
+      n: parseSasNumber(vals[0]) ?? 0,
+      min: parseSasNumber(vals[1]),
+      max: parseSasNumber(vals[2]),
+      q1: parseSasNumber(vals[3]),
+      q3: parseSasNumber(vals[4]),
+      nonInteger: parseSasNumber(vals[5]) ?? 0,
+    };
+  });
+}
+
+function frequencyTablesQuery(
+  source: string,
+  requests: Array<{ column: string; limit: number }>,
+  where?: string,
+): QueryParts {
+  // Each request reads its own alias (_fv<i>) from the view, so a column
+  // named COUNT or PERCENT can't clash with PROC FREQ's output variables.
+  const steps = requests
+    .map(
+      ({ limit }, i) => `proc freq data=work._sas_fv noprint;
+  tables _fv${i} / out=work._sas_ft${i}(keep=_fv${i} count);
+run;
+proc sort data=work._sas_ft${i}; by descending count _fv${i}; run;
+data _null_;
+  set work._sas_ft${i}(obs=${Math.max(1, Math.floor(limit))});
+  call symputx(cats('_ftv${i}_', _n_), substr(strip(vvalue(_fv${i})), 1, 60));
+  call symputx(cats('_ftc${i}_', _n_), count);
+  call symputx('_ftn${i}', _n_);
+run;`,
+    )
+    .join("\n");
+  return {
+    setup: `${requests.map((_, i) => `%let _ftn${i}=0; %let _ftt${i}=0;`).join("\n")}
+proc sql;
+  create view work._sas_fv as
+  select ${requests.map(({ column }, i) => `${column} as _fv${i}`).join(", ")}
+  from ${source}
+  ${where ? `where ${where}` : ""};
+quit;
+proc sql noprint;
+  select ${requests.map((_, i) => `count(_fv${i})`).join(", ")}
+  into ${requests.map((_, i) => `:_ftt${i} trimmed`).join(", ")}
+  from work._sas_fv;
+quit;
+${steps}`,
+    emit: `%macro _sas_emit_ft;
+${requests
+  .map(
+    (_, i) => `  %put FTT${i}=&_ftt${i};
+  %do _j = 1 %to &_ftn${i};
+    %put FT${i}=&&_ftc${i}_&_j|%superq(_ftv${i}_&_j);
+  %end;`,
+  )
+  .join("\n")}
+%mend;
+%_sas_emit_ft;`,
+    cleanup: `proc datasets library=work nolist;
+  delete ${requests.map((_, i) => `_sas_ft${i}`).join(" ")};
+  delete _sas_fv / memtype=view;
+quit;`,
+  };
+}
+
+function parseFrequencyTables(output: string, count: number): FrequencyTable[] {
+  const totals = parseIndexedRecords(output, "FTT");
+  const records = parseIndexedRecords(output, "FT");
+  return Array.from({ length: count }, (_, i) => {
+    const values: string[] = [];
+    const counts: number[] = [];
+    for (const line of records.get(i) ?? []) {
+      // Split on the first "|" only: values may contain "|".
+      const sep = line.indexOf("|");
+      const n = parseInt(sep >= 0 ? line.slice(0, sep) : line, 10);
+      if (sep < 0 || isNaN(n)) {
+        continue;
+      }
+      counts.push(n);
+      values.push(line.slice(sep + 1));
+    }
+    const total = parseInt(totals.get(i)?.[0] ?? "0", 10) || 0;
+    const shown = counts.reduce((sum, n) => sum + n, 0);
+    return { values, counts, otherCount: Math.max(0, total - shown) };
+  });
+}
+
+function stringStatsQuery(source: string, columnNames: string[], where?: string): QueryParts {
+  const idx = columnNames.map((_, i) => i);
+  return {
+    setup: `${idx.map((i) => `%let _ssu${i}=0; %let _sse${i}=0;`).join("\n")}
+proc sql noprint;
+  select ${columnNames
+    .map((col) => `count(distinct ${col}), sum(missing(${col}))`)
+    .join(", ")}
+  into ${idx.map((i) => `:_ssu${i} trimmed, :_sse${i} trimmed`).join(", ")}
+  from ${source}
+  ${where ? `where ${where}` : ""};
+quit;`,
+    emit: idx.map((i) => `%put SS${i}=&_ssu${i}|&_sse${i};`).join("\n"),
+  };
+}
+
+function parseStringStats(output: string, count: number): StringStats[] {
+  const records = parseIndexedRecords(output, "SS");
+  return Array.from({ length: count }, (_, i) => {
+    const [unique, empty] = records.get(i)?.[0]?.split("|") ?? [];
+    return {
+      numUnique: parseSasNumber(unique) ?? 0,
+      numEmpty: parseSasNumber(empty) ?? 0,
+    };
+  });
+}
+
 /**
  * Encapsulates all SAS metadata queries used by the Positron integration.
  *
@@ -234,10 +628,52 @@ export function parseDatasetProperties(
  */
 export class SasClient {
   private readonly columnCache = new Map<string, Promise<ColumnInfo[]>>();
+  private readonly foreground: QueuedJob[] = [];
+  private readonly background: QueuedJob[] = [];
+  private running = false;
 
   constructor(
-    private readonly execute: (code: string) => Promise<string>,
+    private readonly executor: (code: string) => Promise<string>,
   ) {}
+
+  /**
+   * Run SAS code through the executor, one job at a time. SAS runs the jobs
+   * one by one anyway, so holding them here costs nothing, and it lets jobs
+   * the user waits for (rows, counts) overtake background ones (column
+   * profiles). Jobs held here also never fill the session's silent queue,
+   * nor get rejected from it when the user runs code.
+   */
+  private execute(code: string, priority: Priority = "foreground"): Promise<string> {
+    return new Promise((resolve, reject) => {
+      (priority === "background" ? this.background : this.foreground).push({
+        code,
+        resolve,
+        reject,
+      });
+      this.drain();
+    });
+  }
+
+  private drain(): void {
+    if (this.running) {
+      return;
+    }
+    const job = this.foreground.shift() ?? this.background.shift();
+    if (!job) {
+      return;
+    }
+    this.running = true;
+    let started: Promise<string>;
+    try {
+      started = this.executor(job.code);
+    } catch (err) {
+      started = Promise.reject(err);
+    }
+    started.then(job.resolve, job.reject).finally(() => {
+      this.running = false;
+      this.drain();
+    });
+  }
 
   /** Return the names of all assigned SAS libraries (excluding map libraries). */
   async getLibraryList(): Promise<string[]> {
@@ -277,7 +713,7 @@ proc sql noprint;
   select memname, memtype
   into :_sas_mem1-, :_sas_typ1-
   from dictionary.tables
-  where upcase(libname)=upcase("${libname}")
+  where libname="${libname}"
     and memtype in ('DATA','VIEW')
   order by memname;
   %let _sas_n=&sqlobs;
@@ -294,7 +730,7 @@ quit;
 options notes source;
 `);
     return parsePrefixedRecords(output, "MEM")
-      .filter(([name]) => name)
+      .filter(([name]) => name && !(libname === "WORK" && isInternalTableName(name)))
       .map(([name, type]) => ({ name, type: type || "DATA" }));
   }
 
@@ -327,8 +763,7 @@ proc sql noprint;
   select name, type, length, format, informat, label
   into :_sas_col1-, :_sas_typ1-, :_sas_len1-, :_sas_fmt1-, :_sas_inf1-, :_sas_lbl1-
   from dictionary.columns
-  where upcase(libname)=upcase("${libname}")
-    and upcase(memname)=upcase("${memname}")
+  where libname="${libname}" and memname="${memname}"
   order by varnum;
   %let _sas_n=&sqlobs;
 quit;
@@ -342,16 +777,7 @@ quit;
 %put ${SENTINEL_END};
 ${RESTORE_OPTIONS}
 `);
-    return parsePrefixedRecords(output, "COL")
-      .filter(([name]) => name)
-      .map(([name, type, len, fmt, inf, ...label]) => ({
-        name,
-        type: type || "char",
-        length: len ? parseInt(len, 10) : undefined,
-        format: fmt || undefined,
-        informat: inf || undefined,
-        label: label.join("|") || undefined,
-      }));
+    return parseColumnRecords(output);
   }
 
   /** Return what dictionary.tables says about a dataset or view. */
@@ -413,7 +839,7 @@ ${RESTORE_OPTIONS}
 options nosource nonotes;
 %let _sas_n=0;
 proc sql noprint;
-  select catx('|', libname, memname, memtype, put(modate, 20.), put(nlobs, 20.), put(nvar, 20.))
+  select catx('|', libname, memname, memtype, ${STAMP_FIELDS})
     into :_sas_st1-
     from dictionary.tables
     where ${where};
@@ -469,7 +895,7 @@ options notes source;
   }
 
   /**
-   * Return rows from a dataset as SOH-delimited strings (one per row).
+   * Return rows from a dataset as `|a|b|c` strings (one per row).
    * Columns are in the order given by columnNames.
    *
    * Uses %put inside a macro loop so that data reaches the SAS log, which is
@@ -498,9 +924,7 @@ options notes source;
 
     // Build per-column concatenation. Use pipe as delimiter — it survives the
     // SAS log → REST JSON → JavaScript transport without encoding issues.
-    const colCatCode = columnNames
-      .map((col) => `_row_ = cats(_row_, "|", strip(vvalue(${col})));`)
-      .join("\n    ");
+    const colCatCode = rowBuilder(columnNames);
 
     const firstObs = startIndex + 1;
     const lastObs  = startIndex + numRows;
@@ -532,15 +956,7 @@ data _null_;
   call symputx('_drn', _n_, 'L');
 run;
 %put ${SENTINEL_START};
-%macro _emit_dr;
-  %if %symexist(_drn) %then %do;
-    %do _i = 1 %to &_drn;
-      %put DATAROW=%superq(_dr&_i);
-      %symdel _dr&_i / nowarn;
-    %end;
-    %symdel _drn / nowarn;
-  %end;
-%mend;
+${emitRowsMacro("_emit_dr")}
 %_emit_dr;
 %put ${SENTINEL_END};
 proc datasets library=work nolist; delete ${tmpTable}; quit;
@@ -557,25 +973,123 @@ data _null_;
   call symputx('_drn', _n_, 'L');
 run;
 %put ${SENTINEL_START};
-%macro _emit_dr;
-  %if %symexist(_drn) %then %do;
-    %do _i = 1 %to &_drn;
-      %put DATAROW=%superq(_dr&_i);
-      %symdel _dr&_i / nowarn;
-    %end;
-    %symdel _drn / nowarn;
-  %end;
-%mend;
+${emitRowsMacro("_emit_dr")}
 %_emit_dr;
 %put ${SENTINEL_END};
 ${RESTORE_OPTIONS}
 `);
 
-    // Each line between sentinels prefixed with DATAROW= is one data row.
-    const PREFIX = "DATAROW=";
-    return parseSentinelOutput(output)
-      .filter((l) => l.startsWith(PREFIX))
-      .map((l) => l.slice(PREFIX.length));
+    return parseDataRows(output);
+  }
+
+  /**
+   * Everything the Data Explorer needs to show a dataset, in one job: its
+   * type, change stamp, columns, row count (dictionary.tables, or a count
+   * for views) and the first `rows` rows of its first `maxColumns` columns.
+   * Each job is a round trip to SAS, which on Viya is several HTTP requests.
+   */
+  async openDataset(
+    lib: unknown,
+    mem: unknown,
+    { rows, maxColumns }: { rows: number; maxColumns: number },
+  ): Promise<OpenedDataset> {
+    const libname = sasIdent(lib);
+    const memname = sasIdent(mem);
+    const output = await this.execute(`
+%macro _sas_open;
+%local _sas_opt _sas_n _sas_k _sas_mt _sas_nobs _sas_stamp _drn _i;
+${SAVE_OPTIONS}
+%let _sas_n=0;
+%let _sas_k=0;
+%let _drn=0;
+proc sql noprint;
+  select memtype, put(nlobs, 20.), catx('|', ${STAMP_FIELDS})
+    into :_sas_mt trimmed, :_sas_nobs trimmed, :_sas_stamp trimmed
+    from dictionary.tables
+    where libname="${libname}" and memname="${memname}";
+  select name, type, length, format, informat, label
+    into :_sas_col1-, :_sas_typ1-, :_sas_len1-, :_sas_fmt1-, :_sas_inf1-, :_sas_lbl1-
+    from dictionary.columns
+    where libname="${libname}" and memname="${memname}"
+    order by varnum;
+  %let _sas_n=&sqlobs;
+quit;
+%if %length(&_sas_mt) > 0 %then %do;
+  %if &_sas_mt = VIEW or %length(&_sas_nobs) = 0 or %superq(_sas_nobs) = .
+      or %index(%superq(_sas_nobs), -) > 0 %then %do;
+    proc sql noprint;
+      select count(*) into :_sas_nobs trimmed from ${libname}.${memname};
+    quit;
+  %end;
+  %let _sas_k=%sysfunc(min(&_sas_n, ${Math.max(0, Math.floor(maxColumns))}));
+  %if &_sas_k > 0 and ${Math.floor(rows)} > 0 %then %do;
+    data _null_;
+      set ${libname}.${memname}(obs=${Math.floor(rows)});
+      length _row_ $32767;
+      _row_ = "";
+      %do _i = 1 %to &_sas_k;
+        _row_ = cats(_row_, "|", strip(vvalue(&&_sas_col&_i)));
+      %end;
+      call symputx(cats('_dr', _n_), _row_, 'L');
+      call symputx('_drn', _n_, 'L');
+    run;
+  %end;
+%end;
+%put ${SENTINEL_START};
+%put OPEN=%superq(_sas_mt)|&_sas_k|%superq(_sas_nobs)|%superq(_sas_stamp);
+%do _i = 1 %to &_sas_n;
+  %put COL=%superq(_sas_col&_i)|%superq(_sas_typ&_i)|%superq(_sas_len&_i)|%superq(_sas_fmt&_i)|%superq(_sas_inf&_i)|%superq(_sas_lbl&_i);
+%end;
+%_sas_open_rows;
+%put ${SENTINEL_END};
+${RESTORE_OPTIONS}
+%mend _sas_open;
+${emitRowsMacro("_sas_open_rows")}
+%_sas_open
+%sysmacdelete _sas_open / nowarn;
+%sysmacdelete _sas_open_rows / nowarn;
+`);
+    return parseOpenedDataset(output);
+  }
+
+  /**
+   * Create `work.<table>` holding the rows of a dataset that pass `where`,
+   * in `orderBy` order, and return how many there are. `drop` names earlier
+   * WORK tables to delete in the same job.
+   */
+  async materializeDataset(
+    lib: unknown,
+    mem: unknown,
+    table: string,
+    where?: string,
+    orderBy?: string,
+    drop: string[] = [],
+  ): Promise<number> {
+    const libname = sasIdent(lib);
+    const memname = sasIdent(mem);
+    const target = sasIdent(table);
+    const dropStep = drop.length > 0
+      ? `proc datasets library=work nolist nowarn; delete ${drop.map(sasIdent).join(" ")}; quit;`
+      : "";
+    const output = await this.execute(`
+${SAVE_OPTIONS}
+%let _sas_nobs=0;
+${dropStep}
+proc sql noprint;
+  create table work.${target} as
+  select * from ${libname}.${memname}
+  ${where ? `where ${where}` : ""}
+  ${orderBy ? `order by ${orderBy}` : ""};
+  %let _sas_nobs=&sqlobs;
+quit;
+%put ${SENTINEL_START};
+%put &_sas_nobs;
+%put ${SENTINEL_END};
+%symdel _sas_nobs / nowarn;
+${RESTORE_OPTIONS}
+`);
+    const lines = parseSentinelOutput(output);
+    return parseInt(lines[0]?.trim() ?? "", 10) || 0;
   }
 
   /** Return null counts for a set of columns (batched into one query). */
@@ -588,39 +1102,10 @@ ${RESTORE_OPTIONS}
     if (columnNames.length === 0) {
       return [];
     }
-    const libname = sasIdent(lib);
-    const memname = sasIdent(mem);
-    const whereClause = where ? `where ${where}` : "";
-
-    // Indexed macro names: `_nc_<column>` exceeds SAS's 32-character limit
-    // for long column names.
-    const selectExprs = columnNames
-      .map((col, i) => `nmiss(${col}) as _nc${i}`)
-      .join(", ");
-    const intoExprs = columnNames.map((_, i) => `:_nc${i} trimmed`).join(", ");
-    const initLines = columnNames.map((_, i) => `%let _nc${i}=0;`).join("\n");
-    const putLines = columnNames
-      .map((_, i) => `%put NC${i}=&_nc${i};`)
-      .join("\n");
-
-    const output = await this.execute(`
-options nosource nonotes;
-${initLines}
-proc sql noprint;
-  select ${selectExprs}
-  into ${intoExprs}
-  from ${libname}.${memname}
-  ${whereClause};
-quit;
-%put ${SENTINEL_START};
-${putLines}
-%put ${SENTINEL_END};
-options notes source;
-`);
-    const records = parseIndexedRecords(output, "NC");
-    return columnNames.map(
-      (_, i) => parseInt(records.get(i)?.[0] ?? "0", 10) || 0,
+    const output = await this.execute(
+      assembleQuery([nullCountQuery(dataSource(lib, mem), columnNames, where)]),
     );
+    return parseNullCounts(output, columnNames.length);
   }
 
   /** Return summary stats for a set of numeric columns (batched into one query). */
@@ -629,68 +1114,14 @@ options notes source;
     mem: unknown,
     columnNames: string[],
     where?: string,
-  ): Promise<
-    Array<{
-      minValue: number | null;
-      maxValue: number | null;
-      meanValue: number | null;
-      stdevValue: number | null;
-      medianValue: number | null;
-    }>
-  > {
+  ): Promise<SummaryStats[]> {
     if (columnNames.length === 0) {
       return [];
     }
-    const libname = sasIdent(lib);
-    const memname = sasIdent(mem);
-    const whereClause = where ? `where ${where}` : "";
-
-    // Indexed macro names, see getColumnNullCounts.
-    const stats = ["min", "max", "mean", "median", "std"];
-    const selectExprs = columnNames
-      .map((col, i) =>
-        stats.map((fn, k) => `${fn}(${col}) as _s${i}_${k}`).join(", "),
-      )
-      .join(", ");
-    const intoExprs = columnNames
-      .map((_, i) => stats.map((_fn, k) => `:_s${i}_${k}`).join(", "))
-      .join(", ");
-    const initLines = columnNames
-      .map((_, i) => stats.map((_fn, k) => `%let _s${i}_${k}=;`).join(" "))
-      .join("\n");
-    const putLines = columnNames
-      .map(
-        (_, i) =>
-          `%put STATS${i}=${stats.map((_fn, k) => `&_s${i}_${k}`).join("|")};`,
-      )
-      .join("\n");
-
-    const output = await this.execute(`
-options nosource nonotes;
-${initLines}
-proc sql noprint;
-  select ${selectExprs}
-  into ${intoExprs}
-  from ${libname}.${memname}
-  ${whereClause};
-quit;
-%put ${SENTINEL_START};
-${putLines}
-%put ${SENTINEL_END};
-options notes source;
-`);
-
-    const records = parseIndexedRecords(output, "STATS");
-    return columnNames.map((_, i) => {
-      const vals = records.get(i)?.[0]?.split("|") ?? [];
-      return {
-        minValue: parseSasNumber(vals[0]),
-        maxValue: parseSasNumber(vals[1]),
-        meanValue: parseSasNumber(vals[2]),
-        medianValue: parseSasNumber(vals[3]),
-        stdevValue: parseSasNumber(vals[4]),
-      };
-    });
+    const output = await this.execute(
+      assembleQuery([summaryStatsQuery(dataSource(lib, mem), columnNames, where)]),
+    );
+    return parseSummaryStats(output, columnNames.length);
   }
 
   /**
@@ -708,62 +1139,10 @@ options notes source;
     if (columnNames.length === 0) {
       return [];
     }
-    const libname = sasIdent(lib);
-    const memname = sasIdent(mem);
-    const whereClause = where ? `where ${where}` : "";
-    const idx = columnNames.map((_, i) => i);
-    const names = (prefix: string) => idx.map((i) => `${prefix}${i}`).join(" ");
-
-    const output = await this.execute(`
-options nosource nonotes;
-${idx.map((i) => `%let _hs${i}=; %let _ni${i}=0;`).join("\n")}
-proc sql;
-  create view work._sas_hv as
-  select ${columnNames.join(", ")} from ${libname}.${memname}
-  ${whereClause};
-quit;
-proc means data=work._sas_hv noprint;
-  var ${columnNames.join(" ")};
-  output out=work._sas_hs n=${names("_n")} min=${names("_lo")} max=${names("_hi")} q1=${names("_qa")} q3=${names("_qb")};
-run;
-proc sql noprint;
-  select ${columnNames.map((col) => `sum(${col} ne int(${col}))`).join(", ")}
-  into ${idx.map((i) => `:_ni${i} trimmed`).join(", ")}
-  from work._sas_hv;
-quit;
-data _null_;
-  set work._sas_hs;
-  ${idx
-    .map(
-      (i) =>
-        `call symputx('_hs${i}', catx('|', ${["_n", "_lo", "_hi", "_qa", "_qb"]
-          .map((v) => `put(${v}${i}, best32.)`)
-          .join(", ")}));`,
-    )
-    .join("\n  ")}
-run;
-%put ${SENTINEL_START};
-${idx.map((i) => `%put HS${i}=&_hs${i}|&_ni${i};`).join("\n")}
-%put ${SENTINEL_END};
-proc datasets library=work nolist;
-  delete _sas_hs;
-  delete _sas_hv / memtype=view;
-quit;
-options notes source;
-`);
-
-    const records = parseIndexedRecords(output, "HS");
-    return idx.map((i) => {
-      const vals = records.get(i)?.[0]?.split("|") ?? [];
-      return {
-        n: parseSasNumber(vals[0]) ?? 0,
-        min: parseSasNumber(vals[1]),
-        max: parseSasNumber(vals[2]),
-        q1: parseSasNumber(vals[3]),
-        q3: parseSasNumber(vals[4]),
-        nonInteger: parseSasNumber(vals[5]) ?? 0,
-      };
-    });
+    const output = await this.execute(
+      assembleQuery([binningStatsQuery(dataSource(lib, mem), columnNames, where)]),
+    );
+    return parseBinningStats(output, columnNames.length);
   }
 
   /**
@@ -777,6 +1156,7 @@ options notes source;
     mem: unknown,
     requests: Array<{ column: string; bins: HistogramBins }>,
     where?: string,
+    priority: Priority = "foreground",
   ): Promise<number[][]> {
     const queried = requests
       .map((r, i) => ({ ...r, i }))
@@ -785,28 +1165,27 @@ options notes source;
     if (queried.length === 0) {
       return results;
     }
-    const libname = sasIdent(lib);
-    const memname = sasIdent(mem);
+    const source = dataSource(lib, mem);
 
     const queries = queried
       .map(({ column, bins, i }) => {
         const filter = `not missing(${column})${where ? ` and (${where})` : ""}`;
         const bin = `max(0, min(${bins.nbins - 1}, floor((${column} - (${bins.lo})) / (${bins.width}))))`;
         return `  select b, count(*) into :_hb${i}b1-, :_hb${i}n1-
-  from (select ${bin} as b from ${libname}.${memname} where ${filter})
+  from (select ${bin} as b from ${source} where ${filter})
   group by b;
   %let _hbn${i}=&sqlobs;`;
       })
       .join("\n");
 
-    const output = await this.execute(`
-options nosource nonotes;
-${queried.map(({ i }) => `%let _hbn${i}=0;`).join("\n")}
+    const output = await this.execute(
+      assembleQuery([
+        {
+          setup: `${queried.map(({ i }) => `%let _hbn${i}=0;`).join("\n")}
 proc sql noprint;
 ${queries}
-quit;
-%put ${SENTINEL_START};
-%macro _sas_emit_hb;
+quit;`,
+          emit: `%macro _sas_emit_hb;
 ${queried
   .map(
     ({ i }) => `  %do _j = 1 %to &_hbn${i};
@@ -815,10 +1194,11 @@ ${queried
   )
   .join("\n")}
 %mend;
-%_sas_emit_hb;
-%put ${SENTINEL_END};
-options notes source;
-`);
+%_sas_emit_hb;`,
+        },
+      ]),
+      priority,
+    );
 
     const records = parseIndexedRecords(output, "HB");
     for (const { i } of queried) {
@@ -846,81 +1226,10 @@ options notes source;
     if (requests.length === 0) {
       return [];
     }
-    const libname = sasIdent(lib);
-    const memname = sasIdent(mem);
-    const whereClause = where ? `where ${where}` : "";
-
-    // Each request reads its own alias (_fv<i>) from the view, so a column
-    // named COUNT or PERCENT can't clash with PROC FREQ's output variables.
-    const steps = requests
-      .map(
-        ({ limit }, i) => `proc freq data=work._sas_fv noprint;
-  tables _fv${i} / out=work._sas_ft${i}(keep=_fv${i} count);
-run;
-proc sort data=work._sas_ft${i}; by descending count _fv${i}; run;
-data _null_;
-  set work._sas_ft${i}(obs=${Math.max(1, Math.floor(limit))});
-  call symputx(cats('_ftv${i}_', _n_), substr(strip(vvalue(_fv${i})), 1, 60));
-  call symputx(cats('_ftc${i}_', _n_), count);
-  call symputx('_ftn${i}', _n_);
-run;`,
-      )
-      .join("\n");
-
-    const output = await this.execute(`
-options nosource nonotes;
-${requests.map((_, i) => `%let _ftn${i}=0; %let _ftt${i}=0;`).join("\n")}
-proc sql;
-  create view work._sas_fv as
-  select ${requests.map(({ column }, i) => `${column} as _fv${i}`).join(", ")}
-  from ${libname}.${memname}
-  ${whereClause};
-quit;
-proc sql noprint;
-  select ${requests.map((_, i) => `count(_fv${i})`).join(", ")}
-  into ${requests.map((_, i) => `:_ftt${i} trimmed`).join(", ")}
-  from work._sas_fv;
-quit;
-${steps}
-%put ${SENTINEL_START};
-%macro _sas_emit_ft;
-${requests
-  .map(
-    (_, i) => `  %put FTT${i}=&_ftt${i};
-  %do _j = 1 %to &_ftn${i};
-    %put FT${i}=&&_ftc${i}_&_j|%superq(_ftv${i}_&_j);
-  %end;`,
-  )
-  .join("\n")}
-%mend;
-%_sas_emit_ft;
-%put ${SENTINEL_END};
-proc datasets library=work nolist;
-  delete ${requests.map((_, i) => `_sas_ft${i}`).join(" ")};
-  delete _sas_fv / memtype=view;
-quit;
-options notes source;
-`);
-
-    const totals = parseIndexedRecords(output, "FTT");
-    const records = parseIndexedRecords(output, "FT");
-    return requests.map((_, i) => {
-      const values: string[] = [];
-      const counts: number[] = [];
-      for (const line of records.get(i) ?? []) {
-        // Split on the first "|" only: values may contain "|".
-        const sep = line.indexOf("|");
-        const count = parseInt(sep >= 0 ? line.slice(0, sep) : line, 10);
-        if (sep < 0 || isNaN(count)) {
-          continue;
-        }
-        counts.push(count);
-        values.push(line.slice(sep + 1));
-      }
-      const total = parseInt(totals.get(i)?.[0] ?? "0", 10) || 0;
-      const shown = counts.reduce((sum, n) => sum + n, 0);
-      return { values, counts, otherCount: Math.max(0, total - shown) };
-    });
+    const output = await this.execute(
+      assembleQuery([frequencyTablesQuery(dataSource(lib, mem), requests, where)]),
+    );
+    return parseFrequencyTables(output, requests.length);
   }
 
   /** Return distinct and empty (missing) value counts for character columns. */
@@ -929,40 +1238,63 @@ options notes source;
     mem: unknown,
     columnNames: string[],
     where?: string,
-  ): Promise<Array<{ numUnique: number; numEmpty: number }>> {
+  ): Promise<StringStats[]> {
     if (columnNames.length === 0) {
       return [];
     }
-    const libname = sasIdent(lib);
-    const memname = sasIdent(mem);
-    const whereClause = where ? `where ${where}` : "";
-    const idx = columnNames.map((_, i) => i);
+    const output = await this.execute(
+      assembleQuery([stringStatsQuery(dataSource(lib, mem), columnNames, where)]),
+    );
+    return parseStringStats(output, columnNames.length);
+  }
 
-    const output = await this.execute(`
-options nosource nonotes;
-${idx.map((i) => `%let _ssu${i}=0; %let _sse${i}=0;`).join("\n")}
-proc sql noprint;
-  select ${columnNames
-    .map((col) => `count(distinct ${col}), sum(missing(${col}))`)
-    .join(", ")}
-  into ${idx.map((i) => `:_ssu${i} trimmed, :_sse${i} trimmed`).join(", ")}
-  from ${libname}.${memname}
-  ${whereClause};
-quit;
-%put ${SENTINEL_START};
-${idx.map((i) => `%put SS${i}=&_ssu${i}|&_sse${i};`).join("\n")}
-%put ${SENTINEL_END};
-options notes source;
-`);
-
-    const records = parseIndexedRecords(output, "SS");
-    return idx.map((i) => {
-      const [unique, empty] = records.get(i)?.[0]?.split("|") ?? [];
-      return {
-        numUnique: parseSasNumber(unique) ?? 0,
-        numEmpty: parseSasNumber(empty) ?? 0,
-      };
-    });
+  /**
+   * Run the column profile queries the Data Explorer's summary panel needs
+   * (null counts, summary stats, frequency tables and histogram binning
+   * stats) as one background job instead of one job each.
+   */
+  async getColumnProfileStats(
+    lib: unknown,
+    mem: unknown,
+    request: ProfileStatsRequest,
+    where?: string,
+  ): Promise<ProfileStats> {
+    const source = dataSource(lib, mem);
+    const parts: QueryParts[] = [];
+    if (request.nullCounts.length > 0) {
+      parts.push(nullCountQuery(source, request.nullCounts, where));
+    }
+    if (request.numericStats.length > 0) {
+      parts.push(summaryStatsQuery(source, request.numericStats, where));
+    }
+    if (request.stringStats.length > 0) {
+      parts.push(stringStatsQuery(source, request.stringStats, where));
+    }
+    if (request.frequencyTables.length > 0) {
+      parts.push(frequencyTablesQuery(source, request.frequencyTables, where));
+    }
+    if (request.binning.length > 0) {
+      parts.push(binningStatsQuery(source, request.binning, where));
+    }
+    const output =
+      parts.length > 0 ? await this.execute(assembleQuery(parts), "background") : "";
+    return {
+      nullCounts: request.nullCounts.length > 0
+        ? parseNullCounts(output, request.nullCounts.length)
+        : [],
+      numericStats: request.numericStats.length > 0
+        ? parseSummaryStats(output, request.numericStats.length)
+        : [],
+      stringStats: request.stringStats.length > 0
+        ? parseStringStats(output, request.stringStats.length)
+        : [],
+      frequencyTables: request.frequencyTables.length > 0
+        ? parseFrequencyTables(output, request.frequencyTables.length)
+        : [],
+      binning: request.binning.length > 0
+        ? parseBinningStats(output, request.binning.length)
+        : [],
+    };
   }
 
   /** Return the GLOBAL and AUTOMATIC macro variables and the WORK tables. */
@@ -1090,7 +1422,7 @@ export function parseSessionSnapshot(stdout: string): SessionSnapshot {
       chunks.set(i, [...(chunks.get(i) ?? []), rest.startsWith("|") ? rest.slice(1) : rest]);
     } else {
       const table = parseWorkTable(rest);
-      if (table) {
+      if (table && !isInternalTableName(table.name)) {
         tables.push(table);
       }
     }

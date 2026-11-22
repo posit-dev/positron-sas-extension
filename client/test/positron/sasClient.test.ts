@@ -3,7 +3,13 @@
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { SasClient, sasIdent } from "../../src/positron/sasClient";
+import {
+  SasClient,
+  isInternalTableName,
+  parseDataRows,
+  parseSessionSnapshot,
+  sasIdent,
+} from "../../src/positron/sasClient";
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
@@ -591,5 +597,273 @@ describe("SasClient.getDatasetRows options", () => {
       expect(code).to.include("%sysfunc(getoption(ls,keyword))");
       expect(code.trimEnd()).to.match(/options notes source &_sas_opt;$/);
     }
+  });
+});
+
+// ─── Rows written in chunks ──────────────────────────────────────────────────
+
+/** Write a row to a fake log as the row emitter does: 200-character chunks, trailing blanks dropped. */
+function logRow(index: number, row: string): string {
+  const lines: string[] = [];
+  for (let i = 0; i < row.length; i += 200) {
+    lines.push(`DR${index}=|${row.slice(i, i + 200)}`.trimEnd());
+  }
+  return lines.join("\n");
+}
+
+describe("parseDataRows", () => {
+  it("joins the chunks of wide rows, keeping blanks at chunk edges", () => {
+    // Blanks fall at the end of the first chunk and the start of the second.
+    const wide = `|${"a".repeat(197)} |  b|${"c".repeat(250)}|x|y`;
+    const rows = parseDataRows(sentinelWrap([logRow(1, wide), logRow(2, "|1|2")].join("\n")));
+    expect(rows).to.deep.equal([wide, "|1|2"]);
+  });
+
+  it("orders rows by index", () => {
+    const rows = parseDataRows(sentinelWrap([logRow(10, "|j"), logRow(2, "|b")].join("\n")));
+    expect(rows).to.deep.equal(["|b", "|j"]);
+  });
+});
+
+describe("SasClient.getDatasetRows", () => {
+  it("parses chunked rows", async () => {
+    const wide = `|${"x".repeat(300)}|end`;
+    const { client, executor } = makeClient({
+      "~~SAS_START~~": sentinelWrap([logRow(1, wide), logRow(2, "|a|b")].join("\n")),
+    });
+    expect(await client.getDatasetRows("work", "a", ["X", "Y"], 0, 2)).to.deep.equal([wide, "|a|b"]);
+    expect(String(executor.firstCall.args[0])).to.include("%put DR&_i=|%qsubstr(%superq(_dr&_i)");
+  });
+});
+
+// ─── SasClient.openDataset ───────────────────────────────────────────────────
+
+describe("SasClient.openDataset", () => {
+  it("reads type, row count, stamp, columns and first rows in one job", async () => {
+    const { client, executor } = makeClient({
+      "~~SAS_START~~": sentinelWrap([
+        "OPEN=DATA|2|19|2000000000|19|3",
+        "COL=NAME|char|8||$8.|Name",
+        "COL=AGE|num|8|||",
+        "COL=HEIGHT|num|8|||",
+        logRow(1, "|Alfred|14"),
+        logRow(2, "|Alice|13"),
+      ].join("\n")),
+    });
+    const opened = await client.openDataset("work", "class", { rows: 200, maxColumns: 50 });
+    expect(executor.callCount).to.equal(1);
+    expect(opened).to.deep.equal({
+      memtype: "DATA",
+      columns: [
+        { name: "NAME", type: "char", length: 8, format: undefined, informat: "$8.", label: "Name" },
+        { name: "AGE", type: "num", length: 8, format: undefined, informat: undefined, label: undefined },
+        { name: "HEIGHT", type: "num", length: 8, format: undefined, informat: undefined, label: undefined },
+      ],
+      rowCount: 19,
+      stamp: "2000000000|19|3",
+      rows: ["|Alfred|14", "|Alice|13"],
+      rowColumns: 2,
+    });
+  });
+
+  it("looks the dataset up by equality and counts views", async () => {
+    const { client, executor } = makeClient({});
+    await client.openDataset("work", "class", { rows: 200, maxColumns: 50 });
+    const code = String(executor.firstCall.args[0]);
+    // upcase(libname) would scan the metadata of every library.
+    expect(code).not.to.include("upcase(");
+    expect(code).to.include('where libname="WORK" and memname="CLASS"');
+    expect(code).to.include("&_sas_mt = VIEW");
+    expect(code).to.include("count(*)");
+    expect(code).to.include("set WORK.CLASS(obs=200)");
+    expect(code).to.include("min(&_sas_n, 50)");
+  });
+
+  it("reports a missing dataset", async () => {
+    const { client } = makeClient({ "~~SAS_START~~": sentinelWrap("OPEN=|0||") });
+    const opened = await client.openDataset("work", "gone", { rows: 200, maxColumns: 50 });
+    expect(opened).to.deep.include({ memtype: undefined, columns: [], rowCount: 0, stamp: undefined });
+  });
+
+  it("validates both identifiers", async () => {
+    const { client } = makeClient({});
+    let threw = false;
+    try {
+      await client.openDataset("work", "x;y", { rows: 1, maxColumns: 1 });
+    } catch {
+      threw = true;
+    }
+    expect(threw).to.be.true;
+  });
+});
+
+// ─── SasClient.materializeDataset ────────────────────────────────────────────
+
+describe("SasClient.materializeDataset", () => {
+  it("builds the view table, drops old ones and returns the row count", async () => {
+    const { client, executor } = makeClient({ "~~SAS_START~~": sentinelWrap("42") });
+    const rows = await client.materializeDataset(
+      "work", "class", "_SASDV7", "AGE > 12", "AGE desc", ["_SASDV6"],
+    );
+    expect(rows).to.equal(42);
+    const code = String(executor.firstCall.args[0]);
+    expect(code).to.include("delete _SASDV6;");
+    expect(code).to.include("create table work._SASDV7 as");
+    expect(code).to.include("select * from WORK.CLASS");
+    expect(code).to.include("where AGE > 12");
+    expect(code).to.include("order by AGE desc");
+    expect(code).to.include("%let _sas_nobs=&sqlobs;");
+  });
+
+  it("validates the table names", async () => {
+    const { client } = makeClient({});
+    let threw = false;
+    try {
+      await client.materializeDataset("work", "class", "t;run", undefined, "AGE asc");
+    } catch {
+      threw = true;
+    }
+    expect(threw).to.be.true;
+  });
+});
+
+// ─── Helper tables are hidden ────────────────────────────────────────────────
+
+describe("Data Explorer view tables", () => {
+  it("are recognised by name", () => {
+    expect(isInternalTableName("_SASDV12")).to.be.true;
+    expect(isInternalTableName("_sasdv1")).to.be.true;
+    expect(isInternalTableName("CLASS")).to.be.false;
+  });
+
+  it("are hidden from WORK's members, but not other libraries'", async () => {
+    const { client } = makeClient({
+      "~~SAS_START~~": sentinelWrap("MEM=CLASS|DATA\nMEM=_SASDV3|DATA"),
+    });
+    expect((await client.getLibraryMembers("work")).map((m) => m.name)).to.deep.equal(["CLASS"]);
+    expect((await client.getLibraryMembers("mylib")).map((m) => m.name)).to.deep.equal([
+      "CLASS", "_SASDV3",
+    ]);
+  });
+
+  it("are hidden from the Variables pane snapshot", () => {
+    const snapshot = parseSessionSnapshot(
+      sentinelWrap("WT1=CLASS|DATA|19|5|2026-11-22T10:00:00|\nWT2=_SASDV3|DATA|19|5|2026-11-22T10:00:00|"),
+    );
+    expect(snapshot.tables.map((t) => t.name)).to.deep.equal(["CLASS"]);
+  });
+});
+
+// ─── Job order ───────────────────────────────────────────────────────────────
+
+describe("SasClient job queue", () => {
+  function deferredExecutor() {
+    const started: string[] = [];
+    const pending: Array<() => void> = [];
+    const executor = sinon.stub().callsFake((code: string) => {
+      started.push(code.includes("count(*)") ? "count" : code.includes("nmiss(") ? "profile" : "other");
+      return new Promise<string>((resolve) => pending.push(() => resolve("")));
+    });
+    const finishNext = async () => {
+      pending.shift()?.();
+      await new Promise((r) => setTimeout(r, 0));
+    };
+    return { executor, started, pending, finishNext };
+  }
+
+  it("runs one job at a time", async () => {
+    const { executor, pending, finishNext } = deferredExecutor();
+    const client = new SasClient(executor);
+    const jobs = [
+      client.getDatasetRowCount("work", "a"),
+      client.getDatasetRowCount("work", "b"),
+      client.getDatasetRowCount("work", "c"),
+    ];
+    await new Promise((r) => setTimeout(r, 0));
+    expect(executor.callCount).to.equal(1);
+    expect(pending).to.have.length(1);
+    await finishNext();
+    await finishNext();
+    await finishNext();
+    await Promise.all(jobs);
+    expect(executor.callCount).to.equal(3);
+  });
+
+  it("lets foreground jobs overtake waiting background jobs", async () => {
+    const { executor, started, finishNext } = deferredExecutor();
+    const client = new SasClient(executor);
+    const request = {
+      nullCounts: ["AGE"], numericStats: [], stringStats: [], frequencyTables: [], binning: [],
+    };
+    const jobs: Promise<unknown>[] = [
+      client.getDatasetRowCount("work", "a"), // runs first
+      client.getColumnProfileStats("work", "a", request), // background, waits
+      client.getDatasetRowCount("work", "b"), // overtakes it
+    ];
+    for (let i = 0; i < 3; i++) {
+      await finishNext();
+    }
+    await Promise.all(jobs);
+    expect(started).to.deep.equal(["count", "count", "profile"]);
+  });
+
+  it("keeps going after a job fails", async () => {
+    const executor = sinon.stub();
+    executor.onFirstCall().rejects(new Error("boom"));
+    executor.onSecondCall().resolves(sentinelWrap("7"));
+    const client = new SasClient(executor);
+    const [first, second] = await Promise.allSettled([
+      client.getDatasetRowCount("work", "a"),
+      client.getDatasetRowCount("work", "b"),
+    ]);
+    expect(first.status).to.equal("rejected");
+    expect(second).to.deep.equal({ status: "fulfilled", value: 7 });
+  });
+});
+
+// ─── SasClient.getColumnProfileStats ─────────────────────────────────────────
+
+describe("SasClient.getColumnProfileStats", () => {
+  it("runs every profile query in one job and parses each section", async () => {
+    const { client, executor } = makeClient({
+      "~~SAS_START~~": sentinelWrap([
+        "NC0=3",
+        "STATS0=1|90|45|44|10",
+        "SS0=19|2",
+        "FTT0=19",
+        "FT0=2|Alice",
+        "FT0=1|Bob",
+        "HS0=19|11|16|12|15|0",
+      ].join("\n")),
+    });
+    const stats = await client.getColumnProfileStats("work", "class", {
+      nullCounts: ["AGE"],
+      numericStats: ["AGE"],
+      stringStats: ["NAME"],
+      frequencyTables: [{ column: "NAME", limit: 8 }],
+      binning: ["AGE"],
+    }, "AGE > 12");
+    expect(executor.callCount).to.equal(1);
+    expect(stats).to.deep.equal({
+      nullCounts: [3],
+      numericStats: [{ minValue: 1, maxValue: 90, meanValue: 45, medianValue: 44, stdevValue: 10 }],
+      stringStats: [{ numUnique: 19, numEmpty: 2 }],
+      frequencyTables: [{ values: ["Alice", "Bob"], counts: [2, 1], otherCount: 16 }],
+      binning: [{ n: 19, min: 11, max: 16, q1: 12, q3: 15, nonInteger: 0 }],
+    });
+    const code = String(executor.firstCall.args[0]);
+    // One sentinel block, after all the steps.
+    expect(code.split("%put ~~SAS_START~~").length).to.equal(2);
+    expect(code.indexOf("%put ~~SAS_START~~")).to.be.greaterThan(code.indexOf("proc means"));
+    expect(code.match(/where AGE > 12/g)).to.have.length(5);
+  });
+
+  it("runs nothing when nothing is asked for", async () => {
+    const { client, executor } = makeClient({});
+    const stats = await client.getColumnProfileStats("work", "class", {
+      nullCounts: [], numericStats: [], stringStats: [], frequencyTables: [], binning: [],
+    });
+    expect(executor.callCount).to.equal(0);
+    expect(stats.nullCounts).to.deep.equal([]);
   });
 });
