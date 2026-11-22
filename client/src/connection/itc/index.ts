@@ -44,6 +44,9 @@ const LogLineTypes: LogLineTypeEnum[] = [
 ];
 
 const SECRET_STORAGE_NAMESPACE = "ITC_SECRET_STORAGE";
+/** The log is first polled this soon after a run starts, doubling up to the max. */
+const LOG_POLL_MIN_MS = 100;
+const LOG_POLL_MAX_MS = 2000;
 
 let sessionInstance: ITCSession;
 
@@ -58,6 +61,8 @@ export class ITCSession extends Session {
   private _secretStorage;
   private _passwordKey: string;
   private _pollingForLogResults: boolean;
+  /** Bumped by each fetchLog, so only the latest run's poll keeps going. */
+  private _logPoll = 0;
   private _logLineType = 0;
   private _passwordInputCancellationTokenSource:
     CancellationTokenSource | undefined;
@@ -327,21 +332,32 @@ export class ITCSession extends Session {
    * writing each chunk to stdout.
    */
   private fetchLog = async (skipPageHeaders?: boolean): Promise<void> => {
-    const pollingInterval = setInterval(() => {
-      if (!this._pollingForLogResults) {
-        clearInterval(pollingInterval);
-      }
-      const skipPageHeadersValue = skipPageHeaders ? "$true" : "$false";
-      this._shellProcess.stdin.write(
-        `
+    // Poll soon after a run starts, then less and less often, so short runs
+    // finish quickly and long ones keep the old 2 second cadence. A single
+    // flush (after cancel) still waits the full 2 seconds.
+    const poll = ++this._logPoll;
+    const skipPageHeadersValue = skipPageHeaders ? "$true" : "$false";
+    const tick = (delay: number) => {
+      setTimeout(() => {
+        if (poll !== this._logPoll || !this._shellProcess) {
+          return;
+        }
+        const polling = this._pollingForLogResults;
+        this._shellProcess.stdin.write(
+          `
   do {
     $chunkSize = 32768
     $count = $runner.FlushLogLines($chunkSize, ${skipPageHeadersValue})
   } while ($count -gt 0)\n
     `,
-        this.onWriteComplete,
-      );
-    }, 2 * 1000);
+          this.onWriteComplete,
+        );
+        if (polling) {
+          tick(Math.min(delay * 2, LOG_POLL_MAX_MS));
+        }
+      }, delay);
+    };
+    tick(this._pollingForLogResults ? LOG_POLL_MIN_MS : LOG_POLL_MAX_MS);
   };
 
   /**
