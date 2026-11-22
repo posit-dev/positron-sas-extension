@@ -304,6 +304,18 @@ export interface PositronApi {
   readonly ai?: {
     /** Positron 2026.10 and later: add a folder of agent skills. */
     registerAgentSkillRoot?(root: string): vscode.Disposable;
+    /** Positron 2026.11 and later: commands agents may run over MCP. */
+    getAgentAllowedCommands?(options?: {
+      includeDisabled?: boolean;
+    }): Thenable<{ id: string; readOnly?: boolean }[]>;
+    /** Positron 2026.11 and later: run a command as Positron's MCP server does. */
+    validateAndExecuteCommand?(
+      commandId: string,
+      args?: unknown[],
+    ): Thenable<
+      | { ok: true; result: unknown }
+      | { ok: false; reason: string; message?: string }
+    >;
   };
   /** Data Explorer; only the parts the SAS extension uses. */
   readonly dataExplorer?: {
@@ -412,6 +424,14 @@ export interface DataConnectionDriver {
   onDidChange?: vscode.Event<void>;
 }
 
+/** The parts of Positron's ExecutionObserver this extension uses. */
+export interface ExecutionObserver {
+  /** Text the run sends to standard output. */
+  onOutput?: (message: string) => void;
+  /** Text the run sends to standard error. */
+  onError?: (message: string) => void;
+}
+
 export interface RuntimeManager {
   registerLanguageRuntimeManager(
     languageId: string,
@@ -429,7 +449,7 @@ export interface RuntimeManager {
     allowIncomplete?: boolean,
     mode?: RuntimeCodeExecutionMode,
     errorBehavior?: RuntimeErrorBehavior,
-    observer?: unknown,
+    observer?: ExecutionObserver,
     sessionId?: string,
     documentUri?: vscode.Uri,
   ): Thenable<Record<string, unknown>>;

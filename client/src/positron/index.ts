@@ -22,6 +22,7 @@ import {
 import { PositronConnectionsProvider } from "./PositronConnectionsProvider";
 import { PositronPlotsProvider } from "./PositronPlotsProvider";
 import { registerAssistantIntegration } from "./sasAssistant";
+import { registerAgentCommands } from "./agentCommands";
 import { registerQuartoSasCells } from "./quartoSasCells";
 import type { SasWorkspaceContextProvider } from "./sasAssistant";
 import { PositronDataViewerProvider } from "./PositronDataViewerProvider";
@@ -283,6 +284,9 @@ export async function initializePositronIntegration(
       api.ai.registerAgentSkillRoot(context.asAbsolutePath("assistant-skills")),
     );
   }
+  // Commands external coding agents run through Positron's MCP server, which
+  // doesn't list the SAS console as a session (#156).
+  context.subscriptions.push(registerAgentCommands(api));
   // Initialize Data Viewer Provider for showing datasets
   dataViewerProvider = new PositronDataViewerProvider(api);
   context.subscriptions.push(dataViewerProvider);
