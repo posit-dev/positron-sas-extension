@@ -702,10 +702,10 @@ describe("SasClient.openDataset", () => {
 describe("SasClient.materializeDataset", () => {
   it("builds the view table, drops old ones and returns the row count", async () => {
     const { client, executor } = makeClient({ "~~SAS_START~~": sentinelWrap("42") });
-    const rows = await client.materializeDataset(
+    const result = await client.materializeDataset(
       "work", "class", "_SASDV7", "AGE > 12", "AGE desc", ["_SASDV6"],
     );
-    expect(rows).to.equal(42);
+    expect(result).to.deep.equal({ rows: 42, data: [] });
     const code = String(executor.firstCall.args[0]);
     expect(code).to.include("delete _SASDV6;");
     expect(code).to.include("create table work._SASDV7 as");
@@ -713,6 +713,23 @@ describe("SasClient.materializeDataset", () => {
     expect(code).to.include("where AGE > 12");
     expect(code).to.include("order by AGE desc");
     expect(code).to.include("%let _sas_nobs=&sqlobs;");
+    expect(code).not.to.include("set work._SASDV7");
+  });
+
+  it("reads rows of the new table in the same job", async () => {
+    const { client, executor } = makeClient({
+      "~~SAS_START~~": sentinelWrap("19\nDR1=||Alfred|14\nDR2=||Alice|13"),
+    });
+    const result = await client.materializeDataset(
+      "sashelp", "class", "_SASDV8", undefined, "AGE desc", [],
+      { columns: ["NAME", "AGE"], start: 200, count: 200 },
+    );
+    expect(result).to.deep.equal({ rows: 19, data: ["|Alfred|14", "|Alice|13"] });
+    const code = String(executor.firstCall.args[0]);
+    expect(executor.callCount).to.equal(1);
+    expect(code).to.include("set work._SASDV8(firstobs=201 obs=400);");
+    expect(code).to.include("vvalue(NAME)");
+    expect(code).to.include("vvalue(AGE)");
   });
 
   it("validates the table names", async () => {
@@ -764,9 +781,12 @@ describe("SasClient job queue", () => {
       started.push(code.includes("count(*)") ? "count" : code.includes("nmiss(") ? "profile" : "other");
       return new Promise<string>((resolve) => pending.push(() => resolve("")));
     });
+    const tick = () => new Promise((r) => setTimeout(r, 0));
+    // A background job starts a turn after it could (see SasClient.drain).
     const finishNext = async () => {
+      await tick();
       pending.shift()?.();
-      await new Promise((r) => setTimeout(r, 0));
+      await tick();
     };
     return { executor, started, pending, finishNext };
   }
@@ -804,6 +824,25 @@ describe("SasClient job queue", () => {
       await finishNext();
     }
     await Promise.all(jobs);
+    expect(started).to.deep.equal(["count", "count", "profile"]);
+  });
+
+  it("lets the code waiting for a job queue its next one before a background job", async () => {
+    const { executor, started, finishNext } = deferredExecutor();
+    const client = new SasClient(executor);
+    const request = {
+      nullCounts: ["AGE"], numericStats: [], stringStats: [], frequencyTables: [], binning: [],
+    };
+    // A row read whose result leads to another read, as the Data Explorer's do.
+    const reads = client.getDatasetRowCount("work", "a").then(async () => {
+      await Promise.resolve();
+      return client.getDatasetRowCount("work", "b");
+    });
+    const profile = client.getColumnProfileStats("work", "a", request);
+    for (let i = 0; i < 3; i++) {
+      await finishNext();
+    }
+    await Promise.all([reads, profile]);
     expect(started).to.deep.equal(["count", "count", "profile"]);
   });
 

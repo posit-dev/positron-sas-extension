@@ -11,12 +11,19 @@ import type {
   SasClient,
 } from "./sasClient";
 
-/** Rows are read from SAS and cached in blocks of this many. */
-export const BLOCK_ROWS = 200;
-/** Opening a dataset reads the first block of at most this many columns. */
+/**
+ * Rows are read from SAS and cached in blocks of this many. Each row read
+ * is a line in the SAS log, which has to come back to Positron, so blocks
+ * about the size of the grid's requests keep a scroll to a far row quick.
+ */
+export const BLOCK_ROWS = 50;
+/**
+ * The first rows read, on opening and after a sort or filter, include at
+ * most this many columns, as Positron asks for all columns soon after.
+ */
 export const PREFETCH_COLUMNS = 50;
 /** Most blocks kept per explorer; the least recently used go first. */
-const MAX_BLOCKS = 50;
+const MAX_BLOCKS = 200;
 
 /** Numbers the WORK tables that hold sorted or filtered views. */
 let viewCounter = 0;
@@ -26,14 +33,20 @@ interface MaterializedView {
   rows: number;
 }
 
-/** A view table being built in the background, or built, for one sort and filter. */
+/**
+ * A view table being built, or built, for one sort and filter. When the
+ * build fails, rows keep coming from the dataset for that sort and filter.
+ */
 interface ViewEntry {
   key: string;
   promise: Promise<MaterializedView>;
   /** Set once the table exists. */
   result?: MaterializedView;
-  /** Building it failed; rows keep coming from the dataset for this key. */
-  failed?: boolean;
+}
+
+/** Identifies a sort and filter, so a view table is built once for each. */
+function viewKey(where?: string, orderBy?: string): string {
+  return `${where ?? ""}\u0000${orderBy ?? ""}`;
 }
 
 // SAS date formats (stored as days since 1960-01-01)
@@ -451,12 +464,14 @@ export class SasDataExplorer {
     // For large datasets (e.g. 70K rows), this scan can take several seconds,
     // causing Positron to timeout waiting for cell data.
     // With a filter, count the rows that pass it, unless its view table is
-    // already built and knows. The view is built in the background.
+    // already built and knows.
     let filteredRows: number;
     if (where) {
-      const view = this.ensureView(where, this.buildOrderByClause());
-      if (view.result) {
-        filteredRows = view.result.rows;
+      const view = this.view?.key === viewKey(where, this.buildOrderByClause())
+        ? this.view.result
+        : undefined;
+      if (view) {
+        filteredRows = view.rows;
       } else if (this.filteredCount?.where === where) {
         filteredRows = this.filteredCount.rows;
       } else {
@@ -624,7 +639,12 @@ export class SasDataExplorer {
     retried = false,
   ): Promise<void> {
     const firstBlock = Math.floor(rowStart / BLOCK_ROWS);
-    const lastBlock = Math.floor(rowEnd / BLOCK_ROWS);
+    // Blocks past the end of the table hold nothing to read.
+    const total = this.knownRowCount();
+    const lastBlock = Math.min(
+      Math.floor(rowEnd / BLOCK_ROWS),
+      total === undefined ? Infinity : Math.floor((total - 1) / BLOCK_ROWS),
+    );
     const missingColumns = new Set<number>();
     const missingBlocks: number[] = [];
     for (let b = firstBlock; b <= lastBlock; b++) {
@@ -644,30 +664,42 @@ export class SasDataExplorer {
       return;
     }
     const columns = this.columns ?? [];
+    // Nothing cached (a new sort or filter): read the other columns too.
+    if (this.blocks.size === 0) {
+      columns.slice(0, PREFETCH_COLUMNS).forEach((_, i) => missingColumns.add(i));
+    }
     const fetchColumns = [...missingColumns].sort((a, b) => a - b);
     const from = missingBlocks[0];
     const to = missingBlocks[missingBlocks.length - 1];
     const generation = this.generation;
-    const source = this.dataSource();
-    const rows = await this.client.getDatasetRows(
-      source.lib,
-      source.mem,
+    const start = from * BLOCK_ROWS;
+    const { rows, view } = await this.readRows(
       fetchColumns.map((i) => columns[i].name),
-      from * BLOCK_ROWS,
+      start,
       (to - from + 1) * BLOCK_ROWS,
-      source.where,
-      source.orderBy,
     );
     if (generation !== this.generation) {
       return;
     }
     // The view table can vanish, e.g. when the user deletes everything in
     // WORK. Rebuild it once rather than show an empty grid.
-    if (rows.length === 0 && source.view && from * BLOCK_ROWS < source.view.rows && !retried) {
+    if (rows.length === 0 && view && start < view.rows && !retried) {
       this.retireView();
       return this.loadRows(indices, rowStart, rowEnd, true);
     }
     this.storeBlocks(from, fetchColumns, rows, to);
+  }
+
+  /** The number of rows with the current filter, when it's known without a query. */
+  private knownRowCount(): number | undefined {
+    const where = this.buildWhereClause();
+    if (!where) {
+      return this.unfilteredRowCount;
+    }
+    if (this.view?.result && this.view.key === viewKey(where, this.buildOrderByClause())) {
+      return this.view.result.rows;
+    }
+    return this.filteredCount?.where === where ? this.filteredCount.rows : undefined;
   }
 
   /** Cache rows (as getDatasetRows returns them) starting at block `from`. */
@@ -697,53 +729,69 @@ export class SasDataExplorer {
   }
 
   /**
-   * Where rows are read from. Without a sort or filter, the dataset itself.
-   * With one, a WORK table that holds the sorted and filtered rows, so that
-   * scrolling doesn't sort the dataset again for each page. That table is
-   * built in the background: until it's there, pages come from the dataset
-   * with the WHERE and ORDER BY clauses, as one job each, so the first page
-   * after a new sort shows as soon as before.
+   * Read rows for the current sort and filter. Without either, from the
+   * dataset itself. With one, from a WORK table that holds the sorted and
+   * filtered rows, so that scrolling doesn't sort the dataset again for each
+   * page. The first read after a change builds that table and returns its
+   * rows in the same job, which costs what sorting into a throwaway table
+   * would. If the table can't be built, pages come from the dataset with the
+   * WHERE and ORDER BY clauses, one job each.
    */
-  private dataSource(): {
-    lib: string;
-    mem: string;
-    where?: string;
-    orderBy?: string;
-    view?: MaterializedView;
-  } {
+  private async readRows(
+    columns: string[],
+    start: number,
+    count: number,
+  ): Promise<{ rows: string[]; view?: MaterializedView }> {
     const where = this.buildWhereClause();
     const orderBy = this.buildOrderByClause();
     if (!where && !orderBy) {
       this.retireView();
-      return { lib: this.lib, mem: this.mem };
+      return { rows: await this.client.getDatasetRows(this.lib, this.mem, columns, start, count) };
     }
-    const view = this.ensureView(where, orderBy);
-    if (view.result) {
-      return { lib: "WORK", mem: view.result.table, view: view.result };
+    const key = viewKey(where, orderBy);
+    if (this.view?.key !== key) {
+      try {
+        return { rows: await this.buildView(key, where, orderBy, { columns, start, count }) };
+      } catch {
+        // Fall through: the failed build is remembered, the dataset is read.
+      }
     }
-    return { lib: this.lib, mem: this.mem, where, orderBy };
+    const view = await this.view?.promise.catch(() => undefined);
+    if (view) {
+      return {
+        rows: await this.client.getDatasetRows("WORK", view.table, columns, start, count),
+        view,
+      };
+    }
+    return {
+      rows: await this.client.getDatasetRows(
+        this.lib, this.mem, columns, start, count, where, orderBy,
+      ),
+    };
   }
 
-  /** The view table entry for a sort and filter, starting its build if needed. */
-  private ensureView(where?: string, orderBy?: string): ViewEntry {
-    const key = `${where ?? ""}\u0000${orderBy ?? ""}`;
-    if (this.view?.key === key) {
-      return this.view;
-    }
-    // The new view replaces the current one, which is deleted in the same job.
+  /**
+   * Build the view table for a sort and filter, replacing the current one
+   * (deleted in the same job), and return the rows `read` asks for.
+   */
+  private buildView(
+    key: string,
+    where: string | undefined,
+    orderBy: string | undefined,
+    read: { columns: string[]; start: number; count: number },
+  ): Promise<string[]> {
     const previous = this.view;
     const stale = this.staleTables.splice(0);
     const table = `${DATA_VIEW_PREFIX}${++viewCounter}`;
-    const promise = (previous
+    const job = (previous
       ? previous.promise.then(({ table: old }) => [old], () => [])
       : Promise.resolve([])
-    )
-      .then((old) =>
-        this.client.materializeDataset(
-          this.lib, this.mem, table, where, orderBy, [...stale, ...old], "background",
-        ),
-      )
-      .then((rows) => ({ table, rows }));
+    ).then((old) =>
+      this.client.materializeDataset(
+        this.lib, this.mem, table, where, orderBy, [...stale, ...old], read,
+      ),
+    );
+    const promise = job.then(({ rows }) => ({ table, rows }));
     const view: ViewEntry = { key, promise };
     this.view = view;
     promise.then(
@@ -751,11 +799,10 @@ export class SasDataExplorer {
         view.result = result;
       },
       () => {
-        view.failed = true;
         this.staleTables.push(table);
       },
     );
-    return view;
+    return job.then(({ data }) => data);
   }
 
   /** Forget the current view table; it's deleted with the next one, or on dispose. */

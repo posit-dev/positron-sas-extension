@@ -631,6 +631,9 @@ export class SasClient {
   private readonly foreground: QueuedJob[] = [];
   private readonly background: QueuedJob[] = [];
   private running = false;
+  /** Set while waiting a turn before a background job (see drain). */
+  private yieldTimer: ReturnType<typeof setTimeout> | undefined;
+  private yielded = false;
 
   constructor(
     private readonly executor: (code: string) => Promise<string>,
@@ -658,6 +661,22 @@ export class SasClient {
     if (this.running) {
       return;
     }
+    // Before a background job, let the code that waited for the last job
+    // queue what it runs next: a row read often follows another, and a
+    // background job started in between would hold it up until it's done.
+    if (this.foreground.length === 0 && this.background.length > 0 && !this.yielded) {
+      if (!this.yieldTimer) {
+        this.yieldTimer = setTimeout(() => {
+          this.yieldTimer = undefined;
+          if (!this.running) {
+            this.yielded = true;
+            this.drain();
+          }
+        }, 0);
+      }
+      return;
+    }
+    this.yielded = false;
     const job = this.foreground.shift() ?? this.background.shift();
     if (!job) {
       return;
@@ -1055,7 +1074,10 @@ ${emitRowsMacro("_sas_open_rows")}
   /**
    * Create `work.<table>` holding the rows of a dataset that pass `where`,
    * in `orderBy` order, and return how many there are. `drop` names earlier
-   * WORK tables to delete in the same job.
+   * WORK tables to delete in the same job. With `read`, the job also returns
+   * those rows of the new table (as getDatasetRows does), so the first page
+   * after a sort or filter costs one job, the same as sorting into a
+   * throwaway table would.
    */
   async materializeDataset(
     lib: unknown,
@@ -1064,13 +1086,23 @@ ${emitRowsMacro("_sas_open_rows")}
     where?: string,
     orderBy?: string,
     drop: string[] = [],
-    priority: Priority = "foreground",
-  ): Promise<number> {
+    read?: { columns: string[]; start: number; count: number },
+  ): Promise<{ rows: number; data: string[] }> {
     const libname = sasIdent(lib);
     const memname = sasIdent(mem);
     const target = sasIdent(table);
     const dropStep = drop.length > 0
       ? `proc datasets library=work nolist nowarn; delete ${drop.map(sasIdent).join(" ")}; quit;`
+      : "";
+    const readStep = read && read.columns.length > 0 && read.count > 0
+      ? `data _null_;
+  set work.${target}(firstobs=${Math.floor(read.start) + 1} obs=${Math.floor(read.start + read.count)});
+  length _row_ $32767;
+  _row_ = "";
+  ${rowBuilder(read.columns)}
+  call symputx(cats('_dr', _n_), _row_, 'L');
+  call symputx('_drn', _n_, 'L');
+run;`
       : "";
     const output = await this.execute(`
 ${SAVE_OPTIONS}
@@ -1083,14 +1115,20 @@ proc sql noprint;
   ${orderBy ? `order by ${orderBy}` : ""};
   %let _sas_nobs=&sqlobs;
 quit;
+${readStep}
 %put ${SENTINEL_START};
 %put &_sas_nobs;
+${emitRowsMacro("_emit_mr")}
+%_emit_mr;
 %put ${SENTINEL_END};
 %symdel _sas_nobs / nowarn;
 ${RESTORE_OPTIONS}
-`, priority);
+`);
     const lines = parseSentinelOutput(output);
-    return parseInt(lines[0]?.trim() ?? "", 10) || 0;
+    return {
+      rows: parseInt(lines[0]?.trim() ?? "", 10) || 0,
+      data: parseDataRows(output),
+    };
   }
 
   /** Return null counts for a set of columns (batched into one query). */
