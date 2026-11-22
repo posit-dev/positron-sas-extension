@@ -148,9 +148,12 @@ describe("SasDataExplorer.get_state", () => {
   });
 
   it("reports unfiltered and filtered counts separately when filters are active", async () => {
-    // The filtered count comes from building the filtered view (50 rows),
-    // the unfiltered one from a count (100).
-    const client = makeClient();
+    // The filtered count comes from a count with the WHERE clause (50) until
+    // the filtered view is built, then from the view (also 50).
+    const rowCount = sinon.stub();
+    rowCount.resolves(100);
+    rowCount.withArgs("WORK", "CLASS", sinon.match.string).resolves(50);
+    const client = makeClient({ getDatasetRowCount: rowCount });
     const explorer = new SasDataExplorer(client, "WORK", "CLASS");
 
     await sendRpc(explorer, "set_row_filters", {
@@ -162,8 +165,10 @@ describe("SasDataExplorer.get_state", () => {
     const unfiltered = result.table_unfiltered_shape as Record<string, unknown>;
     expect(filtered.num_rows).to.equal(50);
     expect(unfiltered.num_rows).to.equal(100);
-    // The view is built once for both get_state calls.
+    // The view is built once for both get_state calls, and the filtered
+    // count is read once.
     expect(client.materializeDataset).to.have.property("callCount", 1);
+    expect(rowCount.withArgs("WORK", "CLASS", sinon.match.string).callCount).to.equal(1);
   });
 });
 
@@ -219,7 +224,7 @@ describe("SasDataExplorer.set_sort_columns", () => {
     expect(keys[0].ascending).to.equal(false);
   });
 
-  it("reads pages from a view built once with the ORDER BY clause", async () => {
+  it("reads the first page sorted at once, later pages from a view built once", async () => {
     const getRows = sinon.stub().callsFake(
       async (_lib, _mem, _cols, start: number, n: number) =>
         sampleRows(start, Math.max(0, Math.min(n, 1000 - start))),
@@ -237,17 +242,67 @@ describe("SasDataExplorer.set_sort_columns", () => {
     await sendRpc(explorer, "get_data_values", {
       columns: [{ column_index: 0, spec: { first_index: 500, last_index: 504 } }],
     });
+    await sendRpc(explorer, "get_data_values", {
+      columns: [{ column_index: 0, spec: { first_index: 900, last_index: 904 } }],
+    });
 
+    // The view is built once, as a background job.
     expect(materialize.callCount).to.equal(1);
-    const [lib, mem, table, where, orderBy] = materialize.firstCall.args;
-    expect([lib, mem, where, orderBy]).to.deep.equal(["WORK", "CLASS", undefined, "AGE asc"]);
+    const [lib, mem, table, where, orderBy, , priority] = materialize.firstCall.args;
+    expect([lib, mem, where, orderBy, priority]).to.deep.equal([
+      "WORK", "CLASS", undefined, "AGE asc", "background",
+    ]);
     expect(table).to.match(/^_SASDV\d+$/);
-    // Pages are read from the view, without sorting again.
-    for (const call of getRows.getCalls()) {
+    // The first page is sorted by its own query, as in one job before.
+    expect(getRows.firstCall.args.slice(0, 2)).to.deep.equal(["WORK", "CLASS"]);
+    expect(getRows.firstCall.args[6]).to.equal("AGE asc");
+    // Once the view is there, pages are read from it without sorting again.
+    for (const call of getRows.getCalls().slice(1)) {
       expect(call.args.slice(0, 2)).to.deep.equal(["WORK", table]);
       expect(call.args[5]).to.be.undefined;
       expect(call.args[6]).to.be.undefined;
     }
+  });
+
+  it("doesn't wait for the view to show sorted rows", async () => {
+    const getRows = sinon.stub().callsFake(
+      async (_lib, _mem, _cols, start: number, n: number) => sampleRows(start, n),
+    );
+    // A view that never finishes building.
+    const materialize = sinon.stub().returns(new Promise(() => undefined));
+    const client = makeClient({ getDatasetRows: getRows, materializeDataset: materialize });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+
+    await sendRpc(explorer, "set_sort_columns", {
+      sort_keys: [{ column_index: 1, ascending: false }],
+    });
+    for (const first of [0, 400]) {
+      const { result } = (await sendRpc(explorer, "get_data_values", {
+        columns: [{ column_index: 1, spec: { first_index: first, last_index: first + 1 } }],
+      })) as { result: { columns: unknown[][] } };
+      expect(result.columns[0]).to.have.length(2);
+    }
+    expect(getRows.callCount).to.equal(2);
+    expect(getRows.getCalls().every((c) => c.args[6] === "AGE desc")).to.be.true;
+  });
+
+  it("keeps reading from the dataset when the view can't be built", async () => {
+    const getRows = sinon.stub().callsFake(
+      async (_lib, _mem, _cols, start: number, n: number) => sampleRows(start, n),
+    );
+    const materialize = sinon.stub().rejects(new Error("no space"));
+    const client = makeClient({ getDatasetRows: getRows, materializeDataset: materialize });
+    const explorer = new SasDataExplorer(client, "WORK", "CLASS");
+
+    await sendRpc(explorer, "set_sort_columns", { sort_keys: [{ column_index: 1, ascending: true }] });
+    for (const first of [0, 400, 800]) {
+      await sendRpc(explorer, "get_data_values", {
+        columns: [{ column_index: 1, spec: { first_index: first, last_index: first } }],
+      });
+    }
+    // One failed attempt, not one per page.
+    expect(materialize.callCount).to.equal(1);
+    expect(getRows.getCalls().every((c) => c.args[0] === "WORK" && c.args[1] === "CLASS")).to.be.true;
   });
 
   it("deletes the old view when the sort changes", async () => {

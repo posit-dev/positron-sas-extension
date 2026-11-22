@@ -26,6 +26,16 @@ interface MaterializedView {
   rows: number;
 }
 
+/** A view table being built in the background, or built, for one sort and filter. */
+interface ViewEntry {
+  key: string;
+  promise: Promise<MaterializedView>;
+  /** Set once the table exists. */
+  result?: MaterializedView;
+  /** Building it failed; rows keep coming from the dataset for this key. */
+  failed?: boolean;
+}
+
 // SAS date formats (stored as days since 1960-01-01)
 const DATE_FORMATS = new Set([
   "DATE", "DDMMYY", "MMDDYY", "YYMMDD", "MONYY", "YYMM", "YYMON",
@@ -283,7 +293,9 @@ export class SasDataExplorer {
   /** Serializes row reads, so a second request finds the first one's rows cached. */
   private rowChain: Promise<unknown> = Promise.resolve();
   /** The WORK table holding the current sort and filter, keyed by their clauses. */
-  private view: { key: string; promise: Promise<MaterializedView> } | undefined;
+  private view: ViewEntry | undefined;
+  /** The row count for a filter, read before its view table is built. */
+  private filteredCount: { where: string; rows: number } | undefined;
   /** Earlier view tables still to delete. */
   private staleTables: string[] = [];
 
@@ -438,10 +450,19 @@ export class SasDataExplorer {
     // count(*) scan that blocks get_data_values in the serial queue.
     // For large datasets (e.g. 70K rows), this scan can take several seconds,
     // causing Positron to timeout waiting for cell data.
-    // With a filter, the view that holds the filtered rows also counts them.
+    // With a filter, count the rows that pass it, unless its view table is
+    // already built and knows. The view is built in the background.
     let filteredRows: number;
     if (where) {
-      filteredRows = (await this.materializedView(where, this.buildOrderByClause())).rows;
+      const view = this.ensureView(where, this.buildOrderByClause());
+      if (view.result) {
+        filteredRows = view.result.rows;
+      } else if (this.filteredCount?.where === where) {
+        filteredRows = this.filteredCount.rows;
+      } else {
+        filteredRows = await this.client.getDatasetRowCount(this.lib, this.mem, where);
+        this.filteredCount = { where, rows: filteredRows };
+      }
     } else if (this.unfilteredRowCount !== undefined) {
       filteredRows = this.unfilteredRowCount;
     } else {
@@ -627,16 +648,15 @@ export class SasDataExplorer {
     const from = missingBlocks[0];
     const to = missingBlocks[missingBlocks.length - 1];
     const generation = this.generation;
-    const source = await this.dataSource();
-    if (generation !== this.generation) {
-      return;
-    }
+    const source = this.dataSource();
     const rows = await this.client.getDatasetRows(
       source.lib,
       source.mem,
       fetchColumns.map((i) => columns[i].name),
       from * BLOCK_ROWS,
       (to - from + 1) * BLOCK_ROWS,
+      source.where,
+      source.orderBy,
     );
     if (generation !== this.generation) {
       return;
@@ -677,29 +697,41 @@ export class SasDataExplorer {
   }
 
   /**
-   * Where rows are read from: the dataset itself, or with a sort or filter,
-   * a WORK table that holds the sorted and filtered rows. Building that
-   * table once per sort and filter beats sorting the dataset for each page.
+   * Where rows are read from. Without a sort or filter, the dataset itself.
+   * With one, a WORK table that holds the sorted and filtered rows, so that
+   * scrolling doesn't sort the dataset again for each page. That table is
+   * built in the background: until it's there, pages come from the dataset
+   * with the WHERE and ORDER BY clauses, as one job each, so the first page
+   * after a new sort shows as soon as before.
    */
-  private async dataSource(): Promise<{ lib: string; mem: string; view?: MaterializedView }> {
+  private dataSource(): {
+    lib: string;
+    mem: string;
+    where?: string;
+    orderBy?: string;
+    view?: MaterializedView;
+  } {
     const where = this.buildWhereClause();
     const orderBy = this.buildOrderByClause();
     if (!where && !orderBy) {
       this.retireView();
       return { lib: this.lib, mem: this.mem };
     }
-    const view = await this.materializedView(where, orderBy);
-    return { lib: "WORK", mem: view.table, view };
+    const view = this.ensureView(where, orderBy);
+    if (view.result) {
+      return { lib: "WORK", mem: view.result.table, view: view.result };
+    }
+    return { lib: this.lib, mem: this.mem, where, orderBy };
   }
 
-  private materializedView(where?: string, orderBy?: string): Promise<MaterializedView> {
+  /** The view table entry for a sort and filter, starting its build if needed. */
+  private ensureView(where?: string, orderBy?: string): ViewEntry {
     const key = `${where ?? ""}\u0000${orderBy ?? ""}`;
     if (this.view?.key === key) {
-      return this.view.promise;
+      return this.view;
     }
     // The new view replaces the current one, which is deleted in the same job.
     const previous = this.view;
-    this.view = undefined;
     const stale = this.staleTables.splice(0);
     const table = `${DATA_VIEW_PREFIX}${++viewCounter}`;
     const promise = (previous
@@ -708,19 +740,22 @@ export class SasDataExplorer {
     )
       .then((old) =>
         this.client.materializeDataset(
-          this.lib, this.mem, table, where, orderBy, [...stale, ...old],
+          this.lib, this.mem, table, where, orderBy, [...stale, ...old], "background",
         ),
       )
       .then((rows) => ({ table, rows }));
-    const view = { key, promise };
+    const view: ViewEntry = { key, promise };
     this.view = view;
-    promise.catch(() => {
-      if (this.view === view) {
-        this.view = undefined;
-      }
-      this.staleTables.push(table);
-    });
-    return promise;
+    promise.then(
+      (result) => {
+        view.result = result;
+      },
+      () => {
+        view.failed = true;
+        this.staleTables.push(table);
+      },
+    );
+    return view;
   }
 
   /** Forget the current view table; it's deleted with the next one, or on dispose. */
@@ -938,6 +973,7 @@ export class SasDataExplorer {
     const schemaChanged = !sameColumns(this.columns, columns);
     this.columns = columns;
     this.unfilteredRowCount = undefined;
+    this.filteredCount = undefined;
     this.clearRows();
     this.retireView();
     if (schemaChanged) {
@@ -952,6 +988,7 @@ export class SasDataExplorer {
   /** Clear cached counts and rows so the next requests re-read them from SAS. */
   invalidateCache(): void {
     this.unfilteredRowCount = undefined;
+    this.filteredCount = undefined;
     this.clearRows();
   }
 

@@ -1064,6 +1064,7 @@ ${emitRowsMacro("_sas_open_rows")}
     where?: string,
     orderBy?: string,
     drop: string[] = [],
+    priority: Priority = "foreground",
   ): Promise<number> {
     const libname = sasIdent(lib);
     const memname = sasIdent(mem);
@@ -1087,7 +1088,7 @@ quit;
 %put ${SENTINEL_END};
 %symdel _sas_nobs / nowarn;
 ${RESTORE_OPTIONS}
-`);
+`, priority);
     const lines = parseSentinelOutput(output);
     return parseInt(lines[0]?.trim() ?? "", 10) || 0;
   }
