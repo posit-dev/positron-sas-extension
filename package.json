@@ -925,8 +925,25 @@
         "category": "SAS",
         "agent": {
           "description": "List the SAS consoles running in Positron. SAS consoles are not Jupyter kernels, so list_sessions doesn't show them and execute_code can't reach them: run SAS code with SAS.agent.runCode instead, not with saspy or a new SAS process. The foreground console is the one the user is working in.",
-          "returns": "An array of { sessionId, displayName, profile, connectionType, foreground }. displayName is what Positron shows the user; profile is the SAS connection profile; connectionType is e.g. rest (SAS Viya), ssh, com, iom or local. Empty when no SAS console is running.",
+          "returns": "{ sessions, profiles }. sessions is an array of { sessionId, displayName, profile, connectionType, foreground }, empty when no SAS console is running; displayName is what Positron shows the user. profiles is an array of { name, connectionType, active }: the SAS connection profiles a console can start with (see SAS.agent.startConsole); active marks the default. connectionType is e.g. rest (SAS Viya), ssh, stdio (local SAS), com or iom.",
           "readOnly": true
+        }
+      },
+      {
+        "command": "SAS.agent.startConsole",
+        "title": "%commands.SAS.agent.startConsole%",
+        "category": "SAS",
+        "agent": {
+          "description": "Start a SAS console in Positron for the user, with one of their SAS connection profiles, so that SAS.agent.runCode can run code. Ask the user before calling this, and ask which profile to use when SAS.agent.listSessions shows several: the profile decides where the code runs and which data it can reach. If a SAS console is already running, it is returned and no new one starts. Starting may need the user: SAS Viya can ask them to sign in, and SSH can ask for a password. The console belongs to the user and stays open after you are done.",
+          "args": [
+            {
+              "name": "profile",
+              "description": "The name of a SAS connection profile, from the profiles of SAS.agent.listSessions. Defaults to the active profile.",
+              "schema": { "type": "string" },
+              "required": false
+            }
+          ],
+          "returns": "{ sessionId, displayName, profile, connectionType, foreground, started }. started is false when a SAS console was already running and was returned instead."
         }
       },
       {
@@ -934,7 +951,7 @@
         "title": "%commands.SAS.agent.runCode%",
         "category": "SAS",
         "agent": {
-          "description": "Run SAS code in the user's SAS console in Positron, as if they had typed it. The code and its output appear in their console and history, and it shares their SAS session: WORK tables, librefs and macro variables. Use this for all SAS work instead of saspy or a separate SAS process. Reports also go to the Viewer and graphs to the Plots pane (read with get_current_plot). Queues behind code that is already running. Fails with a message when no SAS console is running; then ask the user to start one rather than starting SAS another way.",
+          "description": "Run SAS code in the user's SAS console in Positron, as if they had typed it. The code and its output appear in their console and history, and it shares their SAS session: WORK tables, librefs and macro variables. Use this for all SAS work instead of saspy or a separate SAS process. Reports also go to the Viewer and graphs to the Plots pane (read with get_current_plot). Queues behind code that is already running. Fails with a message when no SAS console is running; then ask the user whether to start one with SAS.agent.startConsole, rather than starting SAS another way.",
           "args": [
             {
               "name": "code",
@@ -3366,6 +3383,10 @@
         {
           "when": "false",
           "command": "SAS.agent.runCode"
+        },
+        {
+          "when": "false",
+          "command": "SAS.agent.startConsole"
         },
         {
           "when": "isPositron && editorLangId == quarto",

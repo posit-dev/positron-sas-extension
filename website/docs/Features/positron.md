@@ -241,16 +241,17 @@ The skill is part of the extension and works in Positron 2026.10 and later. In o
 
 ### Other Coding Agents
 
-Coding agents that work outside Positron, such as Claude Code, connect to Positron through its MCP server. Its session tools only reach Python and R sessions, so the extension adds two Positron commands that let an agent use the SAS console instead of starting its own SAS session with saspy ([#156](https://github.com/posit-dev/positron-sas-extension/issues/156)):
+Coding agents that work outside Positron, such as Claude Code, connect to Positron through its MCP server. Its session tools only reach Python and R sessions, so the extension adds Positron commands that let an agent use the SAS console instead of starting its own SAS session with saspy ([#156](https://github.com/posit-dev/positron-sas-extension/issues/156)):
 
-- **`SAS.agent.listSessions`** lists the running SAS consoles with their profile and connection type, and marks the one in the foreground.
+- **`SAS.agent.listSessions`** lists the running SAS consoles with their profile and connection type, and marks the one in the foreground. It also lists the connection profiles a new console can use.
+- **`SAS.agent.startConsole`** starts a SAS console with the active profile, or with the profile the agent names, if none is running. The agent should ask you first, and the agent itself usually asks you to allow the command. Starting works as when you start the console yourself: for SAS Viya you may have to sign in, and for SSH you may have to enter a password. The console is yours and stays open.
 - **`SAS.agent.runCode`** runs SAS code in the foreground SAS console, or in the console the agent names. The code and its log appear in the console as if you had typed them, and the code uses your WORK tables, librefs, and macro variables. The agent gets back the log as the console shows it and the text copy of the report. Reports still go to the **Viewer** and graphs to the **Plots** pane. A very long log is cut in the middle.
 
 To use them:
 
 1. Turn on the `ai.mcp.enabled` setting.
 2. Run **Positron MCP: Add to Coding Agent** from the Command Palette and pick your agent.
-3. Start a SAS console. An agent never starts one: without a console, `SAS.agent.runCode` asks the agent to have you start one.
+3. Start a SAS console, or let the agent start one with `SAS.agent.startConsole`. Without a console, `SAS.agent.runCode` tells the agent to ask you first.
 
 The agent finds the commands when it searches the Positron commands for SAS. To make sure it uses them, add a line such as "Run SAS code with the Positron command `SAS.agent.runCode`, not with saspy" to the agent's instructions file, for example `CLAUDE.md` or `AGENTS.md`.
 

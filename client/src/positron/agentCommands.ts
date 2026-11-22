@@ -5,6 +5,7 @@ import { Disposable, commands } from "vscode";
 import { clipRunReply, errorText } from "./agentReply";
 import {
   type BaseLanguageRuntimeSession,
+  type LanguageRuntimeMetadata,
   LanguageRuntimeSessionMode,
   type PositronApi,
   RuntimeCodeExecutionMode,
@@ -21,6 +22,7 @@ import {
  */
 export const AGENT_LIST_SESSIONS = "SAS.agent.listSessions";
 export const AGENT_RUN_CODE = "SAS.agent.runCode";
+export const AGENT_START_CONSOLE = "SAS.agent.startConsole";
 
 export interface AgentSasSession {
   sessionId: string;
@@ -28,6 +30,18 @@ export interface AgentSasSession {
   profile?: string;
   connectionType?: string;
   foreground: boolean;
+}
+
+export interface AgentSasProfile {
+  name: string;
+  connectionType?: string;
+  /** The profile a new console uses when the agent names none. */
+  active: boolean;
+}
+
+export interface AgentStartReply extends AgentSasSession {
+  /** False when a SAS console was already running and was returned instead. */
+  started: boolean;
 }
 
 export interface AgentRunReply {
@@ -43,16 +57,16 @@ export interface AgentRunReply {
 }
 
 const NO_CONSOLE =
-  "No SAS console is running in Positron. Ask the user to start one " +
-  "(the session picker, or Start New Session), then try again. " +
+  "No SAS console is running in Positron. Ask the user whether to start " +
+  `one, then call ${AGENT_START_CONSOLE}, or ask the user to start it. ` +
   "Do not use saspy as a substitute: it would be a separate SAS session " +
   "without the user's WORK tables and macro variables.";
 
 function extraData(
-  session: BaseLanguageRuntimeSession,
+  runtime: LanguageRuntimeMetadata,
   key: string,
 ): string | undefined {
-  const extra = session.runtimeMetadata.extraRuntimeData;
+  const extra = runtime.extraRuntimeData;
   if (extra && typeof extra === "object" && key in extra) {
     const value: unknown = Reflect.get(extra, key);
     return typeof value === "string" ? value : undefined;
@@ -87,17 +101,105 @@ async function sasConsoles(
   return { sessions, foregroundId: foreground?.metadata.sessionId };
 }
 
+function sessionInfo(
+  session: BaseLanguageRuntimeSession,
+  foregroundId: string | undefined,
+): AgentSasSession {
+  return {
+    sessionId: session.metadata.sessionId,
+    displayName: displayName(session),
+    profile: extraData(session.runtimeMetadata, "profile"),
+    connectionType: extraData(session.runtimeMetadata, "connectionType"),
+    foreground: session.metadata.sessionId === foregroundId,
+  };
+}
+
+/** The SAS runtimes Positron knows, one per connection profile. */
+async function sasRuntimes(
+  api: PositronApi,
+): Promise<LanguageRuntimeMetadata[]> {
+  const all = await api.runtime.getRegisteredRuntimes();
+  return all.filter((r) => r.languageId === "sas");
+}
+
+export async function listSasProfiles(
+  api: PositronApi,
+): Promise<AgentSasProfile[]> {
+  const [runtimes, preferred] = await Promise.all([
+    sasRuntimes(api),
+    api.runtime.getPreferredRuntime("sas"),
+  ]);
+  return runtimes.map((r) => ({
+    name: extraData(r, "profile") ?? r.runtimeShortName,
+    connectionType: extraData(r, "connectionType"),
+    active: r.runtimeId === preferred?.runtimeId,
+  }));
+}
+
 export async function listSasSessions(
   api: PositronApi,
-): Promise<AgentSasSession[]> {
+): Promise<{ sessions: AgentSasSession[]; profiles: AgentSasProfile[] }> {
+  const [{ sessions, foregroundId }, profiles] = await Promise.all([
+    sasConsoles(api),
+    listSasProfiles(api),
+  ]);
+  return {
+    sessions: sessions.map((s) => sessionInfo(s, foregroundId)),
+    profiles,
+  };
+}
+
+/**
+ * Start a SAS console for an agent, unless one is running: then return the
+ * foreground (or first) one. The console belongs to the user, like one they
+ * start themselves. Starting may need the user, e.g. to sign in to SAS Viya.
+ */
+export async function startSasConsoleForAgent(
+  api: PositronApi,
+  profile?: unknown,
+): Promise<AgentStartReply> {
   const { sessions, foregroundId } = await sasConsoles(api);
-  return sessions.map((s) => ({
-    sessionId: s.metadata.sessionId,
-    displayName: displayName(s),
-    profile: extraData(s, "profile"),
-    connectionType: extraData(s, "connectionType"),
-    foreground: s.metadata.sessionId === foregroundId,
-  }));
+  if (sessions.length > 0) {
+    const running =
+      sessions.find((s) => s.metadata.sessionId === foregroundId) ??
+      sessions[0];
+    return { ...sessionInfo(running, foregroundId), started: false };
+  }
+  const runtimes = await sasRuntimes(api);
+  let runtime: LanguageRuntimeMetadata | undefined;
+  if (typeof profile === "string" && profile) {
+    runtime = runtimes.find(
+      (r) => (extraData(r, "profile") ?? r.runtimeShortName) === profile,
+    );
+    if (!runtime) {
+      const names = runtimes.map(
+        (r) => extraData(r, "profile") ?? r.runtimeShortName,
+      );
+      throw new Error(
+        `There is no SAS connection profile '${profile}'. ` +
+          (names.length
+            ? `The profiles are: ${names.join(", ")}.`
+            : "No SAS connection profile is set up; ask the user to add one."),
+      );
+    }
+  } else {
+    runtime = await api.runtime.getPreferredRuntime("sas");
+  }
+  if (!runtime) {
+    throw new Error(
+      "No SAS connection profile is set up, so no SAS console can start. " +
+        "Ask the user to add a profile (SAS: Add New Connection Profile).",
+    );
+  }
+  const session = await api.runtime.startLanguageRuntime(
+    runtime.runtimeId,
+    runtime.runtimeShortName,
+  );
+  const foreground = await api.runtime.getForegroundSession();
+  return {
+    ...sessionInfo(session, foreground?.metadata.sessionId),
+    started: true,
+  };
 }
 
 /** The console to run in: the one asked for, else the foreground or only one. */
@@ -175,6 +277,9 @@ export async function runSasCode(
 export function registerAgentCommands(api: PositronApi): Disposable {
   return Disposable.from(
     commands.registerCommand(AGENT_LIST_SESSIONS, () => listSasSessions(api)),
+    commands.registerCommand(AGENT_START_CONSOLE, (profile?: unknown) =>
+      startSasConsoleForAgent(api, profile),
+    ),
     commands.registerCommand(
       AGENT_RUN_CODE,
       (code: unknown, sessionId?: unknown) => runSasCode(api, code, sessionId),

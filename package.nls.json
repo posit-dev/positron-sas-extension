@@ -17,6 +17,7 @@
   "commands.SAS.evaluateMacroExpression": "Evaluate Macro Expression...",
   "commands.SAS.agent.listSessions": "List SAS Consoles for Agents",
   "commands.SAS.agent.runCode": "Run SAS Code for Agents",
+  "commands.SAS.agent.startConsole": "Start SAS Console for Agents",
   "commands.SAS.quarto.runCell": "Run Quarto SAS Cell",
   "commands.SAS.quarto.runNextCell": "Run Next Quarto SAS Cell",
   "commands.SAS.quarto.runCellsAbove": "Run Quarto SAS Cells Above",

@@ -42,7 +42,7 @@ Part of the rollout tracked in
   agents (#156) are in Positron's agent command catalog
   (`positron.ai.getAgentAllowedCommands`) and, run the way Positron's MCP
   server runs them (`validateAndExecuteCommand`), report that no SAS console
-  is running. Skipped before Positron 2026.11.
+  is running and refuse an unknown profile. Skipped before Positron 2026.11.
 
 ## Running locally
 
