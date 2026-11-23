@@ -1,13 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.2.2 - 2026-11-23
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
 
 ### Features
 
 - Positron: coding agents outside Positron, such as Claude Code, can run SAS code in the SAS console through Positron's MCP server ([#156](https://github.com/posit-dev/positron-sas-extension/issues/156)). The MCP server's session tools only reach Python and R sessions, so agents didn't see the SAS console and started their own SAS session with saspy. New agent commands fill that gap. `SAS.agent.runCode` runs code in the console as if you had typed it, with your WORK tables and macro variables, and gives the agent the log and the text copy of the report. `SAS.agent.listSessions` lists the SAS consoles and connection profiles, and `SAS.agent.startConsole` starts a console after the agent asks you, which may include signing in to SAS Viya. Turn on `ai.mcp.enabled` and run **Positron MCP: Add to Coding Agent**. Needs Positron 2026.11 or later
 - Positron: the **Variables** pane groups the GLOBAL macro variables a SAS session already had when it started, such as `&POSIT_USER` and the ones an autoexec sets, under **Startup macro variables**, as it groups the AUTOMATIC ones. The variables your code sets, such as `%let x=1;`, are listed on their own at the top. A startup variable your code gives a new value moves out of the group. **Delete all objects** keeps the startup variables
 - Positron: Quarto reports that Posit Assistant writes with `{sas}` chunks now highlight the SAS code when rendered ([#174](https://github.com/posit-dev/positron-sas-extension/issues/174)). sasquatch labels the code of `{sas}` chunks as plain text, so the report's `setup` chunk now has a few lines that label it as SAS. Highlighting needs Quarto 1.12 or later, or a SAS syntax definition with Quarto 1.11 and earlier. The documentation shows how to add the same lines to your own documents
-
 - SAS 9.4 stdio and SSH connections work with any session encoding, not only UTF-8 ([#182](https://github.com/posit-dev/positron-sas-extension/issues/182)). When SAS starts, the extension asks it for its encoding (`&SYSENCODING`) and from then on reads the log and the results and writes your code in that encoding. Sites whose data is in WLATIN1 or LATIN1 can use their own `sas` script or `bin/sas_en` instead of `bin/sas_u8`, or set `-encoding` in `sasOptions`, and avoid CEDA and transcoding problems. A character the session encoding doesn't have is sent as `?`, with a warning in the log. The automatic `local` profile now prefers the SAS 9.4 `sas` script, which starts the encoding the site configured, over `bin/sas_u8`. Non-ASCII text split across two chunks of SAS output is no longer garbled, in UTF-8 sessions too. Setup also waits until SAS has reported its WORK folder, so the first run's results always show
 
 ### Bug Fixes

@@ -168,7 +168,7 @@ The extension asks SAS for its session encoding (`&SYSENCODING`) when the sessio
 
 Use the encoding your site's data is stored in. A UTF-8 session can read WLATIN1 or LATIN1 datasets only through CEDA: it can't update them in place, and long character values can be truncated when SAS transcodes them. A session in the data's encoding avoids that.
 
-In a session that isn't UTF-8, characters your code uses that the encoding doesn't have, such as `€` in a LATIN1 session, are sent to SAS as `?`, and the log shows a warning. If SAS doesn't report its encoding within 30 seconds, or reports one the extension doesn't know, the extension uses UTF-8 and writes a warning to the log. Sessions that aren't UTF-8 need any version later than 1.2.1; version 1.2.1 and earlier read all SAS output as UTF-8.
+In a session that isn't UTF-8, characters your code uses that the encoding doesn't have, such as `€` in a LATIN1 session, are sent to SAS as `?`, and the log shows a warning. If SAS doesn't report its encoding within 30 seconds, or reports one the extension doesn't know, the extension uses UTF-8 and writes a warning to the log. Sessions that aren't UTF-8 need version 1.2.2 or later; version 1.2.1 and earlier read all SAS output as UTF-8.
 
 ## Comparison with SSH Connection
 
