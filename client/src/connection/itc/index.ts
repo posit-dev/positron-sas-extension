@@ -9,7 +9,7 @@ import {
   workspace,
 } from "vscode";
 
-import { ChildProcessWithoutNullStreams, spawn } from "child_process";
+import { spawn } from "child_process";
 import { resolve } from "path";
 
 import { LogLineTypeEnum, RunResult } from "..";
@@ -23,7 +23,7 @@ import { extractOutputHtmlFileName } from "../util";
 import { LineParser } from "./LineParser";
 import { getScript } from "./script";
 import { LineCodes, Tags } from "./script/env.json";
-import { Config, ITCProtocol } from "./types";
+import { Config, ITCProtocol, ShellProcess } from "./types";
 import {
   decodeEntities,
   escapePowershellString,
@@ -51,16 +51,16 @@ const LOG_POLL_MAX_MS = 2000;
 let sessionInstance: ITCSession;
 
 export class ITCSession extends Session {
-  private _config: Config;
-  private _shellProcess: ChildProcessWithoutNullStreams;
-  private _html5FileName: string;
-  private _runResolve: ((value?) => void) | undefined;
-  private _runReject: ((reason?) => void) | undefined;
-  private _workDirectory: string;
+  protected _config: Config;
+  protected _shellProcess: ShellProcess;
+  protected _html5FileName: string;
+  protected _runResolve: ((value?) => void) | undefined;
+  protected _runReject: ((reason?) => void) | undefined;
+  protected _workDirectory: string;
   private _password: string;
   private _secretStorage;
-  private _passwordKey: string;
-  private _pollingForLogResults: boolean;
+  protected _passwordKey: string;
+  protected _pollingForLogResults: boolean;
   /** Bumped by each fetchLog, so only the latest run's poll keeps going. */
   private _logPoll = 0;
   private _logLineType = 0;
@@ -108,13 +108,9 @@ export class ITCSession extends Session {
       return; // manually terminate to avoid executing the code below
     }
 
-    this._shellProcess = spawn(
-      "chcp 65001 >NUL & powershell.exe -NonInteractive -NoProfile -Command -",
-      {
-        shell: true,
-        env: process.env,
-      },
-    );
+    // A local shell starts at once; a remote one connects first.
+    const shell = this.openShell();
+    this._shellProcess = shell instanceof Promise ? await shell : shell;
     this._shellProcess.stdout.on("data", this.onShellStdOut);
     this._shellProcess.stderr.on("data", this.onShellStdErr);
     this._shellProcess.stdin.write(
@@ -122,6 +118,7 @@ export class ITCSession extends Session {
         interopLibraryFolderPath: escapePowershellString(
           interopLibraryFolderPath || "",
         ),
+        remote: this.remote,
       }) + "\n",
       this.onWriteComplete,
     );
@@ -181,6 +178,23 @@ export class ITCSession extends Session {
 
     return setupPromise;
   };
+
+  /**
+   * Whether PowerShell runs on another machine (over SSH), so the script
+   * can't read its files from the extension folder or write local files.
+   */
+  protected remote = false;
+
+  /** Starts the PowerShell process that runs the ITC script. */
+  protected openShell(): ShellProcess | Promise<ShellProcess> {
+    return spawn(
+      "chcp 65001 >NUL & powershell.exe -NonInteractive -NoProfile -Command -",
+      {
+        shell: true,
+        env: process.env,
+      },
+    );
+  }
 
   private storePassword = async () =>
     await this._secretStorage.store(this._passwordKey, this._password);
@@ -542,7 +556,7 @@ export class ITCSession extends Session {
    * Generic call for use on stdin write completion.
    * @param err The error encountered on the write attempt. Undefined if no error occurred.
    */
-  private onWriteComplete = (err: Error): void => {
+  protected onWriteComplete = (err: Error): void => {
     if (err) {
       this._runReject?.(err);
     }
@@ -564,6 +578,14 @@ export class ITCSession extends Session {
       return this._runResolve({});
     }
 
+    await this.fetchResultsFile();
+  };
+
+  /**
+   * Asks the script for the latest results file; it answers with
+   * ResultsFetchedCode, which calls {@link displayResults}.
+   */
+  protected async fetchResultsFile(): Promise<void> {
     const globalStorageUri = getGlobalStorageUri();
     try {
       await workspace.fs.readDirectory(globalStorageUri);
@@ -588,9 +610,9 @@ $outputFile = "${outputFileUri.fsPath}"
 $runner.FetchResultsFile($filePath, $outputFile)\n`,
       this.onWriteComplete,
     );
-  };
+  }
 
-  private displayResults = async () => {
+  protected displayResults = async () => {
     const globalStorageUri = getGlobalStorageUri();
     const outputFileUri = Uri.joinPath(
       globalStorageUri,

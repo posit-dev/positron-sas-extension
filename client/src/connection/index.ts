@@ -30,6 +30,11 @@ import {
   createSession as createSSHSession,
   getSession as getSSHSession,
 } from "./ssh";
+import { isWindowsSSHProfile } from "./ssh/platform";
+import {
+  createSession as createSSHWindowsSession,
+  getSession as getSSHWindowsSession,
+} from "./ssh/windows";
 import {
   createSession as createStdioSession,
   getSession as getStdioSession,
@@ -96,7 +101,9 @@ export function getSession(): Session {
     case ConnectionType.Rest:
       return getRestSession(toRestConfig(profile));
     case ConnectionType.SSH:
-      return getSSHSession(profile);
+      return isWindowsSSHProfile(profile)
+        ? getSSHWindowsSession(profile)
+        : getSSHSession(profile);
     case ConnectionType.Stdio:
       return getStdioSession(profile);
     case ConnectionType.COM:
@@ -131,7 +138,9 @@ export function createSessionForProfile(
           : toRestConfig(profile),
       );
     case ConnectionType.SSH:
-      return createSSHSession(profile);
+      return isWindowsSSHProfile(profile)
+        ? createSSHWindowsSession(profile)
+        : createSSHSession(profile);
     case ConnectionType.Stdio:
       return createStdioSession(profile);
     case ConnectionType.COM:

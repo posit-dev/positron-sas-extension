@@ -17,6 +17,7 @@ import {
 } from "vscode";
 
 import { profileConfig } from "../../commands/profile";
+import { viewConnectionType } from "../../connection/ssh/platform";
 import { openResource } from "../../positron/dataFileEditorFallback";
 import { getGlobalStorageUri } from "../ExtensionContext";
 import { SubscriptionProvider } from "../SubscriptionProvider";
@@ -636,7 +637,7 @@ class ContentNavigator implements SubscriptionProvider {
 
     const profileWithFileRootOptions = getProfileWithFileRootOptions();
     return new ContentAdapterFactory().create(
-      activeProfile.connectionType,
+      viewConnectionType(activeProfile),
       profileWithFileRootOptions?.fileNavigationCustomRootPath,
       profileWithFileRootOptions?.fileNavigationRoot,
       profileWithFileRootOptions?.globalShortcuts,
@@ -645,11 +646,12 @@ class ContentNavigator implements SubscriptionProvider {
 
     function getProfileWithFileRootOptions():
       ProfileWithFileRootOptions | undefined {
-      switch (activeProfile.connectionType) {
+      switch (viewConnectionType(activeProfile)) {
         case ConnectionType.Rest:
         case ConnectionType.IOM:
         case ConnectionType.COM:
-          return activeProfile;
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+          return activeProfile as ProfileWithFileRootOptions;
         default:
           return undefined;
       }

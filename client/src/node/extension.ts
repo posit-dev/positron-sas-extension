@@ -59,6 +59,7 @@ import { NotebookController } from "../components/notebook/Controller";
 import { NotebookSerializer } from "../components/notebook/Serializer";
 import { exportNotebook, saveOutput } from "../components/notebook/exporters";
 import { ConnectionType } from "../components/profile";
+import { isWindowsSSHProfile } from "../connection/ssh/platform";
 import { SasTaskProvider } from "../components/tasks/SasTaskProvider";
 import { SAS_TASK_TYPE } from "../components/tasks/SasTasks";
 // Import Positron integration
@@ -376,10 +377,12 @@ function updateViewSettings(): void {
     profileConfig.getActiveProfile(),
   );
 
-  // SSH and stdio sessions only run code: no sign-in, library or server views.
+  // SSH and stdio sessions only run code: no sign-in, library or server
+  // views. SAS on Windows over SSH runs the COM bridge, so it has them.
   const isCodeOnly =
-    activeProfile?.connectionType === ConnectionType.SSH ||
-    activeProfile?.connectionType === ConnectionType.Stdio;
+    (activeProfile?.connectionType === ConnectionType.SSH ||
+      activeProfile?.connectionType === ConnectionType.Stdio) &&
+    !isWindowsSSHProfile(activeProfile);
   const settings = {
     canSignIn: !isCodeOnly,
     librariesEnabled: false,

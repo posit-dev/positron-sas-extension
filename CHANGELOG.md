@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- SAS 9.4 on Windows over SSH: an `ssh` profile can now connect to a SAS server that runs on Windows, from Positron on Linux or macOS. SAS on Windows can't be driven through stdin and stdout as on UNIX (it has no `-stdio` or interactive line mode), so the SSH connection used to fail there. Now the extension runs the PowerShell bridge of the SAS 9.4 local (COM) connection on the server, over SSH. It starts SAS through SAS Integration Technologies, which comes with SAS on Windows, and the SAS session keeps its WORK tables and macro variables between runs. The log, results, interrupting a run and the **Libraries** and **Server Files** views work as with a COM connection. A `saspath` such as `D:\SAS\sas.exe` is detected as Windows; `"platform": "windows"` says so explicitly, and then `saspath` isn't needed. If the server doesn't let an SSH login start SAS through COM, `"windowsProtocol": "iom"` connects to the server's SAS object spawner instead. SAS options that only work when SAS starts, such as `-nosplash`, are ignored with a warning in the log. **Export Profile for saspy** writes these profiles as saspy IOM configurations, since saspy's SSH access method only reaches SAS on Linux
+
 ## 1.2.2 - 2026-11-23
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # SAS 9.4 (remote - SSH) Connection Profile
 
-To use a SAS 9.4 (remote - SSH) connection type, your SAS server must be running on Unix or Linux. The SSH connection method uses SSH to authenticate to a SAS server and runs SAS code using [Interactive Line Mode](https://go.documentation.sas.com/doc/en/pgmsascdc/9.4_3.5/hostunx/n16ui9f6dacn8pn1t0y2hgxgi7wa.htm). Several authentication methods are available to create a secure connection to the SAS 9.4 server.
+A SAS 9.4 (remote - SSH) connection works with SAS servers on UNIX, Linux and Windows. For a server on Windows, see [SAS 9.4 on Windows](#sas-94-on-windows). On UNIX and Linux, the SSH connection method uses SSH to authenticate to a SAS server and runs SAS code using [Interactive Line Mode](https://go.documentation.sas.com/doc/en/pgmsascdc/9.4_3.5/hostunx/n16ui9f6dacn8pn1t0y2hgxgi7wa.htm). Several authentication methods are available to create a secure connection to the SAS 9.4 server.
 
 :::note
 
@@ -156,4 +156,47 @@ Enter the response to each question using the secure input prompts during each S
 
 ## Interrupting Running Code
 
-An SSH session cannot cancel code that is running. In Positron, when you interrupt the console, SAS keeps running the code and the console stays busy until it finishes. A message offers to restart the session instead, which ends the SAS session. Restarting loses the session's WORK tables, macro variables, and librefs.
+An SSH session to SAS on UNIX or Linux cannot cancel code that is running. (With [SAS 9.4 on Windows](#sas-94-on-windows), interrupting cancels the run.) In Positron, when you interrupt the console, SAS keeps running the code and the console stays busy until it finishes. A message offers to restart the session instead, which ends the SAS session. Restarting loses the session's WORK tables, macro variables, and librefs.
+
+## SAS 9.4 on Windows
+
+SAS on Windows can't run in interactive line mode: it has no `-stdio` option, and `-nodms` isn't valid there. So for a server on Windows, the extension runs a PowerShell script on the server over SSH instead of starting `sas.exe` directly. The script starts a SAS session through SAS Integration Technologies, as the [SAS 9.4 (local)](./sas9local.md) connection does on a Windows desktop. Positron can run on Linux, macOS or Windows.
+
+The SAS session keeps its WORK tables, macro variables and librefs between runs. The log, ODS results, interrupting a run (with **Interrupt** in the Positron console) and the **Libraries** and **Server Files** views work as with a local connection.
+
+### Requirements on the server
+
+- The OpenSSH server for Windows. See [Get started with OpenSSH for Windows](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_install_firstuse).
+- Windows PowerShell 5.1, which comes with Windows Server 2016 and later.
+- SAS 9.4 with the SAS Integration Technologies client, which the SAS installation for Windows normally includes. The script looks for `SASInterop.dll` in the location the SAS installation records in the registry, and in `C:\Program Files\SASHome\x86\Integration Technologies`. If it's somewhere else, set `interopLibraryFolderPath` to the folder on the server.
+
+For key authentication, add your public key to `C:\Users\<username>\.ssh\authorized_keys` on the server. For an account in the Administrators group, Windows OpenSSH reads `C:\ProgramData\ssh\administrators_authorized_keys` instead.
+
+### Profile
+
+A `saspath` that looks like a Windows path, with a drive letter, a backslash or a `.exe` ending, makes the extension treat the server as Windows. The SAS session starts through SAS Integration Technologies, so `saspath` itself isn't used. Instead of a `saspath`, you can set `"platform": "windows"`.
+
+```json
+"sas-windows": {
+    "connectionType": "ssh",
+    "host": "sasserver.example.com",
+    "username": "username",
+    "port": 22,
+    "saspath": "D:\\SASHome\\SASFoundation\\9.4\\sas.exe",
+    "privateKeyFilePath": "/home/username/.ssh/id_ed25519"
+}
+```
+
+| Name                       | Description                                                                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `platform`                 | `"windows"` or `"unix"`. Overrides the detection from `saspath`.                                                                                              |
+| `windowsProtocol`          | `"com"` (default) starts SAS as the SSH user. `"iom"` connects to the SAS object spawner on the server and asks for your password.                            |
+| `iomPort`                  | The object spawner port, for `"iom"`. The default is 8591.                                                                                                    |
+| `interopLibraryFolderPath` | The folder on the server with `SASInterop.dll`, if the script doesn't find it.                                                                                |
+| `sasOptions`               | SAS system options, set after SAS starts. Options that only work when SAS starts, such as `-nosplash`, `-memsize` or `-encoding`, are ignored with a warning. |
+
+### When SAS doesn't start
+
+- **Access denied when SAS starts (`"com"`)**: Windows may not let an SSH login start SAS through COM (DCOM). Ask your Windows administrator to allow it for the SAS Integration Technologies application, or set `"windowsProtocol": "iom"` if the server runs a SAS object spawner.
+- **Network shares**: with key or SSH agent authentication, Windows gives the SSH login no network credentials, so SAS can't read files on `\\server\share` paths. Use password authentication, or `"windowsProtocol": "iom"`, where the object spawner signs you in with your password.
+- **`Unable to load required libraries`**: the script didn't find `SASInterop.dll`. Set `interopLibraryFolderPath`.

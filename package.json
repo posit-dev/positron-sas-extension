@@ -422,7 +422,6 @@
                       "then": {
                         "required": [
                           "host",
-                          "saspath",
                           "username",
                           "port"
                         ],
@@ -453,6 +452,35 @@
                             "type": "string",
                             "default": "",
                             "description": "%configuration.SAS.connectionProfiles.profiles.ssh.privateKeyFilePath%"
+                          },
+                          "platform": {
+                            "type": "string",
+                            "enum": [
+                              "unix",
+                              "windows"
+                            ],
+                            "description": "%configuration.SAS.connectionProfiles.profiles.ssh.platform%"
+                          },
+                          "windowsProtocol": {
+                            "type": "string",
+                            "enum": [
+                              "com",
+                              "iom"
+                            ],
+                            "default": "com",
+                            "description": "%configuration.SAS.connectionProfiles.profiles.ssh.windowsProtocol%"
+                          },
+                          "iomPort": {
+                            "type": "number",
+                            "default": 8591,
+                            "description": "%configuration.SAS.connectionProfiles.profiles.ssh.iomPort%",
+                            "exclusiveMinimum": 1,
+                            "exclusiveMaximum": 65535
+                          },
+                          "interopLibraryFolderPath": {
+                            "type": "string",
+                            "default": "",
+                            "description": "%configuration.SAS.connectionProfiles.profiles.ssh.interopLibraryFolderPath%"
                           }
                         }
                       }

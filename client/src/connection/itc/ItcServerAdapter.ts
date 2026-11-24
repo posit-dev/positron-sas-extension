@@ -4,6 +4,7 @@ import { FileType, Uri, workspace } from "vscode";
 
 import { v4 } from "uuid";
 
+import { profileConfig } from "../../commands/profile";
 import { onRunError } from "../../commands/run";
 import {
   Messages,
@@ -27,6 +28,7 @@ import {
 import { getGlobalStorageUri } from "../../components/ExtensionContext";
 import { ProfileWithFileRootOptions } from "../../components/profile";
 import { getLink, getResourceId, getSasServerUri } from "../rest/util";
+import { isWindowsSSHProfile } from "../ssh/platform";
 import { executeRawCode } from "./CodeRunner";
 import { PowershellResponse, ScriptActions } from "./types";
 import { getDirectorySeparator } from "./util";
@@ -236,6 +238,12 @@ class ItcServerAdapter implements ContentAdapter {
 
   public async getContentOfItem(item: ContentItem): Promise<Uint8Array> {
     const filePath = item.uri;
+    const activeProfile = profileConfig.getProfileByName(
+      profileConfig.getActiveProfile(),
+    );
+    if (isWindowsSSHProfile(activeProfile)) {
+      return this.getRemoteContentOfItem(filePath);
+    }
     const outputFile = await this.getTempFile();
 
     try {
@@ -255,6 +263,25 @@ class ItcServerAdapter implements ContentAdapter {
     await workspace.fs.delete(outputFile);
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return file as unknown as Uint8Array;
+  }
+
+  /**
+   * SAS on Windows over SSH: the script runs on the server, so it sends the
+   * file as base64 instead of writing it to a local file.
+   */
+  private async getRemoteContentOfItem(filePath: string): Promise<Uint8Array> {
+    try {
+      const { success, data } = await this.execute(
+        ScriptActions.FetchFileContentBase64,
+        { filePath },
+      );
+      return success
+        ? new Uint8Array(Buffer.from(data || "", "base64"))
+        : new Uint8Array();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      return new Uint8Array();
+    }
   }
 
   public async getContentOfUri(uri: Uri): Promise<Uint8Array> {
