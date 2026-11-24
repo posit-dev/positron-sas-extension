@@ -1,6 +1,8 @@
 // Copyright © 2026, Posit Software, PBC. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 import { expect } from "chai";
+import * as fs from "fs";
+import * as path from "path";
 
 import type { Profile } from "../../src/components/profile";
 import { getScript } from "../../src/connection/itc/script";
@@ -110,6 +112,17 @@ describe("SAS on Windows over SSH: SAS options", () => {
 });
 
 describe("SAS on Windows over SSH: remote script", () => {
+  // getScript reads the .ps1 files next to its module: in the source tree
+  // (test-positron), but not in client/out (test-client).
+  before(function () {
+    const scriptDir = path.dirname(
+      require.resolve("../../src/connection/itc/script"),
+    );
+    if (!fs.existsSync(path.join(scriptDir, "itc.ps1"))) {
+      this.skip();
+    }
+  });
+
   it("runs from the extension folder locally", () => {
     const script = getScript({ interopLibraryFolderPath: "" });
     expect(script).to.include("Set-Location -Path");

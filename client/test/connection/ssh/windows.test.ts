@@ -116,6 +116,8 @@ describe("SAS on Windows over SSH", () => {
   });
 
   it("uses IOM Bridge to the server's own spawner when asked", async () => {
+    // IOM asks for the password on the server's spawner.
+    sandbox.stub(vscode.window, "showInputBox").resolves("secret");
     await connect({ windowsProtocol: "iom", iomPort: 8592 });
 
     const text = written();
@@ -123,6 +125,7 @@ describe("SAS on Windows over SSH", () => {
     expect(text).to.include("$port = 8592");
     expect(text).to.include("$protocol = 2");
     expect(text).to.include('$username = "user"');
+    expect(text).to.include('$password = "secret"');
   });
 
   it("sends the log and fetches results as base64, split across packets", async () => {
