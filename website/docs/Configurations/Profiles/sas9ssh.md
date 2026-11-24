@@ -195,6 +195,35 @@ A `saspath` that looks like a Windows path, with a drive letter, a backslash or 
 | `interopLibraryFolderPath` | The folder on the server with `SASInterop.dll`, if the script doesn't find it.                                                                                |
 | `sasOptions`               | SAS system options, set after SAS starts. Options that only work when SAS starts, such as `-nosplash`, `-memsize` or `-encoding`, are ignored with a warning. |
 
+### COM or IOM
+
+The script can start SAS in two ways, set with `windowsProtocol`:
+
+|                   | `"com"` (default)                                                                            | `"iom"`                                                                             |
+| ----------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| How SAS starts    | The script starts `sas.exe` on the server through COM, as the SSH user                       | The script asks the SAS object spawner on the server for a workspace server session |
+| Needs on Windows  | A DCOM permission for SSH logins to start SAS (see below)                                    | A SAS object spawner, as in a SAS 9.4 server deployment                             |
+| Password          | Not asked                                                                                    | Asked when the session starts, for the spawner                                      |
+| Network shares    | Only with SSH password authentication (see [When SAS doesn't start](#when-sas-doesnt-start)) | Yes: the spawner signs you in with your password                                    |
+| SAS configuration | The SAS Foundation configuration (`sasv9.cfg`) and its autoexec                              | The workspace server's configuration and autoexec, as SAS Enterprise Guide uses     |
+
+#### The DCOM permission COM needs
+
+Windows only lets a user start a COM server, such as SAS, if the server's launch permissions allow it. An SSH login is a network logon: Windows puts it in the `NT AUTHORITY\NETWORK` group, not in `NT AUTHORITY\INTERACTIVE` as a desktop or Remote Desktop login. The default launch permissions allow Administrators, `INTERACTIVE` and `SYSTEM`, so the same user who can start SAS at the desktop gets `Access is denied` (`0x80070005`) over SSH. The probe script reports this as a failed COM test.
+
+A Windows administrator can allow it for the users who need it:
+
+1. On the SAS server, run `dcomcnfg` to open **Component Services**.
+2. Go to **Component Services** > **Computers** > **My Computer** > **DCOM Config**. Find the SAS workspace server, whose application ID or class ID is `{440196D4-90F0-11D0-9F41-00A024BB830C}`. It runs `sas.exe -objectserver`.
+3. Open its **Properties**, and on the **Security** tab, under **Launch and Activation Permissions**, choose **Customize** and **Edit**.
+4. Add the users, or better a group of SAS users, and allow **Local Launch** and **Local Activation**.
+
+If the SAS entry has no permissions of its own, it uses the computer's defaults: those are under **My Computer** > **Properties** > **COM Security** > **Launch and Activation Permissions** > **Edit Default**. Changing the SAS entry, rather than the defaults, affects SAS only. The machine-wide limits (**Edit Limits**) allow local launch and activation for everyone by default, so they normally need no change.
+
+Then run the probe script again: the COM test reports `Ok: True`.
+
+If the administrator would rather not change DCOM permissions, and the server runs a SAS object spawner (the probe reports whether `localhost:8591` accepts connections), set `"windowsProtocol": "iom"` instead.
+
 ### Check the server
 
 The probe script [`ssh-windows-probe.ps1`](https://github.com/posit-dev/positron-sas-extension/blob/main/doc/scripts/ssh-windows-probe.ps1) checks what the connection needs on the server: PowerShell, the SAS Integration Technologies client, the SAS COM registration, a test SAS session over COM, the SAS object spawner, and, if you set `$ProbeNetworkPath` at the top of the script, a network share. It changes nothing on the server. Run it from the machine where Positron runs, with the same SSH user and key as your connection profile, the same way the extension runs its own script:
@@ -209,6 +238,6 @@ The report ends with a summary of what works and what to change in the profile. 
 
 ### When SAS doesn't start
 
-- **Access denied when SAS starts (`"com"`)**: Windows may not let an SSH login start SAS through COM (DCOM). Ask your Windows administrator to allow it for the SAS Integration Technologies application, or set `"windowsProtocol": "iom"` if the server runs a SAS object spawner.
+- **Access denied when SAS starts (`"com"`)**: Windows doesn't let SSH logins start SAS through COM by default. Ask your Windows administrator for [the DCOM permission](#the-dcom-permission-com-needs), or set `"windowsProtocol": "iom"` if the server runs a SAS object spawner.
 - **Network shares**: with key or SSH agent authentication, Windows gives the SSH login no network credentials, so SAS can't read files on `\\server\share` paths. Use password authentication, or `"windowsProtocol": "iom"`, where the object spawner signs you in with your password.
 - **`Unable to load required libraries`**: the script didn't find `SASInterop.dll`. Set `interopLibraryFolderPath`.
