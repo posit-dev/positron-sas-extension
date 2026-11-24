@@ -195,6 +195,18 @@ A `saspath` that looks like a Windows path, with a drive letter, a backslash or 
 | `interopLibraryFolderPath` | The folder on the server with `SASInterop.dll`, if the script doesn't find it.                                                                                |
 | `sasOptions`               | SAS system options, set after SAS starts. Options that only work when SAS starts, such as `-nosplash`, `-memsize` or `-encoding`, are ignored with a warning. |
 
+### Check the server
+
+The probe script [`ssh-windows-probe.ps1`](https://github.com/posit-dev/positron-sas-extension/blob/main/doc/scripts/ssh-windows-probe.ps1) checks what the connection needs on the server: PowerShell, the SAS Integration Technologies client, the SAS COM registration, a test SAS session over COM, the SAS object spawner, and, if you set `$ProbeNetworkPath` at the top of the script, a network share. It changes nothing on the server. Run it from the machine where Positron runs, with the same SSH user and key as your connection profile, the same way the extension runs its own script:
+
+```sh
+ssh -i ~/.ssh/id_ed25519 username@sasserver.example.com \
+  'cmd /d /c "chcp 65001 >NUL & powershell.exe -NonInteractive -NoProfile -Command -"' \
+  < ssh-windows-probe.ps1 > probe-report.txt 2>&1
+```
+
+The report ends with a summary of what works and what to change in the profile. It contains your user name, the host name and SAS paths, so read it before you share it.
+
 ### When SAS doesn't start
 
 - **Access denied when SAS starts (`"com"`)**: Windows may not let an SSH login start SAS through COM (DCOM). Ask your Windows administrator to allow it for the SAS Integration Technologies application, or set `"windowsProtocol": "iom"` if the server runs a SAS object spawner.
