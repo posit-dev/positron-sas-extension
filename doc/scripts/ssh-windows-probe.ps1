@@ -18,7 +18,9 @@
 # Read it before you send it on.
 #
 # The script is read line by line from stdin, as the extension sends its own,
-# so it keeps "} catch {" and "} else {" on one line.
+# so it keeps "} catch {" and "} else {" on one line. PowerShell runs a
+# statement that spans lines only once a blank line follows it, so each one
+# ends with a blank line, and so does the script.
 
 #region Settings: edit these if needed
 # The folder with SASInterop.dll, if the probe doesn't find it.
@@ -42,7 +44,7 @@ function Field([string]$name, $value) { Write-Output ("{0,-28} {1}" -f "${name}:
 function Finding([string]$text) { [void]$ProbeFindings.Add($text) }
 
 Say "SAS on Windows over SSH: probe report"
-Say "Probe version: 1 (positron-sas PR #192)"
+Say "Probe version: 2 (positron-sas PR #192)"
 Field "Started" ($ProbeStart.ToString("yyyy-MM-dd HH:mm:ss zzz"))
 
 #region Windows and PowerShell
@@ -366,7 +368,11 @@ Section "Summary"
 if ($spawnerOpen) {
   Finding "A SAS object spawner answers on localhost:$ProbeIomPort, so windowsProtocol iom (with your SAS password) is an option."
 }
+
 foreach ($finding in $ProbeFindings) { Say "- $finding" }
 Field "Finished" ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss zzz"))
 Field "Took seconds" ([Math]::Round(((Get-Date) - $ProbeStart).TotalSeconds, 1))
 #endregion
+
+# Blank lines: PowerShell runs the statements above only once one follows.
+
