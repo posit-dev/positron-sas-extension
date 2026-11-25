@@ -92,13 +92,21 @@ export interface ViyaProfile extends BaseProfile, ProfileWithFileRootOptions {
   workbenchIntegration?: string;
 }
 
-export interface SSHProfile extends BaseProfile {
+export interface SSHProfile extends BaseProfile, ProfileWithFileRootOptions {
   connectionType: ConnectionType.SSH;
   host: string;
   saspath: string;
   port: number;
   username: string;
   privateKeyFilePath?: string;
+  /** The server's platform; without it, a Windows-style saspath means Windows. */
+  platform?: "unix" | "windows";
+  /** SAS on Windows: how PowerShell on the server reaches SAS. */
+  windowsProtocol?: "com" | "iom";
+  /** SAS on Windows: the object spawner port, for windowsProtocol "iom". */
+  iomPort?: number;
+  /** SAS on Windows: the folder on the server with SASInterop.dll. */
+  interopLibraryFolderPath?: string;
 }
 
 export interface COMProfile extends BaseProfile, ProfileWithFileRootOptions {
@@ -514,7 +522,8 @@ export class ProfileConfig {
         return pv;
       }
 
-      if (!profile.saspath) {
+      // SAS on Windows starts through COM, which doesn't need the path.
+      if (!profile.saspath && profile.platform !== "windows") {
         pv.error = l10n.t("Missing sas path in active profile.");
         return pv;
       }

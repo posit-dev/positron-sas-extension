@@ -16,6 +16,7 @@ import { createWriteStream } from "fs";
 import * as path from "path";
 
 import { profileConfig } from "../../commands/profile";
+import { viewConnectionType } from "../../connection/ssh/platform";
 import DataViewer from "../../panels/DataViewer";
 import TablePropertiesViewer from "../../panels/TablePropertiesViewer";
 import { WebViewManager } from "../../panels/WebviewManager";
@@ -201,7 +202,7 @@ class LibraryNavigator implements SubscriptionProvider {
     }
 
     return new LibraryAdapterFactory().create(
-      activeProfile.connectionType,
+      viewConnectionType(activeProfile),
       () => this.libraryDataProvider.refresh(),
     );
   }

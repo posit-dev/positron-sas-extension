@@ -5,6 +5,7 @@ import { commands, window } from "vscode";
 import { getViyaSession } from "../components/AuthProvider";
 import LibraryNavigator from "../components/LibraryNavigator";
 import { ConnectionType } from "../components/profile";
+import { viewConnectionType } from "../connection/ssh/platform";
 import { profileConfig, switchProfile } from "./profile";
 
 const finishAuthorization = (profileConfig): boolean => {
@@ -27,7 +28,7 @@ export const checkProfileAndAuthorize =
       profileConfig.getActiveProfile(),
     );
 
-    switch (activeProfile.connectionType) {
+    switch (viewConnectionType(activeProfile)) {
       case ConnectionType.Rest:
         try {
           await getViyaSession();

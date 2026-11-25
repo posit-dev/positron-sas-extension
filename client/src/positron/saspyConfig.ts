@@ -6,6 +6,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import type { ConnectionType, Profile } from "../components/profile";
+import { isWindowsSSHProfile } from "../connection/ssh/platform";
 
 // ConnectionType values; the enum itself is only imported as a type (see above).
 /* eslint-disable @typescript-eslint/consistent-type-assertions */
@@ -126,6 +127,22 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
       return lines.join("\n");
     }
     case SSH: {
+      if (isWindowsSSHProfile(profile)) {
+        // saspy's SSH access method only reaches SAS on Linux. Its IOM access
+        // method reaches SAS on Windows through the object spawner.
+        const lines = [
+          ...header("IOM, SAS on Windows"),
+          `# saspy can't use SSH to reach SAS on Windows. This uses the SAS object`,
+          `# spawner on the server instead, which saspy reaches with Java.`,
+          `${cfg} = {`,
+          `    'java': '/usr/bin/java',  # adjust path to your Java installation`,
+          `    'iomhost': ${py(profile.host)},`,
+          `    'iomport': ${profile.iomPort || 8591},`,
+          `    'encoding': 'utf-8',`,
+          `}`,
+        ];
+        return lines.join("\n");
+      }
       const lines = [
         ...header("SSH"),
         `${cfg} = {`,
