@@ -125,6 +125,12 @@ describe("profileToSaspyConfig", () => {
     expect(config).to.include(
       "session$request$HTTP_POSIT_CONNECT_USER_SESSION_TOKEN",
     );
+    // R Shiny apps: read from the connecting Shiny session through reticulate,
+    // without loading shiny.
+    expect(config).to.include("viewer = viewer or _shiny_viewer_token()");
+    expect(config).to.include(
+      `'if (isNamespaceLoaded("shiny") && !is.null(shiny::getDefaultReactiveDomain())) '`,
+    );
     expect(config).to.include(
       "import urllib.error, urllib.parse, urllib.request",
     );

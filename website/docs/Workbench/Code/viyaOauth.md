@@ -295,15 +295,20 @@ server <- function(input, output, session) {
 }
 ```
 
-With the saspy configuration that **SAS: Export saspy Configuration** writes, the app only passes the viewer's session token on. The configuration exchanges it with Connect through Python's standard library, so the app needs neither connectapi nor posit-sdk:
+With the saspy configuration that **SAS: Export saspy Configuration** writes, the app needs no token code at all:
 
 ```r
 observeEvent(input$run_analysis, {
-  reticulate::py_set_attr(reticulate::import_main(), "CONNECT_USER_SESSION_TOKEN",
-                          session$request$HTTP_POSIT_CONNECT_USER_SESSION_TOKEN)
   sas_connect(reconnect = TRUE)
-  # ...
+  # ... sas_from_r(), sas_run_string(), sas_to_r() ...
 })
+```
+
+When saspy connects, the configuration reads the viewer's session token from the Shiny session through reticulate (`shiny::getDefaultReactiveDomain()`) and exchanges it with Connect through Python's standard library, so the app needs neither connectapi nor posit-sdk. This works when `sas_connect()` runs in a reactive context, such as `observeEvent()` or `reactive()`. Code outside a reactive context, and Python apps, pass the token on themselves, as `CONNECT_USER_SESSION_TOKEN` on the Python main module:
+
+```r
+reticulate::py_set_attr(reticulate::import_main(), "CONNECT_USER_SESSION_TOKEN",
+                        session$request$HTTP_POSIT_CONNECT_USER_SESSION_TOKEN)
 ```
 
 The same app runs unchanged in a Workbench session: there the header is missing, and the configuration uses the Workbench integration instead. The token belongs to the viewer, so SAS runs as the viewer, in the profile's compute context.
