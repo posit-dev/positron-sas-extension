@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- **SAS: Export saspy Configuration** for SAS Viya profiles now works in rendered content on Posit Connect. On Connect, the configuration gets the SAS Viya token from the content's "Service Account" OAuth integration. It exchanges the content session token with Connect through Python's standard library, so the content needs no extra package. Such a token has no user, and SAS Viya only runs it in a compute context with a service account, so the configuration uses the context `Posit Connect compute context` for tokens without a user (`SAS_VIYA_CONNECT_CONTEXT` names another one). This applies to a token from any source, such as `SAS_VIYA_TOKEN` set from `connectapi::get_oauth_content_credentials()`. Without an integration, connecting fails with a message that says so; before, saspy asked for a user ID, which a Quarto render on Connect reports as `EOFError: EOF when reading a line`. The documentation describes the SAS Viya setup that a Service Account integration needs
+
 ## 1.3.0 - 2026-11-25
 
 Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).

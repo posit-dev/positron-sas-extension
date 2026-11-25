@@ -66,11 +66,36 @@ Register the Connect client the same way, with these differences:
 - Set `redirect_uri` to `https://connect.example.com/__oauth__/integrations/callback`. If a proxy serves Connect under a path, include it, for example `https://posit.example.com/connect/__oauth__/integrations/callback`.
 - For a Service Account integration, add `client_credentials` to `authorized_grant_types`. Connect Service Account integrations use the OAuth client credentials grant.
 
-:::warning
+### Set Up SAS Viya for a Service Account Integration
 
-A token from the client credentials grant identifies the OAuth client, not a person. Confirm with your SAS Viya administrator that SAS Compute accepts such a token, and which identity the Compute session runs as. SAS Compute might need a compute context that runs as a shared account.
+A token from the client credentials grant identifies the OAuth client, not a person. SAS Compute refuses to start a session for it in the standard compute contexts ("The current user does not have permission to launch a process"). It needs a compute context that runs as a shared service account, and the client needs permission to use it. As a SAS administrator:
 
-:::
+1. Create a service account in the identity provider of SAS Viya, such as the LDAP user `svc-connect`, with a password and POSIX attributes. SAS Compute sessions for Connect content run as this account.
+1. Create a custom group whose ID is the client ID, such as `posit-connect`. SAS Logon accepts only a group with the same name as the client in the client's `authorities`.
+1. Add the group to the client: set `authorities` to `["posit-connect"]`.
+1. Give the group rules that grant `read`, `create`, `update`, and `delete` on `/compute/**`, `/compute/contexts`, `/compute/sessions`, and `/launcher/**`. Without them, the token cannot even list the compute contexts.
+1. Store the service account's password for SAS Compute. The SAS Launcher signs in as the service account with it:
+
+   ```bash
+   sas-viya compute credentials create --user svc-connect --password 'PASSWORD' \
+     --description "Posit Connect service account"
+   ```
+
+1. Create a compute context that runs as the service account and that only the group may use, with the `runServerAs` attribute:
+
+   ```json
+   {
+     "name": "Posit Connect compute context",
+     "launchType": "service",
+     "launchContext": { "contextName": "SAS Job Execution launcher context" },
+     "attributes": { "runServerAs": "svc-connect" },
+     "authorizedGroups": ["posit-connect"]
+   }
+   ```
+
+   Send it with a `POST` to `/compute/contexts`, with the content type `application/vnd.sas.compute.context.request+json`.
+
+SAS programs from rendered Connect content then run as `svc-connect`, with that account's permissions and home directory.
 
 ### Configure the Workbench User OAuth Provider
 
@@ -125,7 +150,7 @@ An administrator creates the integrations in the Connect dashboard or through th
 }
 ```
 
-For the Service Account integration, set `auth_type` to `Service Account` and remove `auth_mode` and `use_pkce`. Those two options apply only to Viewer integrations.
+For the Service Account integration, set `auth_type` to `Service Account` and remove `auth_mode` and `use_pkce`. Those two options apply only to Viewer integrations. Set `scopes` to the client ID, such as `posit-connect`. With the client credentials grant, SAS Logon grants only the client's own authorities, and refuses `openid` with `invalid_scope`.
 
 Publishers then add an integration to each content item. In the content settings, open the **Runtime** tab, and under **Integrations**, click **Add Integrations**. Rendered content offers only Service Account integrations.
 
@@ -212,7 +237,7 @@ The following screenshot shows the same steps in a Positron Pro session. It runs
 
 Python code can use the same `sascfg_personal.py`. An `authtoken` argument to `SASsession()` takes precedence over the configuration.
 
-The SAS extension can export a SAS Viya profile as a saspy configuration (**SAS: Export saspy Configuration**). That configuration looks for a token each time saspy connects. In this order, it uses the `SAS_VIYA_TOKEN` environment variable, the `SAS_VIYA_TOKEN` variable on the Python main module (as above), the Workbench integration read with posit-sdk (when `SAS_VIYA_INTEGRATION_ID` or the profile's `workbenchIntegration` gives its ID), and the token file `~/.positron-sas/viya-token.json`. The command **SAS: Save Viya Token for saspy** writes that file from the extension's own sign-in, readable only by the user, so that a Quarto render can use the same sign-in. Run it again when the token has expired.
+The SAS extension can export a SAS Viya profile as a saspy configuration (**SAS: Export saspy Configuration**). That configuration looks for a token each time saspy connects. In this order, it uses the `SAS_VIYA_TOKEN` environment variable, the `SAS_VIYA_TOKEN` variable on the Python main module (as above), the Connect Service Account integration of the content (on Connect, see [Quarto and R Markdown with a Service Account Integration](#quarto-and-r-markdown-with-a-service-account-integration)), the Workbench integration read with posit-sdk (when `SAS_VIYA_INTEGRATION_ID` or the profile's `workbenchIntegration` gives its ID), and the token file `~/.positron-sas/viya-token.json`. The command **SAS: Save Viya Token for saspy** writes that file from the extension's own sign-in, readable only by the user, so that a Quarto render can use the same sign-in. Run it again when the token has expired.
 
 #### swat and sasctl
 
@@ -307,6 +332,12 @@ sas_connect(cfgname = "viya")
 ```
 
 In Python, `Client().oauth.get_content_credentials()` returns the token. If content has more than one integration, pass the integration ID as `audience` to choose one.
+
+The token has no user, so saspy must use the service account's compute context. Set `context` in the saspy configuration accordingly, or use the configuration that **SAS: Export saspy Configuration** writes. That configuration needs no setup chunk on Connect:
+
+- It exchanges the content session token for the integration's token with Python's standard library, so the content needs neither connectapi nor posit-sdk. If the content has more than one integration, set `SAS_VIYA_CONNECT_INTEGRATION_ID` to the integration ID in the content's **Vars**.
+- It runs tokens without a user in the compute context `Posit Connect compute context`, and all other tokens in the profile's context. Set `SAS_VIYA_CONNECT_CONTEXT` to use a context with another name.
+- If Connect has no integration for the content, connecting fails with a message that says so, instead of saspy asking for a user ID.
 
 ## Keep Tokens across Workbench Restarts
 

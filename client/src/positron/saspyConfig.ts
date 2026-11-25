@@ -27,6 +27,23 @@ export const SASPY_TOKEN_ENV = "SAS_VIYA_TOKEN";
 export const SASPY_INTEGRATION_ENV = "SAS_VIYA_INTEGRATION_ID";
 
 /**
+ * Compute context for tokens without a user, such as the token of a Posit
+ * Connect "Service Account" OAuth integration (client credentials grant). SAS
+ * Viya runs those only in a compute context with a service account
+ * (runServerAs).
+ */
+export const CONNECT_COMPUTE_CONTEXT = "Posit Connect compute context";
+
+/** Environment variable that overrides CONNECT_COMPUTE_CONTEXT. */
+export const SASPY_CONNECT_CONTEXT_ENV = "SAS_VIYA_CONNECT_CONTEXT";
+
+/**
+ * Environment variable with the GUID of the Connect OAuth integration, needed
+ * only when more than one integration is associated with the content.
+ */
+export const SASPY_CONNECT_INTEGRATION_ENV = "SAS_VIYA_CONNECT_INTEGRATION_ID";
+
+/**
  * saspy reads each configuration from a Python variable of that name, so
  * turn the profile name into a Python identifier.
  */
@@ -70,13 +87,68 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
         `SAS_config_names = [${py(cfg)}]`,
         ``,
         `_VIYA_URL = ${py(profile.endpoint)}`,
+        `_CONTEXT = ${py(profile.context || DEFAULT_COMPUTE_CONTEXT)}`,
+        `# A token without a user (client credentials, such as a Posit Connect "Service`,
+        `# Account" integration) runs only in a context with a service account (runServerAs).`,
+        `_SERVICE_CONTEXT = _os.environ.get(${py(SASPY_CONNECT_CONTEXT_ENV)}) or ${py(CONNECT_COMPUTE_CONTEXT)}`,
+        ``,
+        `def _connect_token():`,
+        `    # Exchange the content session token for the token of the OAuth`,
+        `    # integration associated with the content (standard library only).`,
+        `    session = None`,
+        `    token_file = _os.environ.get('CONNECT_CONTENT_SESSION_TOKEN_FILE')`,
+        `    if token_file:`,
+        `        try:`,
+        `            with open(token_file) as f:`,
+        `                session = f.read().strip()`,
+        `        except OSError:`,
+        `            pass`,
+        `    session = session or _os.environ.get('CONNECT_CONTENT_SESSION_TOKEN')`,
+        `    if not session:`,
+        `        return None`,
+        `    import urllib.error, urllib.parse, urllib.request`,
+        `    server = _os.environ.get('CONNECT_SERVER')`,
+        `    if not server:`,
+        `        raise RuntimeError('Running on Posit Connect, but CONNECT_SERVER is not set')`,
+        `    data = {`,
+        `        'grant_type': 'urn:ietf:params:oauth:grant-type:token-exchange',`,
+        `        'subject_token_type': 'urn:posit:connect:content-session-token',`,
+        `        'subject_token': session,`,
+        `        'requested_token_type': 'urn:ietf:params:oauth:token-type:access_token',`,
+        `    }`,
+        `    if _os.environ.get(${py(SASPY_CONNECT_INTEGRATION_ENV)}):`,
+        `        data['audience'] = _os.environ[${py(SASPY_CONNECT_INTEGRATION_ENV)}]`,
+        `    headers = {'Accept': 'application/json'}`,
+        `    if _os.environ.get('CONNECT_API_KEY'):`,
+        `        headers['Authorization'] = 'Key ' + _os.environ['CONNECT_API_KEY']`,
+        `    request = urllib.request.Request(`,
+        `        server.rstrip('/') + '/__api__/v1/oauth/integrations/credentials',`,
+        `        data=urllib.parse.urlencode(data).encode(), headers=headers)`,
+        `    try:`,
+        `        with urllib.request.urlopen(request, timeout=30) as response:`,
+        `            return _json.load(response).get('access_token')`,
+        `    except urllib.error.HTTPError as e:`,
+        `        detail = e.read()[:300].decode(errors='replace')`,
+        `        raise RuntimeError(`,
+        `            'Posit Connect could not provide a SAS Viya token (HTTP %d: %s). In Connect, '`,
+        `            'add the SAS Viya "Service Account" OAuth integration to this content '`,
+        `            '(Access > Integrations).' % (e.code, detail)) from None`,
+        ``,
+        `def _is_client_token(token):`,
+        `    # SAS Logon puts user_name into the tokens of users only.`,
+        `    try:`,
+        `        import base64`,
+        `        payload = token.split('.')[1]`,
+        `        claims = _json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))`,
+        `        return 'user_name' not in claims`,
+        `    except Exception:`,
+        `        return False`,
         ``,
         `def _viya_token():`,
         `    # Do not put tokens, passwords or client secrets in this file. The`,
         `    # token comes from the first of these that has one:`,
-        `    # 1. the ${SASPY_TOKEN_ENV} environment variable (for example on Posit`,
-        `    #    Connect, or from \`sas-viya auth login\`, with the token in`,
-        `    #    ~/.sas/credentials.json)`,
+        `    # 1. the ${SASPY_TOKEN_ENV} environment variable (for example from`,
+        `    #    \`sas-viya auth login\`, with the token in ~/.sas/credentials.json)`,
         `    token = _os.environ.get(${py(SASPY_TOKEN_ENV)})`,
         `    if token:`,
         `        return token`,
@@ -89,7 +161,12 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
         `            return token`,
         `    except ImportError:`,
         `        pass`,
-        `    # 3. the Posit Workbench OAuth integration for SAS Viya (needs the`,
+        `    # 3. on Posit Connect, the SAS Viya "Service Account" OAuth integration`,
+        `    #    added to the content (in Connect: Access > Integrations)`,
+        `    token = _connect_token()`,
+        `    if token:`,
+        `        return token`,
+        `    # 4. the Posit Workbench OAuth integration for SAS Viya (needs the`,
         `    #    posit-sdk package, and the integration ID from Managed Credentials)`,
         `    integration = _os.environ.get(${py(SASPY_INTEGRATION_ENV)}) or ${py(profile.workbenchIntegration ?? "")}`,
         `    if integration:`,
@@ -100,7 +177,7 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
         `                return creds['access_token']`,
         `        except Exception:`,
         `            pass`,
-        `    # 4. the file that the command "SAS: Save Viya Token for saspy" writes`,
+        `    # 5. the file that the command "SAS: Save Viya Token for saspy" writes`,
         `    #    from the extension's own sign-in`,
         `    try:`,
         `        with open(_os.path.join(_os.path.expanduser('~'), '.positron-sas', 'viya-token.json')) as f:`,
@@ -117,10 +194,11 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
         `def __getattr__(name):`,
         `    # saspy looks the definition up by name for each SASsession`,
         `    if name == ${py(cfg)}:`,
+        `        token = _viya_token()`,
         `        return {`,
         `            'url': _VIYA_URL,`,
-        `            'context': ${py(profile.context || DEFAULT_COMPUTE_CONTEXT)},`,
-        `            'authtoken': _viya_token(),`,
+        `            'context': _SERVICE_CONTEXT if token and _is_client_token(token) else _CONTEXT,`,
+        `            'authtoken': token,`,
         `        }`,
         `    raise AttributeError(name)`,
       ];

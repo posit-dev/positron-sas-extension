@@ -7,7 +7,10 @@ import * as path from "path";
 
 import type { Profile } from "../../src/components/profile";
 import {
+  CONNECT_COMPUTE_CONTEXT,
   SASPY_CONFIG_FILE,
+  SASPY_CONNECT_CONTEXT_ENV,
+  SASPY_CONNECT_INTEGRATION_ENV,
   SASPY_INTEGRATION_ENV,
   SASPY_TOKEN_ENV,
   profileToSaspyConfig,
@@ -38,11 +41,12 @@ describe("profileToSaspyConfig", () => {
 
     expect(config).to.include("SAS_config_names = ['viya']");
     expect(config).to.include("'url': _VIYA_URL,");
-    expect(config).to.include("'context': 'SAS Studio compute context',");
+    expect(config).to.include("_CONTEXT = 'SAS Studio compute context'");
     // The token is looked up for every SASsession, from outside the file.
     expect(config).to.include("def __getattr__(name):");
     expect(config).to.include("if name == 'viya':");
-    expect(config).to.include("'authtoken': _viya_token(),");
+    expect(config).to.include("token = _viya_token()");
+    expect(config).to.include("'authtoken': token,");
     expect(config).to.include(`_os.environ.get('${SASPY_TOKEN_ENV}')`);
     expect(config).to.include("'viya-token.json'");
     expect(config).to.include("_VIYA_URL = 'https://viya.example.com'");
@@ -74,8 +78,37 @@ describe("profileToSaspyConfig", () => {
         endpoint: "https://viya.example.com",
       }),
     );
+    expect(config).to.include("_CONTEXT = 'SAS Job Execution compute context'");
+  });
+
+  it("gets a token on Posit Connect, and runs tokens without a user in the service account context", () => {
+    const config = profileToSaspyConfig(
+      "viya",
+      asProfile({
+        connectionType: "rest",
+        endpoint: "https://viya.example.com",
+      }),
+    );
+    // Content session token (file first, as Connect refreshes it) exchanged
+    // with Connect using the standard library only: no posit-sdk.
+    expect(config).to.include("'CONNECT_CONTENT_SESSION_TOKEN_FILE'");
+    expect(config).to.include("'/__api__/v1/oauth/integrations/credentials'");
     expect(config).to.include(
-      "'context': 'SAS Job Execution compute context',",
+      "'subject_token_type': 'urn:posit:connect:content-session-token',",
+    );
+    expect(config).to.include(
+      "import urllib.error, urllib.parse, urllib.request",
+    );
+    expect(config).not.to.include("posit.connect");
+    expect(config).to.include(
+      `data['audience'] = _os.environ['${SASPY_CONNECT_INTEGRATION_ENV}']`,
+    );
+    expect(config).to.include(
+      `_SERVICE_CONTEXT = _os.environ.get('${SASPY_CONNECT_CONTEXT_ENV}') or '${CONNECT_COMPUTE_CONTEXT}'`,
+    );
+    expect(config).to.include("return 'user_name' not in claims");
+    expect(config).to.include(
+      "'context': _SERVICE_CONTEXT if token and _is_client_token(token) else _CONTEXT,",
     );
   });
 
