@@ -295,6 +295,21 @@ server <- function(input, output, session) {
 }
 ```
 
+With the saspy configuration that **SAS: Export saspy Configuration** writes, the app only passes the viewer's session token on. The configuration exchanges it with Connect through Python's standard library, so the app needs neither connectapi nor posit-sdk:
+
+```r
+observeEvent(input$run_analysis, {
+  reticulate::py_set_attr(reticulate::import_main(), "CONNECT_USER_SESSION_TOKEN",
+                          session$request$HTTP_POSIT_CONNECT_USER_SESSION_TOKEN)
+  sas_connect(reconnect = TRUE)
+  # ...
+})
+```
+
+The same app runs unchanged in a Workbench session: there the header is missing, and the configuration uses the Workbench integration instead. The token belongs to the viewer, so SAS runs as the viewer, in the profile's compute context.
+
+Set **Max connections per process** to 1 in the app's **Runtime** settings. sasquatch keeps one SAS session per R process, and the token on the Python main module is per process too.
+
 #### Shiny for Python with a Viewer Integration
 
 ```python

@@ -11,6 +11,7 @@ import {
   SASPY_CONFIG_FILE,
   SASPY_CONNECT_CONTEXT_ENV,
   SASPY_CONNECT_INTEGRATION_ENV,
+  SASPY_CONNECT_USER_TOKEN_VAR,
   SASPY_INTEGRATION_ENV,
   SASPY_TOKEN_ENV,
   profileToSaspyConfig,
@@ -113,8 +114,16 @@ describe("profileToSaspyConfig", () => {
     // with Connect using the standard library only: no posit-sdk.
     expect(config).to.include("'CONNECT_CONTENT_SESSION_TOKEN_FILE'");
     expect(config).to.include("'/__api__/v1/oauth/integrations/credentials'");
+    // Viewer integration: the viewer's session token, which the app passes
+    // in; otherwise the content session token (Service Account integration).
     expect(config).to.include(
-      "'subject_token_type': 'urn:posit:connect:content-session-token',",
+      "'subject_token_type': 'urn:posit:connect:' + ('user' if viewer else 'content') + '-session-token',",
+    );
+    expect(config).to.include(
+      `viewer = getattr(__main__, '${SASPY_CONNECT_USER_TOKEN_VAR}', None) or viewer`,
+    );
+    expect(config).to.include(
+      "session$request$HTTP_POSIT_CONNECT_USER_SESSION_TOKEN",
     );
     expect(config).to.include(
       "import urllib.error, urllib.parse, urllib.request",

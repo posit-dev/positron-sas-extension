@@ -38,6 +38,12 @@ export const CONNECT_COMPUTE_CONTEXT = "Posit Connect compute context";
 export const SASPY_CONNECT_CONTEXT_ENV = "SAS_VIYA_CONNECT_CONTEXT";
 
 /**
+ * Name of the variable (on the Python main module, or in the environment) that
+ * passes the viewer's Connect session token, for a Viewer OAuth integration.
+ */
+export const SASPY_CONNECT_USER_TOKEN_VAR = "CONNECT_USER_SESSION_TOKEN";
+
+/**
  * Environment variable with the GUID of the Connect OAuth integration, needed
  * only when more than one integration is associated with the content.
  */
@@ -93,18 +99,29 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
         `_SERVICE_CONTEXT = _os.environ.get(${py(SASPY_CONNECT_CONTEXT_ENV)}) or ${py(CONNECT_COMPUTE_CONTEXT)}`,
         ``,
         `def _connect_token():`,
-        `    # Exchange the content session token for the token of the OAuth`,
-        `    # integration associated with the content (standard library only).`,
-        `    session = None`,
+        `    # On Posit Connect, exchange a session token for the SAS Viya token of the`,
+        `    # content's OAuth integration (standard library only):`,
+        `    # - Viewer integration (interactive content, such as Shiny): the viewer's`,
+        `    #   session token, which the app passes in. In R with sasquatch:`,
+        `    #   reticulate::py_set_attr(reticulate::import_main(), ${rq(SASPY_CONNECT_USER_TOKEN_VAR)},`,
+        `    #     session$request$HTTP_POSIT_CONNECT_USER_SESSION_TOKEN)`,
+        `    # - Service Account integration: the content session token from Connect`,
+        `    viewer = _os.environ.get(${py(SASPY_CONNECT_USER_TOKEN_VAR)})`,
+        `    try:`,
+        `        import __main__`,
+        `        viewer = getattr(__main__, ${py(SASPY_CONNECT_USER_TOKEN_VAR)}, None) or viewer`,
+        `    except ImportError:`,
+        `        pass`,
+        `    content = None`,
         `    token_file = _os.environ.get('CONNECT_CONTENT_SESSION_TOKEN_FILE')`,
         `    if token_file:`,
         `        try:`,
         `            with open(token_file) as f:`,
-        `                session = f.read().strip()`,
+        `                content = f.read().strip()`,
         `        except OSError:`,
         `            pass`,
-        `    session = session or _os.environ.get('CONNECT_CONTENT_SESSION_TOKEN')`,
-        `    if not session:`,
+        `    content = content or _os.environ.get('CONNECT_CONTENT_SESSION_TOKEN')`,
+        `    if not (viewer or content):`,
         `        return None`,
         `    import urllib.error, urllib.parse, urllib.request`,
         `    server = _os.environ.get('CONNECT_SERVER')`,
@@ -112,8 +129,8 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
         `        raise RuntimeError('Running on Posit Connect, but CONNECT_SERVER is not set')`,
         `    data = {`,
         `        'grant_type': 'urn:ietf:params:oauth:grant-type:token-exchange',`,
-        `        'subject_token_type': 'urn:posit:connect:content-session-token',`,
-        `        'subject_token': session,`,
+        `        'subject_token_type': 'urn:posit:connect:' + ('user' if viewer else 'content') + '-session-token',`,
+        `        'subject_token': viewer or content,`,
         `        'requested_token_type': 'urn:ietf:params:oauth:token-type:access_token',`,
         `    }`,
         `    if _os.environ.get(${py(SASPY_CONNECT_INTEGRATION_ENV)}):`,
@@ -129,10 +146,19 @@ export function profileToSaspyConfig(name: string, profile: Profile): string {
         `            return _json.load(response).get('access_token')`,
         `    except urllib.error.HTTPError as e:`,
         `        detail = e.read()[:300].decode(errors='replace')`,
-        `        raise RuntimeError(`,
-        `            'Posit Connect could not provide a SAS Viya token (HTTP %d: %s). In Connect, '`,
-        `            'add the SAS Viya "Service Account" OAuth integration to this content '`,
-        `            '(Access > Integrations).' % (e.code, detail)) from None`,
+        `        if viewer:`,
+        `            hint = ('In Connect, add the SAS Viya "Viewer" OAuth integration to this '`,
+        `                    'content (Access > Integrations), and sign in to SAS Viya when asked.')`,
+        `        elif 'subject_token_type' in detail:`,
+        `            hint = ('This content has a Viewer integration, which needs the viewer\\'s '`,
+        `                    'session token: set ${SASPY_CONNECT_USER_TOKEN_VAR} on the Python main '`,
+        `                    'module (see _connect_token in sascfg_personal.py). For one shared '`,
+        `                    'identity, add a "Service Account" integration instead.')`,
+        `        else:`,
+        `            hint = ('In Connect, add a SAS Viya OAuth integration to this content '`,
+        `                    '(Access > Integrations): "Service Account" for rendered content.')`,
+        `        raise RuntimeError('Posit Connect could not provide a SAS Viya token (HTTP %d: %s). %s'`,
+        `                           % (e.code, detail, hint)) from None`,
         ``,
         `def _url_key(url):`,
         `    # scheme://host[:port]/path, compared the way the SAS extension does`,
