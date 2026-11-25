@@ -5,6 +5,11 @@
 ### Features
 
 - **SAS: Export saspy Configuration** for SAS Viya profiles now works in rendered content on Posit Connect. On Connect, the configuration gets the SAS Viya token from the content's "Service Account" OAuth integration. It exchanges the content session token with Connect through Python's standard library, so the content needs no extra package. Such a token has no user, and SAS Viya only runs it in a compute context with a service account, so the configuration uses the context `Posit Connect compute context` for tokens without a user (`SAS_VIYA_CONNECT_CONTEXT` names another one). This applies to a token from any source, such as `SAS_VIYA_TOKEN` set from `connectapi::get_oauth_content_credentials()`. Without an integration, connecting fails with a message that says so; before, saspy asked for a user ID, which a Quarto render on Connect reports as `EOFError: EOF when reading a line`. The documentation describes the SAS Viya setup that a Service Account integration needs
+- **SAS: Export saspy Configuration** for SAS Viya profiles finds the Posit Workbench OAuth integration without an integration ID: it uses the one integration whose token URL is the server's SAS Logon token URL, as the extension does for its own sign-in. `SAS_VIYA_INTEGRATION_ID` is now needed only when several integrations have that token URL
+
+### Bug Fixes
+
+- The saspy configuration that **SAS: Export saspy Configuration** writes never got a token from the Posit Workbench OAuth integration, even with `SAS_VIYA_INTEGRATION_ID` set. It called `Client().oauth.get_credentials()` on a temporary posit-sdk client, which fails with `ReferenceError: weakly-referenced object no longer exists` because posit-sdk's resources hold only a weak reference to their client (posit-sdk 0.17.0), and the error was swallowed. saspy then asked for a user ID. The configuration now keeps the client in a variable. The Python examples in the documentation had the same problem
 
 ## 1.3.0 - 2026-11-25
 

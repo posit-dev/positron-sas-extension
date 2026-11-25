@@ -163,6 +163,8 @@ Publishers then add an integration to each content item. In the content settings
 3. Click the information icon next to **SAS Viya** and copy the **Integration ID**.
 4. Store the ID in an environment variable, such as `SAS_VIYA_INTEGRATION_ID` in `.Renviron` or `.env`.
 
+The saspy configuration that **SAS: Export saspy Configuration** writes doesn't need steps 3 and 4: without an ID, it uses the integration whose token URL is the SAS Viya server's SAS Logon token URL. Set the ID only when several integrations have that token URL.
+
 ![The Workbench Settings page with Managed Credentials selected. Under Custom OAuth, the integration SAS Viya CAF is listed with a button to sign out and an information icon.](/images/workbench/managed-credentials.png)
 
 *The Managed Credentials page in Workbench. Under Custom OAuth, the SAS Viya integration is signed in, and its button signs the user out.*
@@ -173,7 +175,7 @@ Once you are signed in, new sessions receive the credential automatically. The *
 
 *The New Session dialog with the Custom OAuth Credentials section expanded, listing the SAS Viya integration.*
 
-The integration ID stays the same between sessions. Code can also look it up by name with `rstudioapi::findOAuthIntegration(name = "^SAS Viya$")` in R, or `Client().oauth.integrations.find_by(name="^SAS Viya$")` in Python.
+The integration ID stays the same between sessions. Code can also look it up by name with `rstudioapi::findOAuthIntegration(name = "^SAS Viya$")` in R, or `client.oauth.integrations.find_by(name="^SAS Viya$")` with `client = Client()` in Python.
 
 #### Python with saspy
 
@@ -184,7 +186,8 @@ import os
 import saspy
 from posit.workbench import Client
 
-creds = Client().oauth.get_credentials(audience=os.environ["SAS_VIYA_INTEGRATION_ID"])
+client = Client()
+creds = client.oauth.get_credentials(audience=os.environ["SAS_VIYA_INTEGRATION_ID"])
 
 sas = saspy.SASsession(cfgname="viya", authtoken=creds["access_token"])
 print(sas.submitLOG("proc options option=work; run;"))
@@ -192,6 +195,8 @@ sas.endsas()
 ```
 
 `get_credentials()` returns `None` when the user has not signed in to the integration.
+
+Keep the `Client()` in a variable, as above, in Workbench and on Connect. posit-sdk's resources hold only a weak reference to their client, so a chained call such as `Client().oauth.get_credentials(...)` fails with `ReferenceError: weakly-referenced object no longer exists` (checked with posit-sdk 0.17.0).
 
 #### R with sasquatch
 
@@ -265,7 +270,7 @@ The token comes from Connect instead of Workbench. Connect never gives refresh t
 | Content types | Interactive only, such as Shiny | Interactive and rendered, such as Quarto and R Markdown |
 | Viewer sign-in | Each viewer signs in to SAS Viya on first visit | None |
 | R function | `connectapi::get_oauth_credentials()` | `connectapi::get_oauth_content_credentials()` |
-| Python function | `Client().oauth.get_credentials()` | `Client().oauth.get_content_credentials()` |
+| Python function | `client.oauth.get_credentials()` | `client.oauth.get_content_credentials()` |
 
 Use a Viewer integration when results depend on each viewer's SAS Viya permissions. Use a Service Account integration for rendered or scheduled content, and for content that all viewers may see with the same data.
 
@@ -304,7 +309,8 @@ def server(input, output, session):
     @reactive.event(input.run)
     def _():
         user_token = session.http_conn.headers.get("Posit-Connect-User-Session-Token")
-        creds = Client().oauth.get_credentials(user_token)
+        client = Client()
+        creds = client.oauth.get_credentials(user_token)
         sas = saspy.SASsession(cfgname="viya", authtoken=creds["access_token"])
         # ... sas.df2sd(), sas.submit(), sas.sd2df() ...
         sas.endsas()
@@ -331,7 +337,7 @@ reticulate::py_set_attr(reticulate::import_main(), "SAS_VIYA_TOKEN", creds$acces
 sas_connect(cfgname = "viya")
 ```
 
-In Python, `Client().oauth.get_content_credentials()` returns the token. If content has more than one integration, pass the integration ID as `audience` to choose one.
+In Python, `client.oauth.get_content_credentials()` returns the token, with `client = Client()`. If content has more than one integration, pass the integration ID as `audience` to choose one.
 
 The token has no user, so saspy must use the service account's compute context. Set `context` in the saspy configuration accordingly, or use the configuration that **SAS: Export saspy Configuration** writes. That configuration needs no setup chunk on Connect:
 

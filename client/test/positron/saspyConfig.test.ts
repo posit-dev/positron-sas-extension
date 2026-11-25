@@ -70,6 +70,26 @@ describe("profileToSaspyConfig", () => {
     );
   });
 
+  it("finds the Workbench integration by its token URL when no ID is given", () => {
+    const config = profileToSaspyConfig(
+      "viya",
+      asProfile({
+        connectionType: "rest",
+        endpoint: "https://viya.example.com",
+      }),
+    );
+    expect(config).to.include(
+      `_os.environ.get('${SASPY_INTEGRATION_ENV}') or ''`,
+    );
+    expect(config).to.include("integration = _workbench_integration(client)");
+    expect(config).to.include(
+      "expected = _url_key('%s://%s/SASLogon/oauth/token' % (parts.scheme, parts.netloc))",
+    );
+    expect(config).to.include(
+      "return matches[0] if len(matches) == 1 else None",
+    );
+  });
+
   it("uses the default compute context when the profile has none", () => {
     const config = profileToSaspyConfig(
       "viya",

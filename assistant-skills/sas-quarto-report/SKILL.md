@@ -289,10 +289,11 @@ connects, and takes the first of these:
    Its token has no user, so the configuration then uses the compute context
    `Posit Connect compute context` instead of the profile's context.
 4. On Posit Workbench, the SAS Viya OAuth integration, read with the posit-sdk
-   package. It needs the integration ID, from the environment variable
+   package. The integration ID comes from the environment variable
    `SAS_VIYA_INTEGRATION_ID` or the `workbenchIntegration` setting of the profile
-   (the ID is under the information icon in Managed Credentials). If posit-sdk or
-   the ID is missing, this step is skipped.
+   (the ID is under the information icon in Managed Credentials). Without an ID,
+   it is the one integration whose token URL is the server's SAS Logon token URL.
+   If posit-sdk is missing, or no integration matches, this step is skipped.
 5. The file `~/.positron-sas/viya-token.json`, which the extension writes from its
    own sign-in. It is only used when it is for the same server and has not
    expired.
