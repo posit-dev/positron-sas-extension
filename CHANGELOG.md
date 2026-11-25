@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 - 2026-11-25
+
+Still based on SAS Extension for VS Code 1.21.0 (tag v1.21.0).
 
 ### Features
 
