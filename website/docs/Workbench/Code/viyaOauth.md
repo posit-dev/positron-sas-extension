@@ -338,6 +338,19 @@ def server(input, output, session):
 app = App(app_ui, server)
 ```
 
+With the saspy configuration that **SAS: Export saspy Configuration** writes, the app needs no token code either. In reactive code, the configuration reads the viewer's session token from `shiny.session.get_current_session()`, also in a thread started with `asyncio.to_thread()`:
+
+```python
+@reactive.effect
+@reactive.event(input.run)
+async def _():
+    sas = await asyncio.to_thread(saspy.SASsession, cfgname="viya")
+    # ... sas.df2sd(), sas.submit(), sas.sd2df(), also with asyncio.to_thread() ...
+    sas.endsas()
+```
+
+Running the SAS calls with `asyncio.to_thread()` keeps the app responsive for other viewers while SAS works.
+
 #### Quarto and R Markdown with a Service Account Integration
 
 Rendered content reads the content session token that Connect provides. This setup chunk works both in Workbench and on Connect:

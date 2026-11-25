@@ -125,6 +125,11 @@ describe("profileToSaspyConfig", () => {
     expect(config).to.include(
       "session$request$HTTP_POSIT_CONNECT_USER_SESSION_TOKEN",
     );
+    // Shiny for Python: the current session's request headers.
+    expect(config).to.include("from shiny.session import get_current_session");
+    expect(config).to.include(
+      "session.http_conn.headers.get('Posit-Connect-User-Session-Token')",
+    );
     // R Shiny apps: read from the connecting Shiny session through reticulate,
     // without loading shiny.
     expect(config).to.include("viewer = viewer or _shiny_viewer_token()");
