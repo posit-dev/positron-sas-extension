@@ -242,7 +242,7 @@ The following screenshot shows the same steps in a Positron Pro session. It runs
 
 Python code can use the same `sascfg_personal.py`. An `authtoken` argument to `SASsession()` takes precedence over the configuration.
 
-The SAS extension can export a SAS Viya profile as a saspy configuration (**SAS: Export saspy Configuration**). That configuration looks for a token each time saspy connects. In this order, it uses the `SAS_VIYA_TOKEN` environment variable, the `SAS_VIYA_TOKEN` variable on the Python main module (as above), the Connect Service Account integration of the content (on Connect, see [Quarto and R Markdown with a Service Account Integration](#quarto-and-r-markdown-with-a-service-account-integration)), the Workbench integration read with posit-sdk (when `SAS_VIYA_INTEGRATION_ID` or the profile's `workbenchIntegration` gives its ID), and the token file `~/.positron-sas/viya-token.json`. The command **SAS: Save Viya Token for saspy** writes that file from the extension's own sign-in, readable only by the user, so that a Quarto render can use the same sign-in. Run it again when the token has expired.
+The SAS extension can export a SAS Viya profile as a saspy configuration (**SAS: Export saspy Configuration**). That configuration looks for a token each time saspy connects. In this order, it uses the `SAS_VIYA_TOKEN` environment variable, the `SAS_VIYA_TOKEN` variable on the Python main module (as above), on Connect the OAuth integration of the content (see [With the Exported saspy Configuration](#with-the-exported-saspy-configuration)), the Workbench integration read with posit-sdk (the one that `SAS_VIYA_INTEGRATION_ID` or the profile's `workbenchIntegration` names, or else the one whose token URL is the server's SAS Logon token URL), and the token file `~/.positron-sas/viya-token.json`. The command **SAS: Save Viya Token for saspy** writes that file from the extension's own sign-in, readable only by the user, so that a Quarto render can use the same sign-in. Run it again when the token has expired.
 
 #### swat and sasctl
 
@@ -259,6 +259,18 @@ print(conn.serverstatus())
 with Session("viya.example.com", token=creds["access_token"]):
     ...  # call sasctl services here
 ```
+
+### With the Exported saspy Configuration
+
+The configuration that **SAS: Export saspy Configuration** writes works unchanged in Workbench and on Connect, and the code that uses it needs no token code. It finds the token and picks the compute context to match:
+
+| Where the code runs | Token from | SAS runs as | Compute context |
+|---|---|---|---|
+| Workbench session | The Workbench OAuth integration, found by its token URL | The signed-in user | The profile's context |
+| Connect, rendered content such as Quarto | The content's Service Account integration | The service account of the compute context (`runServerAs`) | `Posit Connect compute context` |
+| Connect, Shiny app in R or Python | The content's Viewer integration, with the viewer's session token from the Shiny session | Each viewer | The profile's context |
+
+A token without a user, from a Service Account integration, only runs in a compute context with a service account. The configuration recognizes such a token and uses `Posit Connect compute context`, or the context that `SAS_VIYA_CONNECT_CONTEXT` names. [Set Up SAS Viya for a Service Account Integration](#set-up-sas-viya-for-a-service-account-integration) shows how to create it. A Shiny app passes the viewer's token on when it connects to SAS from a reactive context, such as `observeEvent()` in R or `@reactive.effect` in Python. Without a fitting integration, connecting fails with a message that says which integration the content needs.
 
 ### In Content on Connect
 
