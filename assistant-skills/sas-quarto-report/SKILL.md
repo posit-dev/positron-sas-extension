@@ -240,7 +240,9 @@ this order:
    ```
 
    For SAS Viya, use this shape instead, so the token is read each time saspy
-   connects (the token file is the one from "The SAS Viya token" below):
+   connects (the token file is the one from "The SAS Viya token" below). It does not
+   get a token on Posit Connect; prefer the exported file for reports that will be
+   published:
 
    ```python
    import json, os, time
@@ -282,12 +284,17 @@ connects, and takes the first of these:
 
 1. The environment variable `SAS_VIYA_TOKEN`.
 2. A variable `SAS_VIYA_TOKEN` on the Python main module, which R can set.
-3. On Posit Workbench, the SAS Viya OAuth integration, read with the posit-sdk
-   package. It needs the integration ID, from the environment variable
+3. On Posit Connect, the content's SAS Viya "Service Account" OAuth integration.
+   The publisher adds it in the content settings (**Access** > **Integrations**).
+   Its token has no user, so the configuration then uses the compute context
+   `Posit Connect compute context` instead of the profile's context.
+4. On Posit Workbench, the SAS Viya OAuth integration, read with the posit-sdk
+   package. The integration ID comes from the environment variable
    `SAS_VIYA_INTEGRATION_ID` or the `workbenchIntegration` setting of the profile
-   (the ID is under the information icon in Managed Credentials). If posit-sdk or
-   the ID is missing, this step is skipped.
-4. The file `~/.positron-sas/viya-token.json`, which the extension writes from its
+   (the ID is under the information icon in Managed Credentials). Without an ID,
+   it is the one integration whose token URL is the server's SAS Logon token URL.
+   If posit-sdk is missing, or no integration matches, this step is skipped.
+5. The file `~/.positron-sas/viya-token.json`, which the extension writes from its
    own sign-in. It is only used when it is for the same server and has not
    expired.
 
@@ -389,7 +396,10 @@ If the render fails, the usual causes are, in this order:
 3. `sasquatch` is not installed, or saspy is not installed in the Python
    environment that reticulate uses (`sasquatch::install_saspy()`).
 4. `sascfg_personal.py` is missing or in the wrong folder, or the SAS Viya token is
-   missing or has expired (run `SAS.saveViyaTokenForSaspy` again).
+   missing or has expired (run `SAS.saveViyaTokenForSaspy` again). On Posit Connect,
+   "Posit Connect could not provide a SAS Viya token" or `EOFError: EOF when reading
+   a line` means the content has no SAS Viya Service Account integration, or the
+   configuration was written by hand and has no Connect step: export it again.
 5. A chunk uses a table that only exists in the console session (see above).
 
 The SAS log in the failing chunk's output shows SAS errors. As the generic skill

@@ -112,6 +112,9 @@ function exportSaspyConfig(): vscode.LanguageModelToolResult {
       `   the extension's sign-in for saspy, or set the ${SASPY_TOKEN_ENV} environment variable`,
       `   to a SAS Viya access token (see the comment in the config). Never write the token`,
       `   into the report or the config`,
+      `5. On Posit Connect, the config gets the token from the content's SAS Viya`,
+      `   "Service Account" OAuth integration (content settings: Access > Integrations)`,
+      `   and runs SAS in the compute context for tokens without a user`,
     );
   }
 

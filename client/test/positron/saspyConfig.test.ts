@@ -7,7 +7,11 @@ import * as path from "path";
 
 import type { Profile } from "../../src/components/profile";
 import {
+  CONNECT_COMPUTE_CONTEXT,
   SASPY_CONFIG_FILE,
+  SASPY_CONNECT_CONTEXT_ENV,
+  SASPY_CONNECT_INTEGRATION_ENV,
+  SASPY_CONNECT_USER_TOKEN_VAR,
   SASPY_INTEGRATION_ENV,
   SASPY_TOKEN_ENV,
   profileToSaspyConfig,
@@ -38,11 +42,12 @@ describe("profileToSaspyConfig", () => {
 
     expect(config).to.include("SAS_config_names = ['viya']");
     expect(config).to.include("'url': _VIYA_URL,");
-    expect(config).to.include("'context': 'SAS Studio compute context',");
+    expect(config).to.include("_CONTEXT = 'SAS Studio compute context'");
     // The token is looked up for every SASsession, from outside the file.
     expect(config).to.include("def __getattr__(name):");
     expect(config).to.include("if name == 'viya':");
-    expect(config).to.include("'authtoken': _viya_token(),");
+    expect(config).to.include("token = _viya_token()");
+    expect(config).to.include("'authtoken': token,");
     expect(config).to.include(`_os.environ.get('${SASPY_TOKEN_ENV}')`);
     expect(config).to.include("'viya-token.json'");
     expect(config).to.include("_VIYA_URL = 'https://viya.example.com'");
@@ -66,7 +71,7 @@ describe("profileToSaspyConfig", () => {
     );
   });
 
-  it("uses the default compute context when the profile has none", () => {
+  it("finds the Workbench integration by its token URL when no ID is given", () => {
     const config = profileToSaspyConfig(
       "viya",
       asProfile({
@@ -75,7 +80,75 @@ describe("profileToSaspyConfig", () => {
       }),
     );
     expect(config).to.include(
-      "'context': 'SAS Job Execution compute context',",
+      `_os.environ.get('${SASPY_INTEGRATION_ENV}') or ''`,
+    );
+    expect(config).to.include("integration = _workbench_integration(client)");
+    expect(config).to.include(
+      "expected = _url_key('%s://%s/SASLogon/oauth/token' % (parts.scheme, parts.netloc))",
+    );
+    expect(config).to.include(
+      "return matches[0] if len(matches) == 1 else None",
+    );
+  });
+
+  it("uses the default compute context when the profile has none", () => {
+    const config = profileToSaspyConfig(
+      "viya",
+      asProfile({
+        connectionType: "rest",
+        endpoint: "https://viya.example.com",
+      }),
+    );
+    expect(config).to.include("_CONTEXT = 'SAS Job Execution compute context'");
+  });
+
+  it("gets a token on Posit Connect, and runs tokens without a user in the service account context", () => {
+    const config = profileToSaspyConfig(
+      "viya",
+      asProfile({
+        connectionType: "rest",
+        endpoint: "https://viya.example.com",
+      }),
+    );
+    // Content session token (file first, as Connect refreshes it) exchanged
+    // with Connect using the standard library only: no posit-sdk.
+    expect(config).to.include("'CONNECT_CONTENT_SESSION_TOKEN_FILE'");
+    expect(config).to.include("'/__api__/v1/oauth/integrations/credentials'");
+    // Viewer integration: the viewer's session token, which the app passes
+    // in; otherwise the content session token (Service Account integration).
+    expect(config).to.include(
+      "'subject_token_type': 'urn:posit:connect:' + ('user' if viewer else 'content') + '-session-token',",
+    );
+    expect(config).to.include(
+      `viewer = getattr(__main__, '${SASPY_CONNECT_USER_TOKEN_VAR}', None) or viewer`,
+    );
+    expect(config).to.include(
+      "session$request$HTTP_POSIT_CONNECT_USER_SESSION_TOKEN",
+    );
+    // Shiny for Python: the current session's request headers.
+    expect(config).to.include("from shiny.session import get_current_session");
+    expect(config).to.include(
+      "session.http_conn.headers.get('Posit-Connect-User-Session-Token')",
+    );
+    // R Shiny apps: read from the connecting Shiny session through reticulate,
+    // without loading shiny.
+    expect(config).to.include("viewer = viewer or _shiny_viewer_token()");
+    expect(config).to.include(
+      `'if (isNamespaceLoaded("shiny") && !is.null(shiny::getDefaultReactiveDomain())) '`,
+    );
+    expect(config).to.include(
+      "import urllib.error, urllib.parse, urllib.request",
+    );
+    expect(config).not.to.include("posit.connect");
+    expect(config).to.include(
+      `data['audience'] = _os.environ['${SASPY_CONNECT_INTEGRATION_ENV}']`,
+    );
+    expect(config).to.include(
+      `_SERVICE_CONTEXT = _os.environ.get('${SASPY_CONNECT_CONTEXT_ENV}') or '${CONNECT_COMPUTE_CONTEXT}'`,
+    );
+    expect(config).to.include("return 'user_name' not in claims");
+    expect(config).to.include(
+      "'context': _SERVICE_CONTEXT if token and _is_client_token(token) else _CONTEXT,",
     );
   });
 
