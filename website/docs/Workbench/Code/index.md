@@ -127,7 +127,7 @@ The `viya` definition also needs an access token. [SAS Viya with OAuth Tokens](.
 | Token function in Python | `posit.workbench.Client().oauth.get_credentials()` | `posit.connect.Client().oauth.get_credentials()` or `get_content_credentials()` |
 | Local SAS | SAS on the Workbench host or in the session image | SAS on the Connect host or in the content image |
 
-Code that works in a Workbench session needs two changes for Connect. It needs the Connect token function, and the Python environment with saspy must be published with the content. sasquatch content uses reticulate, so publish its Python environment as for any R content that uses reticulate.
+Code that works in a Workbench session needs two changes for Connect. It needs the Connect token function, and the Python environment with saspy must be published with the content. The saspy configuration that the Positron SAS extension exports already gets the token on Connect, from a Service Account integration, so rendered content that uses it needs no token code. sasquatch content uses reticulate, so publish its Python environment as for any R content that uses reticulate.
 
 ## Use It
 

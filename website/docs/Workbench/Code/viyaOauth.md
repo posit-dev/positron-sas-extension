@@ -152,7 +152,7 @@ An administrator creates the integrations in the Connect dashboard or through th
 
 For the Service Account integration, set `auth_type` to `Service Account` and remove `auth_mode` and `use_pkce`. Those two options apply only to Viewer integrations. Set `scopes` to the client ID, such as `posit-connect`. With the client credentials grant, SAS Logon grants only the client's own authorities, and refuses `openid` with `invalid_scope`.
 
-Publishers then add an integration to each content item. In the content settings, open the **Runtime** tab, and under **Integrations**, click **Add Integrations**. Rendered content offers only Service Account integrations.
+Publishers then add an integration to each content item. In the content settings, open the **Access** tab, and under **Integrations**, click **Add Integrations**. Rendered content offers only Service Account integrations.
 
 ## Use It
 
