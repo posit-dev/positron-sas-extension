@@ -165,20 +165,30 @@ class ItcServerAdapter implements ContentAdapter {
     // If the user is fetching child items of the root folder, give them the
     // "home" directory
     if (parentItem.id === SERVER_FOLDER_ID) {
-      const { success, data: items } = await this.execute(
-        ScriptActions.GetChildItems,
-        {
-          path: "/",
-          ...this.fileNavigationRootSettings(),
-        },
-      );
+      const {
+        success,
+        data: items,
+        listedPath,
+      } = await this.execute(ScriptActions.GetChildItems, {
+        path: "/",
+        ...this.fileNavigationRootSettings(),
+      });
       if (!success) {
         if (this.fileNavigationRoot === "CUSTOM") {
           throw new Error(Messages.FileNavigationRootUserError);
         }
         return [];
       }
-      const uri = items[0].parentFolderUri;
+      // The script returns the listed folder as listedPath, because an empty
+      // folder (such as a new home folder) has no items to take it from.
+      // listedPath can be "" (the SYSTEM root on Windows), so use ??.
+      const uri: string | undefined = listedPath ?? items?.[0]?.parentFolderUri;
+      if (uri === undefined) {
+        console.warn(
+          "SAS Server: the root folder returned no path and no items",
+        );
+        return [];
+      }
       const homeFolder = convertStaticFolderToContentItem(
         createStaticFolder(
           uri,
@@ -211,7 +221,7 @@ class ItcServerAdapter implements ContentAdapter {
       return [];
     }
 
-    const childItems = items.map(
+    const childItems = (items ?? []).map(
       this.convertPowershellResponseToContentItem.bind(this),
     );
 

@@ -41,6 +41,8 @@ A SAS 9.4 (remote – IOM) connection profile includes the following parameters:
 | `port`                     | IOM Server Port          | The port of the IOM server. Default value is 8591.                                                     |
 | `interopLibraryFolderPath` | IOM interop library path | A custom path to a folder containing SAS interop libraries (`SASInterop.dll` and `SASOManInterop.dll`) |
 
+The profile can also set `fileNavigationRoot` and `fileNavigationCustomRootPath`, which choose the folder that the **SAS Server** view starts in. See [SAS Server File Navigation Root Settings](./additional.md#sas-server-file-navigation-root-settings).
+
 ## Installing SAS Integration Technologies Client and SAS Providers for OLE DB
 
 You can install SAS Integration Technologies Client and SAS Providers for OLE DB by running your SAS 9.4 installer and making sure "Integration Technologies Client" and "SAS Providers for OLE DB" are checked.

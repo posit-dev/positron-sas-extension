@@ -378,7 +378,7 @@ class SASRunner {
 
   [void]DeleteItemAtPath([string]$filePath, [bool]$recursive) {
     if ($recursive) {
-      $items = $this.GetItemsAtPath($filePath, [SAS.FileServiceListFilesMode]::FileServiceListFilesModePath);
+      $items = $this.GetItemsAtPath($filePath, [SAS.FileServiceListFilesMode]::FileServiceListFilesModePath).items;
       for ($i = 0; $i -lt $items.Count; $i++) {
         if ($items[$i].category -eq 0) {
           $this.DeleteItemAtPath($items[$i].uri, $true);
@@ -519,7 +519,7 @@ class SASRunner {
   }
 
   [object] GetItemAtPathWithName([string]$folderPath, [string]$name) {
-    $items = $this.GetItemsAtPath($folderPath, [SAS.FileServiceListFilesMode]::FileServiceListFilesModePath)
+    $items = $this.GetItemsAtPath($folderPath, [SAS.FileServiceListFilesMode]::FileServiceListFilesModePath).items
     for ($i = 0; $i -lt $items.Count; $i++) {
       if ($items[$i].name -eq $name) {
         return $items[$i]
@@ -528,7 +528,10 @@ class SASRunner {
     return $null;
   }
 
-  [object[]] GetItemsAtPath([string]$folderPath, [SAS.FileServiceListFilesMode] $mode) {
+  # Returns the folder that ListFiles listed (listedPath) and its items. The
+  # folder is returned on its own because an empty folder has no items to
+  # carry it in parentFolderUri.
+  [hashtable] GetItemsAtPath([string]$folderPath, [SAS.FileServiceListFilesMode] $mode) {
     $fieldInclusionMask = [boolean[]]@()
     # Out data
     $listedPath = ""
@@ -570,7 +573,7 @@ class SASRunner {
       }
     }
 
-    return $output
+    return @{ listedPath = $listedPath; items = $output }
   }
 
   [void]GetChildItems([string]$folderPath, [string]$fileNavigationCustomRootPath, [string]$fileNavigationRoot) {
@@ -588,8 +591,8 @@ class SASRunner {
           $mode = [SAS.FileServiceListFilesMode]::FileServiceListFilesModePath
         }
       }
-      $output = $this.GetItemsAtPath($folderPath, $mode)
-      Write-Host (@{success = $true; data = $output } | ConvertTo-Json)
+      $result = $this.GetItemsAtPath($folderPath, $mode)
+      Write-Host (@{success = $true; data = $result.items; listedPath = $result.listedPath } | ConvertTo-Json)
     } catch {
       Write-Host (@{success = $false; message = $Error[0].Exception.Message } | ConvertTo-Json)
     }
