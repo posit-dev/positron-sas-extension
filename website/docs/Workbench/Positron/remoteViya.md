@@ -75,6 +75,23 @@ Two profile settings change this:
 
 The extension keeps the Workbench token in memory and gets a new one from Workbench before it expires. Signing out in the Positron **Accounts** menu stops the extension from using the token. It does not sign you out of the integration in Workbench.
 
+## Run SAS Programs as Workbench Jobs
+
+A SAS program can also run as a Workbench Job, next to your R and Python jobs. The job runs the program on SAS Viya with `sasjob` and shows its SAS log in the **Workbench Jobs** view while it runs. The program keeps running when you close Positron, and you can stop it from the view.
+
+This needs:
+
+- A Posit Workbench extension that lets other extensions add script types, and `sasjob` installed where jobs run (on the `PATH`, or set **SAS: Workbench Jobs: Sasjob Path**).
+- The same Workbench OAuth integration for SAS Viya that the console uses. A job signs in with it on its own, for up to 7 days after you start the job.
+
+To run a program:
+
+1. Open the `.sas` file, click the arrow next to the run button in the upper right corner of the editor, and select **Run Script in a Workbench Job**. You can also right-click the file in the **Explorer**.
+2. The **Run Workbench Job** dialog opens with the arguments from the active SAS Viya profile: `--viya-url`, and `--context`, `--integration`, `--sas-option` and `--autoexec-line` when the profile sets them. Change them under **Arguments** if you need to, choose the cluster and resources, and click **Start**.
+3. Follow the job in the **Workbench Jobs** view. It writes the SAS log and listing to `prog.log` and `prog.lst` next to the program.
+
+A Workbench Job differs from a [background job](../../Features/backgroundJobs.md): it runs in your Workbench environment and streams the log as the program runs, while a background job runs entirely on the SAS Viya server.
+
 ## Limitations
 
 - Sign-in through Workbench needs a Positron Pro session, which can reach Workbench. In Positron outside Workbench, the extension signs in with SAS Logon.

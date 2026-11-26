@@ -106,6 +106,7 @@
   "configuration.SAS.console.logOutput.notes": "NOTE lines and other log text",
   "configuration.SAS.console.logOutput.warnings": "WARNING lines",
   "configuration.SAS.console.logOutput.errors": "ERROR lines",
+  "configuration.SAS.workbenchJobs.sasjobPath": "Posit Workbench only: the `sasjob` command that runs SAS programs as Workbench Jobs (**Run Script in a Workbench Job**). A name on the job's `PATH`, or an absolute path where jobs run.",
   "configuration.SAS.audit.logFile": "Positron only: file that records every SAS console submission (user, session, code and outcome) as JSON Lines, for audit and traceability. `~` expands to the home directory. Leave empty to turn auditing off.",
   "configuration.SAS.variablesPane.enabled": "Positron only: show the SAS console's GLOBAL and AUTOMATIC macro variables and WORK datasets in the Variables pane. The pane is updated after each submission with one extra query (on SAS Viya, through the Compute API without running SAS code).",
   "configuration.SAS.session.keepAliveSeconds": "SAS Viya connections: how often, in seconds, the extension contacts an idle SAS session so that the server does not end it for inactivity. Set to `0` to turn this off. Pinging stops after 8 hours without a submit.",

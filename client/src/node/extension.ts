@@ -80,6 +80,7 @@ import {
   stdioSasPath,
 } from "../positron/localSasProfile";
 import { XptEditorProvider } from "../positron/XptEditorProvider";
+import { registerWorkbenchJobs } from "../workbenchJobs";
 
 let client: LanguageClient;
 let localProfileLog: LogOutputChannel | undefined;
@@ -248,6 +249,8 @@ export async function activate(context: ExtensionContext) {
   ClinicalRepository.register(context);
   // Submit programs as SAS Viya background jobs (#150).
   BackgroundJobs.register(context);
+  // Run SAS programs as Posit Workbench Jobs, with sasjob.
+  registerWorkbenchJobs(context);
   // SAS Life Science Analytics Framework, when an LSAF server is configured.
   registerLsaf(context);
 
