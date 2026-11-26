@@ -738,6 +738,13 @@
             "scope": "machine",
             "markdownDescription": "%configuration.SAS.audit.logFile%"
           },
+          "SAS.workbenchJobs.sasjobPath": {
+            "order": 11,
+            "type": "string",
+            "default": "sasjob",
+            "scope": "machine",
+            "markdownDescription": "%configuration.SAS.workbenchJobs.sasjobPath%"
+          },
           "SAS.variablesPane.enabled": {
             "order": 11,
             "type": "boolean",
