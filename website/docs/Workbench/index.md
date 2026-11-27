@@ -6,7 +6,7 @@ sidebar_position: 1
 
 Posit Workbench and Posit Connect support several ways to bring SAS into your data science work. They differ in how closely SAS works with R and Python: side by side as separate tools, together in one editor, or mixed in the same code.
 
-This section builds on the rest of this documentation. The [Features](../Features/index.md) and [Configurations](../Configurations/index.md) sections describe the SAS Extension for Visual Studio Code, which the SAS Extension for Positron extends, and they still apply in Positron: connection profiles, SAS Viya and SAS 9.4 connections, SAS Content, libraries, and notebooks. The pages here add what is specific to Positron and to Posit Workbench: running SAS in the Positron console, the Positron panes, Posit Assistant, and how to set up each way of running SAS in Workbench.
+This section builds on the rest of this documentation. The [Features](../Features/index.md) and [Configurations](../Configurations/index.md) sections describe what the SAS Extension for Positron shares with the SAS Extension for Visual Studio Code, which it extends: connection profiles, SAS Viya and SAS 9.4 connections, SAS Content, libraries, and notebooks. The pages here add what is specific to Positron and to Posit Workbench: running SAS in the Positron console, the Positron panes, Posit Assistant, and how to set up each way of running SAS in Workbench.
 
 | Scenario | What you get | Where SAS runs |
 | --- | --- | --- |

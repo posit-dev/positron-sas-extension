@@ -24,7 +24,7 @@ A SAS 9.4 (remote – SSH) connection profile includes the following parameters:
 | `username`           | SSH Server Username                  | The username to establish the SSH connection to the server.                   |
 | `port`               | SSH Server Port                      | The SSH port of the SSH server. The default value is 22.                      |
 | `saspath`            | Path to SAS Executable on the server | Must be a fully qualified path on the SSH server to a SAS executable file.    |
-| `privateKeyFilePath` | SSH Private Key File (optional)      | Must be a fully qualified path on the same machine that VSCode is running on. |
+| `privateKeyFilePath` | SSH Private Key File (optional)      | Must be a fully qualified path on the same machine that Positron is running on. |
 
 The extension opens a shell on the server, turns off the terminal echo with `stty -echo`, and starts SAS with `-nodms -noterminal -nosyntaxcheck -linesize max`, followed by the `sasOptions` of the profile. With `-linesize max`, SAS doesn't wrap log lines, so the Positron console can hide the code the extension adds around each submission. A `-linesize` in `sasOptions` comes later and takes precedence.
 
@@ -76,7 +76,7 @@ Note: if ~/.ssh/config does not exist, run the following Powershell command to c
 
 7. Add the private key to ssh-agent: ssh-add /path/to/private/key/with/passphrase
 
-8. In VS Code, define a connection profile (see detailed instructions in the [Add New Connection Profile](./index.md#add-new-connection-profile) section). The connection for the remote server is stored in the settings.json file.
+8. In Positron, define a connection profile (see detailed instructions in the [Add New Connection Profile](./index.md#add-new-connection-profile) section). The connection for the remote server is stored in the settings.json file.
 
 ```json
 "ssh_test": {

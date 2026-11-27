@@ -6,7 +6,7 @@ sidebar_position: 1
 
 Welcome to the SAS Extension for Positron! The SAS extension is lightweight, runs anywhere, and allows you to integrate SAS with other languages.
 
-While the VS Code Extension for SAS is fully functional in Positron, the Extension's UI is not aligned well with Positron. The Positron Extension for SAS extends the VS Code Extension for SAS by providing first class support for SAS to Positron.
+While the SAS Extension for Visual Studio Code is fully functional in Positron, its UI is not aligned well with Positron. The SAS Extension for Positron extends the SAS Extension for Visual Studio Code by providing first class support for SAS to Positron.
 
 - Ability to start SAS from the "Start Session" menu (the same as starting an R or Python session)
 - See all your SAS data libraries in the Connection Pane of Positron
@@ -22,9 +22,9 @@ To see the extension at work, watch the [Demo Videos](./videos.mdx): short, capt
 
 To run SAS in Posit Workbench, see [SAS with Posit Workbench](./Workbench/index.md). It covers running SAS in a Workbench session, on SAS Viya or a SAS server, and from R and Python code. The [Positron SAS Extension Features](./Features/positron.md) page describes the console, the Viewer, the Data Explorer, Posit Assistant, and the other Positron features in detail.
 
-Most of the functionality of the VS Code Extension for SAS is retained. In particular it is very important to define SAS Connection profiles.
+Most of the functionality of the SAS Extension for Visual Studio Code is retained. In particular it is very important to define SAS Connection profiles.
 
-The SAS Extension for VS Code includes the following features:
+The SAS Extension for Positron includes the following features:
 
 - SAS syntax highlighting and help, code completion, and code snippets
 

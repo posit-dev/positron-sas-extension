@@ -1,6 +1,6 @@
 # stdio Connection Type Implementation
 
-This directory contains the implementation of the `stdio` connection type for the VS Code SAS Extension.
+This directory contains the implementation of the `stdio` connection type for the SAS Extension for Positron.
 
 ## What is stdio?
 
@@ -10,7 +10,7 @@ The `stdio` connection type allows you to run SAS locally using standard input/o
 
 ### 1. Create a stdio Profile
 
-Add to your VS Code settings (`.vscode/settings.json` or user settings):
+Add to your Positron settings (`.vscode/settings.json` or user settings):
 
 ```json
 {
@@ -36,7 +36,7 @@ Add to your VS Code settings (`.vscode/settings.json` or user settings):
 ## How It Works
 
 ```
-VS Code Extension
+SAS Extension
       ↓
    spawn()
       ↓

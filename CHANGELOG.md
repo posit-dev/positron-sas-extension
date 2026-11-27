@@ -13,6 +13,7 @@
 
 - **SAS Server** for SAS 9.4 (remote - IOM) and SAS 9.4 (local) profiles failed with `Cannot read properties of undefined (reading 'parentFolderUri')` and showed nothing when the start folder was empty, such as a new home folder with the default `fileNavigationRoot` (`USER`) or an empty `CUSTOM` folder. The extension took the folder's path from its first file. It now gets the path from SAS, so an empty start folder is shown and files can be created in it or uploaded to it ([#196](https://github.com/posit-dev/positron-sas-extension/issues/196))
 - The saspy configuration that **SAS: Export saspy Configuration** writes never got a token from the Posit Workbench OAuth integration, even with `SAS_VIYA_INTEGRATION_ID` set. It called `Client().oauth.get_credentials()` on a temporary posit-sdk client, which fails with `ReferenceError: weakly-referenced object no longer exists` because posit-sdk's resources hold only a weak reference to their client (posit-sdk 0.17.0), and the error was swallowed. saspy then asked for a user ID. The configuration now keeps the client in a variable. The Python examples in the documentation had the same problem
+- The extension now calls itself the SAS Extension for Positron in the **SAS Content** and **SAS Server** views (the sign-in message and the message for connections without SAS content navigation, in all languages), in the documentation, and in the application name that SAS 9.4 IOM and local connections report to SAS. These places still said "SAS Extension for Visual Studio Code"
 
 ## 1.3.0 - 2026-11-25
 

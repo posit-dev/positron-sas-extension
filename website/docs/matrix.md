@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Capabilities by Connection Type
 
-| SAS Extension for Visual Studio Code - Capabilities by Connection Type                        |      SAS Viya      | SAS 9.4 (local) <br/> SAS 9.4 (remote - IOM) | SAS 9.4 (local - stdio) | SAS 9.4 (remote - SSH) | Notes                                                                                                                 |
+| SAS Extension for Positron - Capabilities by Connection Type                        |      SAS Viya      | SAS 9.4 (local) <br/> SAS 9.4 (remote - IOM) | SAS 9.4 (local - stdio) | SAS 9.4 (remote - SSH) | Notes                                                                                                                 |
 | --------------------------------------------------------------------------------------------- | :----------------: | :------------------------------------------: | :---------------------: | :--------------------: | --------------------------------------------------------------------------------------------------------------------- |
 | [SAS Options settings](./Configurations/Profiles/additional.md#sas-options-settings-examples) | :heavy_check_mark: |             :heavy_check_mark:\*             |   :heavy_check_mark:    |   :heavy_check_mark:   | \*Options that can only be specified _at_ SAS session startup are not supported for SAS 9.4 (local) and (remote-IOM). |
 | [SAS Autoexec settings](./Configurations/Profiles/additional.md#sas-autoexec-settings)        | :heavy_check_mark: |                     :x:                      |   :heavy_check_mark:    |          :x:           |

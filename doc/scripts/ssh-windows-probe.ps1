@@ -241,7 +241,7 @@ $sasTest = {
     Add-Type -Path (Join-Path $interopDir "SASOManInterop.dll")
     # As in the extension's Setup (itc.ps1).
     $factory = New-Object -TypeName SASObjectManager.ObjectFactoryMulti2Class
-    $factory.ApplicationName = "SAS Extension for Visual Studio Code (probe)"
+    $factory.ApplicationName = "SAS Extension for Positron (probe)"
     $serverDef = New-Object -TypeName SASObjectManager.ServerDefClass
     $serverDef.MachineDNSName = "localhost"
     $serverDef.Port = 0

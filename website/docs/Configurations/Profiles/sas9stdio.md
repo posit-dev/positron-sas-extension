@@ -10,7 +10,7 @@ The SAS 9.4 (local - stdio) connection type allows you to run SAS locally on you
 
 Use the stdio connection type when:
 
-- SAS is installed locally on the same machine as VS Code
+- SAS is installed locally on the same machine as Positron
 - You want to avoid SSH connection overhead
 - You're working on a single-user development machine
 
@@ -66,7 +66,7 @@ A SAS 9.4 (local - stdio) connection profile includes the following parameters:
 
 ## Example Configuration
 
-To create a stdio connection profile, add an entry to your VS Code settings:
+To create a stdio connection profile, add an entry to your Positron settings:
 
 ```json
 {

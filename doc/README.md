@@ -3,7 +3,7 @@
 ## Table Of Contents
 
 - [Getting Started](#getting-started)
-- [Contributing To SAS Extension For VSCode](#contributing-to-sas-extension-for-vscode)
+- [Contributing To SAS Extension For Positron](#contributing-to-sas-extension-for-positron)
 - [General Architecture](#general-architecture)
   - [Top level folder structure](#top-level-folder-structure)
   - [Connection setup](#connection-setup)
@@ -29,9 +29,9 @@
 - In the [Extension Development Host] instance of VS Code, open a SAS file.
 - _Optional_: If you want to debug the language server as well, also run the launch configuration `Attach to Server`.
 
-## Contributing To SAS Extension For VSCode
+## Contributing To SAS Extension For Positron
 
-Please see [CONTRIBUTING.md](../CONTRIBUTING.md) for notes on contributing to the SAS Extension for VSCode
+Please see [CONTRIBUTING.md](../CONTRIBUTING.md) for notes on contributing to the SAS Extension for Positron
 
 ## General Architecture
 
@@ -156,7 +156,7 @@ The `website` directory powers the [documentation website](https://sassoftware.g
 
 ### Adding a new locale
 
-Follow these steps to add a new locale for the SAS Extension for VSCode:
+Follow these steps to add a new locale for the SAS Extension for Positron:
 
 - Follow the instructions in the [Get started](#get-started) section to setup your environment and view results.
 - Run `npm run locale --new=<locale>` (the locale specified here will need to be one of https://code.visualstudio.com/docs/getstarted/locales#_available-locales).
@@ -167,7 +167,7 @@ Follow these steps to add a new locale for the SAS Extension for VSCode:
 
 ### Updating a current locale
 
-Follow these steps to update a locale for the SAS Extension for VSCode:
+Follow these steps to update a locale for the SAS Extension for Positron:
 
 - Follow the instructions in the [Get started](#get-started) section to setup your environment and view results.
 - Run `npm run locale --update-locale=<locale>`. This will update `package.nls.<locale>.json` and `l10/bundle.l10n.<locale>.json` with any missing translation keys.
