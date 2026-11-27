@@ -12,7 +12,7 @@ Select `File > Preferences > Color Theme` and select a SAS color theme.
 
 ### Can I change the default shortcuts to run SAS code?
 
-To manage shortcuts in VS Code, select `File > Preferences > Keyboard Shortcuts`. Enter "run sas" in the search box to view the commands that are associated with running SAS code. Hover the mouse pointer over the column to the left of the command to add or edit a shortcut for the command.
+To manage shortcuts in Positron, select `File > Preferences > Keyboard Shortcuts` (on macOS, `Positron > Settings > Keyboard Shortcuts`). Enter "run sas" in the search box to view the commands that are associated with running SAS code. Hover the mouse pointer over the column to the left of the command to add or edit a shortcut for the command.
 
 ### Can I reduce the number of autocomplete suggestions I'm getting?
 
@@ -24,7 +24,7 @@ To change how suggestions are accepted, search for the `Accept Suggestion on Ent
 
 ### Can I still get word-based suggestions after enabling the SAS extension?
 
-VS Code provides a default word-based autocompletion for any programming language when there is no language extension installed. When a language extension is installed, however, the default autocomplete feature is no longer available. For more information, see https://github.com/microsoft/vscode/issues/21611
+Positron provides a default word-based autocompletion for any programming language when there is no language extension installed. When a language extension is installed, however, the default autocomplete feature is no longer available. For more information, see https://github.com/microsoft/vscode/issues/21611
 
 ### Why does it take so long to run SAS code the first time?
 
@@ -92,25 +92,25 @@ You need to manually trust your server's certificate using the steps below:
 
    1.4. Click the "Details" tab, then click "Export". Select "Base64-encoded ASCII, certificate chain" and save it to a file.
 
-2. For Mac OS, you can install the certificate file into your Keychain Access and trust the certificate. If you are using another operating system or you don't want to add the certificate to your system, open VS Code Settings > `SAS: User Provided Certificates`. Enter the full path of the certificate file.
+2. For Mac OS, you can install the certificate file into your Keychain Access and trust the certificate. If you are using another operating system or you don't want to add the certificate to your system, open the Positron settings and find `SAS: User Provided Certificates`. Enter the full path of the certificate file.
 
-3. Restart VS Code.
+3. Restart Positron.
 
 If the steps above do not work, you can bypass the certificate check:
 
 1. Set the environment variable [NODE_TLS_REJECT_UNAUTHORIZED](https://nodejs.org/api/cli.html#node_tls_reject_unauthorizedvalue) to 0 to bypass the certificate check.
 
-2. Shut down all VS Code instances and then restart the application with the updated environment variable. If you are connecting to a remote workspace, set the environment variable on the remote system and terminate all VS Code server processes (for example, run `ps -aux | grep vscode-server` on the remote Linux machine to see the processes).
+2. Shut down all Positron instances and then restart the application with the updated environment variable. If you are connecting to a remote workspace, set the environment variable on the remote system and terminate all Positron server processes (for example, run `ps -aux | grep positron-server` on the remote Linux machine to see the processes).
 
-### When I connect to my SAS Viya connection profile, why doesn't VS Code prompt me to open a browser window and sign in using SAS?
+### When I connect to my SAS Viya connection profile, why doesn't Positron prompt me to open a browser window and sign in using SAS?
 
 Confirm that you have specified the protocol correctly. For example, if your SAS Viya server is on https, make sure you included `https://` in your `endpoint` setting.
 
 ### Why did I get the `Unable to parse decrypted password` error​?
 
-- For Microsoft Windows, open the Control Panel and navigate to `All Control Panel Items\Credential Manager`, click `Windows Credentials`, Select items that start with `vscodesas` and click `Remove`. Restart VS Code.
+- For Microsoft Windows, open the Control Panel and navigate to `All Control Panel Items\Credential Manager`, click `Windows Credentials`, Select items that start with `vscodesas` and click `Remove`. Restart Positron.
 
-- For Mac OS, open `Keychain Access`, select `login` keychain and then select `Passwords`. Right-click any items that start with `vscodesas` and select `Delete`. Restart VS Code.
+- For Mac OS, open `Keychain Access`, select `login` keychain and then select `Passwords`. Right-click any items that start with `vscodesas` and select `Delete`. Restart Positron.
 
 ### Why did I get the `Setup error: Retrieving the COM class factory`... error when connecting to SAS 9.4 (remote-IOM)?
 
@@ -128,7 +128,7 @@ If you need more help, you can enter a GitHub issue by clicking https://github.c
 
 ### Why am I getting blank errors?
 
-Restart your VS Code session.
+Restart your Positron session.
 
 ## Problems Panel questions
 

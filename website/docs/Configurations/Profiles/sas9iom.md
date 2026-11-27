@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # SAS 9.4 (remote - IOM) Connection Profile
 
-To use a SAS 9.4 (remote – IOM) connection type, you need to install both SAS Integration Technologies Client for Windows (ITCLIENT) and the SAS Providers for OLE DB on the client machine where VS Code is installed. The order of installation does not matter.
+To use a SAS 9.4 (remote – IOM) connection type, you need to install both SAS Integration Technologies Client for Windows (ITCLIENT) and the SAS Providers for OLE DB on the client machine where Positron is installed. The order of installation does not matter.
 
 :::note
 

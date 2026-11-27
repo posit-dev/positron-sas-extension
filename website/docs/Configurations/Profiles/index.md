@@ -2,7 +2,7 @@
 
 Profiles provide an easy way to switch between multiple SAS deployments. For SAS Viya connections, multiple Viya profiles are used to switch between compute contexts. There is no limit to the number of stored profiles you can create.
 
-You configure the profiles in VS Code and they are stored in the VS Code `settings.json` file. You can update the profile settings, if needed.
+You configure the profiles in Positron and they are stored in the Positron `settings.json` file. You can update the profile settings, if needed.
 
 The following commands are supported for profiles:
 

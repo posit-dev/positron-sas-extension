@@ -6,7 +6,7 @@ To configure the SAS extension:
 
 1. Open a SAS program file.
 
-2. Click "No Profile" in the status bar on the bottom left of your VS Code window.
+2. Click "No Profile" in the status bar on the bottom left of your Positron window.
 
    You can also open the command palette (`F1`, or `Ctrl+Shift+P` on Windows or Linux, or `Shift+CMD+P` on OSX) and locate `SAS: Add New Connection Profile` command.
 
