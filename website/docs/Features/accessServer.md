@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Accessing SAS Server
 
-After you configure the SAS extension for a SAS Viya environment, you can access SAS Server.
+After you configure a SAS Viya, SAS 9.4 (remote - IOM), or SAS 9.4 (local) connection profile, you can access SAS Server.
 
 To access SAS Server:
 
