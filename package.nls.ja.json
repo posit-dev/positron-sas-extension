@@ -91,6 +91,6 @@
   "views.SAS.libraries": "ライブラリ",
   "views.SAS.serverExplorer": "SAS サーバー",
   "views.SAS.signIn": "サインイン",
-  "views.SAS.unsupportedConnection": "この接続では、SAS Extension for Visual Studio Code 内の SAS コンテンツナビゲーションがサポートされていません。ファイルにアクセスできるのは、エクスプローラービューのみです。",
-  "views.SAS.welcome": "SAS Extension for Visual Studio Code を使用するには、SAS にサインインする必要があります。\n [Sign In](command:SAS.authorize)"
+  "views.SAS.unsupportedConnection": "この接続では、SAS Extension for Positron 内の SAS コンテンツナビゲーションがサポートされていません。ファイルにアクセスできるのは、エクスプローラービューのみです。",
+  "views.SAS.welcome": "SAS Extension for Positron を使用するには、SAS にサインインする必要があります。\n [Sign In](command:SAS.authorize)"
 }

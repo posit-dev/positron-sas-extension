@@ -91,6 +91,6 @@
   "views.SAS.libraries": "Biblioteki",
   "views.SAS.serverExplorer": "Serwer SAS-owy",
   "views.SAS.signIn": "Zaloguj się",
-  "views.SAS.unsupportedConnection": "Połączenie nie obsługuje nawigacji po zawartości SAS-owej w obrębie SAS Extension for Visual Studio Code.",
-  "views.SAS.welcome": "Aby użyć SAS Extension for Visual Studio Code należy zalogować się do SAS-a. [Sign In](command:SAS.authorize)"
+  "views.SAS.unsupportedConnection": "Połączenie nie obsługuje nawigacji po zawartości SAS-owej w obrębie SAS Extension for Positron.",
+  "views.SAS.welcome": "Aby użyć SAS Extension for Positron należy zalogować się do SAS-a. [Sign In](command:SAS.authorize)"
 }

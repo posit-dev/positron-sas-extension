@@ -91,6 +91,6 @@
   "views.SAS.libraries": "資料館",
   "views.SAS.serverExplorer": "SAS 伺服器",
   "views.SAS.signIn": "登入",
-  "views.SAS.unsupportedConnection": "您的連線不支援 SAS Extension for Visual Studio Code 內的 SAS 內容瀏覽。您只能使用檔案總管檢視來存取檔案。",
-  "views.SAS.welcome": "若要使用 SAS Extension for Visual Studio Code，您必須登入 SAS.\r\n[Sign In](command:SAS.authorize)"
+  "views.SAS.unsupportedConnection": "您的連線不支援 SAS Extension for Positron 內的 SAS 內容瀏覽。您只能使用檔案總管檢視來存取檔案。",
+  "views.SAS.welcome": "若要使用 SAS Extension for Positron，您必須登入 SAS.\r\n[Sign In](command:SAS.authorize)"
 }

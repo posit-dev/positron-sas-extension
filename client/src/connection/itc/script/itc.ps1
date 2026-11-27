@@ -94,7 +94,7 @@ class SASRunner {
 
       # create the Integration Technologies objects
       $objFactory = New-Object -TypeName SASObjectManager.ObjectFactoryMulti2Class
-      $objFactory.ApplicationName = "SAS Extension for Visual Studio Code"
+      $objFactory.ApplicationName = "SAS Extension for Positron"
       $objServerDef = New-Object -TypeName SASObjectManager.ServerDefClass
       $objServerDef.MachineDNSName = $profileHost # SAS Workspace node
       $objServerDef.Port = $port # workspace server port

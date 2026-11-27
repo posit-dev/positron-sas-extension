@@ -91,6 +91,6 @@
   "views.SAS.libraries": "Librerie",
   "views.SAS.serverExplorer": "Server SAS",
   "views.SAS.signIn": "Accedi",
-  "views.SAS.unsupportedConnection": "La connessione non supporta la navigazione nel contenuto SAS all'interno di SAS Extension for Visual Studio Code. È possibile accedere ai file solo utilizzando la visualizzazione Explorer.",
-  "views.SAS.welcome": "Per utilizzare SAS Extension for Visual Studio Code, occorre accedere a SAS.\n[Accedi](command:SAS.authorize)"
+  "views.SAS.unsupportedConnection": "La connessione non supporta la navigazione nel contenuto SAS all'interno di SAS Extension for Positron. È possibile accedere ai file solo utilizzando la visualizzazione Explorer.",
+  "views.SAS.welcome": "Per utilizzare SAS Extension for Positron, occorre accedere a SAS.\n[Accedi](command:SAS.authorize)"
 }

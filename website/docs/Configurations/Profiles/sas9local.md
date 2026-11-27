@@ -8,7 +8,7 @@ To use a SAS 9.4 (local) connection type, you need to install both SAS Integrati
 
 :::note
 
-You must install the SAS Providers for OLE DB if you are running the SAS Extension for Visual Studio Code v1.15 or later.
+You must install the SAS Providers for OLE DB to use this connection type with the SAS Extension for Positron.
 
 :::
 

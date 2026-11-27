@@ -91,6 +91,6 @@
   "views.SAS.libraries": "库",
   "views.SAS.serverExplorer": "SAS 服务器",
   "views.SAS.signIn": "登录",
-  "views.SAS.unsupportedConnection": "您的连接不支持 SAS Extension for Visual Studio Code 中的 SAS 内容导航。您只能使用资源管理器视图访问文件。",
-  "views.SAS.welcome": "要使用 SAS Extension for Visual Studio Code，您必须登录 SAS。\n[登录](command:SAS.authorize)"
+  "views.SAS.unsupportedConnection": "您的连接不支持 SAS Extension for Positron 中的 SAS 内容导航。您只能使用资源管理器视图访问文件。",
+  "views.SAS.welcome": "要使用 SAS Extension for Positron，您必须登录 SAS。\n[登录](command:SAS.authorize)"
 }
