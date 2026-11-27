@@ -91,6 +91,6 @@
   "views.SAS.libraries": "Bibliotheken",
   "views.SAS.serverExplorer": "SAS Server",
   "views.SAS.signIn": "Anmelden",
-  "views.SAS.unsupportedConnection": "Ihre Verbindung unterstützt nicht die Navigation in SAS-Inhalten innerhalb der SAS Extension for Visual Studio Code. Sie können nur über die Explorer-Ansicht auf Dateien zugreifen.",
+  "views.SAS.unsupportedConnection": "Ihre Verbindung unterstützt nicht die Navigation in SAS-Inhalten innerhalb der SAS Extension for Positron. Sie können nur über die Explorer-Ansicht auf Dateien zugreifen.",
   "views.SAS.welcome": "Um die SAS-Erweiterung für Visual Studio Code zu nutzen, müssen Sie sich bei SAS anmelden.\n[Anmelden](command:SAS.authorize)"
 }

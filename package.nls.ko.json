@@ -91,6 +91,6 @@
   "views.SAS.libraries": "라이브러리",
   "views.SAS.serverExplorer": "SAS 서버",
   "views.SAS.signIn": "로그인",
-  "views.SAS.unsupportedConnection": "귀하의 연결은 SAS Extension for Visual Studio Code 내에서 SAS 콘텐츠 탐색을 지원하지 않습니다. 탐색기 뷰를 사용하여야 파일을 방문할 수 있습니다.",
-  "views.SAS.welcome": "SAS Extension for Visual Studio Code를 사용하려면 SAS에 로그인해야 합니다.\n[로그인](command:SAS.authorize)"
+  "views.SAS.unsupportedConnection": "귀하의 연결은 SAS Extension for Positron 내에서 SAS 콘텐츠 탐색을 지원하지 않습니다. 탐색기 뷰를 사용하여야 파일을 방문할 수 있습니다.",
+  "views.SAS.welcome": "SAS Extension for Positron을 사용하려면 SAS에 로그인해야 합니다.\n[로그인](command:SAS.authorize)"
 }

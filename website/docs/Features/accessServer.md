@@ -8,7 +8,7 @@ After you configure a SAS Viya, SAS 9.4 (remote - IOM), or SAS 9.4 (local) conne
 
 To access SAS Server:
 
-1. Click the SAS icon in the VS Code activity bar.
+1. Click the SAS icon in the Positron activity bar.
 2. Click `Sign In`.
 3. Your SAS Server files should be displayed after you sign in. You can create, edit, delete, upload, download, and run files stored on a SAS server.
 

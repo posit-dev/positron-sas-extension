@@ -8,7 +8,7 @@ After you configure the SAS extension for a SAS Viya environment, you can access
 
 To access SAS Content:
 
-1. Click the SAS icon in the VS Code activity bar.
+1. Click the SAS icon in the Positron activity bar.
 2. Click `Sign In`.
 3. Your SAS Content should be displayed after you sign in. You can create, edit, delete, upload, download, and run files stored on a SAS server.
 
