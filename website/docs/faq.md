@@ -124,7 +124,7 @@ Click `Help > Toggle Developer Tools` from the top menu bar.
 
 The console log includes detailed errors and warnings that you can use to help debug problems with your connection. To open the console log, click `Help > Toggle Developer Tools` from the top menu bar.
 
-If you need more help, you can enter a GitHub issue by clicking https://github.com/sassoftware/vscode-sas-extension/issues/new/choose and filling out the form. Be sure to include the errors and warnings from the console log.
+If you need more help, you can enter a GitHub issue by clicking https://github.com/posit-dev/positron-sas-extension/issues/new/choose and filling out the form. Be sure to include the errors and warnings from the console log.
 
 ### Why am I getting blank errors?
 
